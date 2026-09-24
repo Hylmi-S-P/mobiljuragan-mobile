@@ -5,7 +5,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/vehicle_card_item.dart';
 import 'vehicle_detail_screen.dart';
 
-/// Layar 02: Pilih Kendaraan (Langkah 1 dari 5)
+/// Layar pemilihan armada kendaraan
 class VehicleSelectionScreen extends StatefulWidget {
   final bool showBottomNav;
 
@@ -23,14 +23,12 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter kendaraan sesuai kategori
     final filteredVehicles = _selectedCategory == 'Semua'
         ? VehicleModel.sampleVehicles
         : VehicleModel.sampleVehicles
             .where((v) => v.category == _selectedCategory)
             .toList();
 
-    // Dapatkan kendaraan yang sedang dipilih
     final selectedVehicle = VehicleModel.sampleVehicles.firstWhere(
       (v) => v.id == _selectedVehicleId,
       orElse: () => VehicleModel.sampleVehicles.first,
@@ -50,7 +48,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Judul Section
                   const Text(
                     'Katalog Armada Tersedia',
                     style: TextStyle(
@@ -71,12 +68,8 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Filter Kategori Horizontal
                   _buildCategoryFilterBar(),
                   const SizedBox(height: 16),
-
-                  // Daftar Kartu Kendaraan
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -95,23 +88,18 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     },
                   ),
                   const SizedBox(height: 8),
-
-                  // Info Box Armada Tambahan
                   _buildNoticeCard(),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-
-          // Bottom Sticky Button
           _buildStickyCTA(selectedVehicle),
         ],
       ),
     );
   }
 
-  /// Horizontal Category Filter Bar
   Widget _buildCategoryFilterBar() {
     return SizedBox(
       height: 38,
@@ -158,7 +146,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  /// Notice Card Informasi Ketersediaan Armada Lainnya
   Widget _buildNoticeCard() {
     return Container(
       width: double.infinity,
@@ -195,7 +182,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  /// Sticky Bottom CTA Button
   Widget _buildStickyCTA(VehicleModel selectedVehicle) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

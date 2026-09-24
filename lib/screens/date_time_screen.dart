@@ -3,8 +3,7 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 
-/// Layar 04: Tanggal & Waktu (Langkah 3 dari 5)
-/// Dilengkapi kontrol panah kanan dan kiri (< >) untuk pergantian bulan kalender secara interaktif.
+/// Layar pemilihan jadwal tanggal dan durasi sewa
 class DateTimeScreen extends StatefulWidget {
   final VehicleModel vehicle;
 
@@ -18,11 +17,9 @@ class DateTimeScreen extends StatefulWidget {
 }
 
 class _DateTimeScreenState extends State<DateTimeScreen> {
-  // State Tanggal & Bulan
   late DateTime _displayedMonth;
   late DateTime _selectedDate;
   
-  // State Waktu & Durasi
   String _selectedTime = '09.00 WIT';
   String _timeDescription = 'Pagi hari';
   int _durationDays = 2;
@@ -37,7 +34,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   @override
   void initState() {
     super.initState();
-    // Inisialisasi sesuai desain Hi-Fi: April 2026
     _displayedMonth = DateTime(2026, 4, 1);
     _selectedDate = DateTime(2026, 4, 1);
   }
@@ -78,38 +74,26 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Judul & Badge
                   _buildHeaderSection(),
                   const SizedBox(height: 16),
-
-                  // Kalender Interaktif dengan Panah Navigasi Bulan (< >)
                   _buildInteractiveCalendarCard(),
                   const SizedBox(height: 16),
-
-                  // 2 Kolom: Waktu Mulai & Durasi Sewa
                   _buildTimeAndDurationRow(),
                   const SizedBox(height: 16),
-
-                  // Ketentuan Waktu Penjemputan
                   _buildPickupPolicyCard(),
                   const SizedBox(height: 12),
-
-                  // Info Tahapan Berikutnya
                   _buildNextStepNotice(),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-
-          // Bottom Sticky Button
           _buildStickyCTA(),
         ],
       ),
     );
   }
 
-  /// Header Section
   Widget _buildHeaderSection() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -159,20 +143,18 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Kalender Interaktif dengan Panah Navigasi Bulan (< >)
   Widget _buildInteractiveCalendarCard() {
     final int daysInMonth = DateUtils.getDaysInMonth(
       _displayedMonth.year,
       _displayedMonth.month,
     );
 
-    // Dapatkan offset hari pertama dalam minggu (Senin = 1, Minggu = 7)
     final DateTime firstDayOfMonth = DateTime(
       _displayedMonth.year,
       _displayedMonth.month,
       1,
     );
-    final int startingWeekday = firstDayOfMonth.weekday; // 1 = Senin, ..., 7 = Minggu
+    final int startingWeekday = firstDayOfMonth.weekday;
 
     final String monthName = _monthNames[_displayedMonth.month - 1];
     final String formattedYear = _displayedMonth.year.toString();
@@ -187,13 +169,11 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Bulan dengan Tombol Panah Kiri (<) dan Kanan (>)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  // Tombol Panah Kiri (Bulan Sebelumnya)
                   InkWell(
                     onTap: _previousMonth,
                     borderRadius: BorderRadius.circular(6),
@@ -212,8 +192,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-
-                  // Nama Bulan & Tahun
                   Text(
                     '$monthName $formattedYear',
                     style: const TextStyle(
@@ -224,8 +202,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-
-                  // Tombol Panah Kanan (Bulan Berikutnya)
                   InkWell(
                     onTap: _nextMonth,
                     borderRadius: BorderRadius.circular(6),
@@ -257,8 +233,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             ],
           ),
           const SizedBox(height: 14),
-
-          // Header Nama Hari (Sen - Min)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: _dayNames.map((day) {
@@ -279,12 +253,8 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             }).toList(),
           ),
           const SizedBox(height: 10),
-
-          // Grid Tanggal
           _buildDatesGrid(daysInMonth, startingWeekday),
           const SizedBox(height: 14),
-
-          // Keterangan Tanggal Terpilih
           Row(
             children: [
               Container(
@@ -312,16 +282,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Grid generator untuk penanggalan
   Widget _buildDatesGrid(int totalDays, int startingWeekday) {
     final List<Widget> dayWidgets = [];
 
-    // Tambahkan kotak kosong untuk hari sebelum tanggal 1
     for (int i = 1; i < startingWeekday; i++) {
       dayWidgets.add(const SizedBox(width: 36, height: 36));
     }
 
-    // Tambahkan tanggal 1 s/d totalDays
     for (int day = 1; day <= totalDays; day++) {
       final isSelected = _selectedDate.year == _displayedMonth.year &&
           _selectedDate.month == _displayedMonth.month &&
@@ -370,14 +337,12 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// 2 Kolom: Waktu Mulai & Durasi Sewa
   Widget _buildTimeAndDurationRow() {
     final returnDate = _selectedDate.add(Duration(days: _durationDays));
     final formattedReturn = '${returnDate.day.toString().padLeft(2, '0')} ${_monthNames[returnDate.month - 1]}';
 
     return Row(
       children: [
-        // Waktu Mulai
         Expanded(
           child: InkWell(
             onTap: _showTimePickerModal,
@@ -427,8 +392,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
         ),
         const SizedBox(width: 12),
-
-        // Durasi Sewa
         Expanded(
           child: InkWell(
             onTap: _showDurationPickerModal,
@@ -481,7 +444,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Dialog pemilihan waktu
   void _showTimePickerModal() {
     showModalBottomSheet(
       context: context,
@@ -535,7 +497,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Dialog pemilihan durasi sewa
   void _showDurationPickerModal() {
     showModalBottomSheet(
       context: context,
@@ -610,7 +571,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Ketentuan Waktu Penjemputan Box
   Widget _buildPickupPolicyCard() {
     return Container(
       width: double.infinity,
@@ -647,7 +607,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Box Catatan Tahapan Berikutnya
   Widget _buildNextStepNotice() {
     return Container(
       width: double.infinity,
@@ -669,7 +628,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  /// Bottom Sticky CTA
   Widget _buildStickyCTA() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

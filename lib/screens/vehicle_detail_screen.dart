@@ -5,7 +5,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/spec_card_item.dart';
 import 'date_time_screen.dart';
 
-/// Layar 03: Detail Kendaraan (Langkah 2 dari 5)
+/// Layar detail spesifikasi armada kendaraan
 class VehicleDetailScreen extends StatelessWidget {
   final VehicleModel vehicle;
 
@@ -30,7 +30,6 @@ class VehicleDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Nama Kendaraan & Badge Data Contoh
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,7 +58,6 @@ class VehicleDetailScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      // Badge Data Contoh
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -79,35 +77,24 @@ class VehicleDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Hero Visual Box dengan Status Badge "Tersedia"
                   _buildVehicleImageCard(),
                   const SizedBox(height: 16),
-
-                  // Grid Spesifikasi 2x2
                   _buildSpecsGrid(),
                   const SizedBox(height: 16),
-
-                  // Info Box Tarif Rental
                   _buildTariffInfoBox(),
                   const SizedBox(height: 12),
-
-                  // Box Catatan Ketentuan
                   _buildRequirementNoteBox(),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-
-          // Bottom Sticky CTA
           _buildStickyCTA(context),
         ],
       ),
     );
   }
 
-  /// Gambar Besar Kendaraan dengan Badge "Tersedia"
   Widget _buildVehicleImageCard() {
     return Container(
       width: double.infinity,
@@ -163,7 +150,6 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  /// 2x2 Spesifikasi Grid
   Widget _buildSpecsGrid() {
     return Column(
       children: [
@@ -207,7 +193,6 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Info Box Tarif Rental
   Widget _buildTariffInfoBox() {
     return Container(
       width: double.infinity,
@@ -244,7 +229,6 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Box Catatan Persyaratan
   Widget _buildRequirementNoteBox() {
     return Container(
       width: double.infinity,
@@ -266,7 +250,6 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Bottom Sticky Button
   Widget _buildStickyCTA(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

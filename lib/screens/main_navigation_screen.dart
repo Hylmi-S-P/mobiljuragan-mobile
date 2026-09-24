@@ -4,7 +4,7 @@ import '../widgets/bottom_nav_bar.dart';
 import 'home_screen.dart';
 import 'vehicle_selection_screen.dart';
 
-/// Shell Navigation Container dengan 4-Tab Bottom Navigation Bar
+/// Shell navigasi utama aplikasi
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -25,7 +25,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           HomeScreen(
             onNavigateToPesan: () {
               setState(() {
-                _currentTabIndex = 1; // Pindah ke tab Pesan
+                _currentTabIndex = 1;
               });
             },
           ),
@@ -37,7 +37,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           _buildPlaceholderScreen(
             title: 'Pusat Bantuan',
-            description: 'Layanan pelanggan 24 jam & AI Chatbot MobilJuragan Merauke.',
+            description: 'Layanan pelanggan dan bantuan informasi operasional MobilJuragan Merauke.',
             icon: Icons.help_outline,
           ),
         ],

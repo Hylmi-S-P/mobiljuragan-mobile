@@ -3,8 +3,7 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import 'vehicle_selection_screen.dart';
 
-/// Layar 01: Beranda Aplikasi Mobile MobilJuragan (Hi-Fi)
-/// Status bar statis sengaja dihilangkan dan menggunakan SafeArea native.
+/// Halaman utama aplikasi pelanggan MobilJuragan
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onNavigateToPesan;
 
@@ -15,7 +14,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedOptionIndex = 0; // 0: Lepas Kunci, 1: Dengan Sopir, 2: Antar Bandara
+  int _selectedOptionIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -29,27 +28,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Brand & Lokasi
               _buildTopHeader(),
               const SizedBox(height: 18),
-
-              // Hero Card: Mobil Terpopuler
               _buildFeaturedCard(featuredVehicle),
               const SizedBox(height: 22),
-
-              // Bagian Status Reservasi
               _buildReservationStatusSection(),
               const SizedBox(height: 16),
-
-              // Banner Keunggulan / Layanan
               _buildAssuranceBanner(),
               const SizedBox(height: 22),
-
-              // Tombol Aksi Utama
               _buildPrimaryCTA(),
               const SizedBox(height: 10),
-
-              // Subteks Keterangan
               const Center(
                 child: Text(
                   'Tarif transparan • Konfirmasi instan via admin operasional',
@@ -69,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Header bagian atas: Lokasi Merauke & Profil Singkat
   Widget _buildTopHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -113,7 +100,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        // Avatar Circle "MJ"
         Container(
           width: 40,
           height: 40,
@@ -137,7 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Hero Card: Mobil Terpopuler di Merauke (Avanza G)
   Widget _buildFeaturedCard(VehicleModel vehicle) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -149,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris Badge: Terpopuler + Pelat Nomor
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -188,8 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
-
-          // Nama & Spesifikasi Singkat
           const Text(
             'Toyota New Avanza 1.3 G',
             style: TextStyle(
@@ -210,8 +192,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
-          // Foto Kendaraan
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Container(
@@ -234,8 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 14),
-
-          // Quick Filter Chips (Lepas Kunci / Dengan Sopir / Antar Bandara)
           Row(
             children: [
               _buildOptionChip(index: 0, label: 'Lepas Kunci'),
@@ -286,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Bagian Status Reservasi Aktif
   Widget _buildReservationStatusSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +357,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Banner Jaminan & Keunggulan Layanan
   Widget _buildAssuranceBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -424,7 +400,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Tombol Utama Pesan Mobil Sekarang
   Widget _buildPrimaryCTA() {
     return SizedBox(
       width: double.infinity,
