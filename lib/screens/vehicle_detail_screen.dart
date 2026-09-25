@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -16,6 +18,8 @@ class VehicleDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bookingController = context.watch<BookingController>();
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
@@ -81,7 +85,7 @@ class VehicleDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildSpecsGrid(),
                   const SizedBox(height: 16),
-                  _buildTariffInfoBox(),
+                  _buildTariffInfoBox(bookingController),
                   const SizedBox(height: 12),
                   _buildRequirementNoteBox(),
                   const SizedBox(height: 24),
@@ -193,7 +197,7 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTariffInfoBox() {
+  Widget _buildTariffInfoBox(BookingController bookingController) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -202,21 +206,35 @@ class VehicleDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFBFDBFE), width: 1),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Informasi Tarif Rental',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1D4ED8),
-              fontFamily: 'Inter',
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Estimasi Tarif Sewa',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1D4ED8),
+                  fontFamily: 'Inter',
+                ),
+              ),
+              Text(
+                'Rp ${vehicle.pricePerDay ~/ 1000}.000 / hari',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1D4ED8),
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 2),
-          Text(
-            'Tarif resmi dikonfirmasi tim MobilJuragan sesuai rute dan durasi pemakaian.',
+          const SizedBox(height: 4),
+          const Text(
+            'Tarif resmi dikonfirmasi tim MobilJuragan sesuai rute dan durasi pemakaian di Merauke.',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w400,
@@ -264,6 +282,7 @@ class VehicleDetailScreen extends StatelessWidget {
           height: 48,
           child: ElevatedButton(
             onPressed: () {
+              context.read<BookingController>().selectVehicle(vehicle);
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => DateTimeScreen(vehicle: vehicle),

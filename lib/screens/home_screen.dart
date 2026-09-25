@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import 'vehicle_detail_screen.dart';
 import 'vehicle_selection_screen.dart';
 
 /// Halaman utama aplikasi pelanggan MobilJuragan
@@ -124,106 +127,117 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeaturedCard(VehicleModel vehicle) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.tealLight,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'TERPOPULER DI MERAUKE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryTeal,
-                    fontFamily: 'Inter',
+    return InkWell(
+      onTap: () {
+        context.read<BookingController>().selectVehicle(vehicle);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => VehicleDetailScreen(vehicle: vehicle),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.cardWhite,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderSubtle, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.tealLight,
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.badgeNavyBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  vehicle.plateNumber,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textWhite,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Toyota New Avanza 1.3 G',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'MPV 7 Kursi • Manual • AC Double Dingin',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              height: 130,
-              width: double.infinity,
-              color: AppColors.surfaceLight,
-              child: Image.asset(
-                vehicle.heroImageUrl ?? vehicle.imageUrl,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Center(
-                    child: Icon(
-                      Icons.directions_car,
-                      color: AppColors.textSecondary,
-                      size: 48,
+                  child: const Text(
+                    'TERPOPULER DI MERAUKE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryTeal,
+                      fontFamily: 'Inter',
                     ),
-                  );
-                },
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.badgeNavyBg,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    vehicle.plateNumber,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textWhite,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Toyota New Avanza 1.3 G',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                fontFamily: 'Inter',
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _buildOptionChip(index: 0, label: 'Lepas Kunci'),
-              const SizedBox(width: 8),
-              _buildOptionChip(index: 1, label: 'Dengan Sopir'),
-              const SizedBox(width: 8),
-              _buildOptionChip(index: 2, label: 'Antar Bandara'),
-            ],
-          ),
-        ],
+            const SizedBox(height: 2),
+            const Text(
+              'MPV 7 Kursi • Manual • AC Double Dingin',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                height: 130,
+                width: double.infinity,
+                color: AppColors.surfaceLight,
+                child: Image.asset(
+                  vehicle.heroImageUrl ?? vehicle.imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(
+                      child: Icon(
+                        Icons.directions_car,
+                        color: AppColors.textSecondary,
+                        size: 48,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                _buildOptionChip(index: 0, label: 'Lepas Kunci'),
+                const SizedBox(width: 8),
+                _buildOptionChip(index: 1, label: 'Dengan Sopir'),
+                const SizedBox(width: 8),
+                _buildOptionChip(index: 2, label: 'Antar Bandara'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -236,6 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _selectedOptionIndex = index;
           });
+          context.read<BookingController>().toggleDriver(index == 1);
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(
@@ -265,6 +280,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildReservationStatusSection() {
+    final booking = context.watch<BookingController>();
+    final hasActive = booking.hasActiveBooking;
+    final vehicle = booking.selectedVehicle;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -281,13 +300,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             InkWell(
-              onTap: () {},
-              child: const Text(
-                'Riwayat ›',
+              onTap: () {
+                if (hasActive) {
+                  booking.cancelActiveBooking();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      backgroundColor: AppColors.primaryNavy,
+                      content: Text('Status reservasi telah direset.'),
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                hasActive ? 'Reset Sewa' : 'Riwayat ›',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primaryTeal,
+                  color: hasActive ? Colors.redAccent : AppColors.primaryTeal,
                   fontFamily: 'Inter',
                 ),
               ),
@@ -295,62 +324,96 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.cardWhite,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.borderSubtle, width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.tealLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Center(
-                  child: Text(
-                    'MJ',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryTeal,
-                      fontFamily: 'Inter',
+        InkWell(
+          onTap: () {
+            if (!hasActive && widget.onNavigateToPesan != null) {
+              widget.onNavigateToPesan!();
+            }
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.cardWhite,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasActive ? AppColors.primaryTeal : AppColors.borderSubtle,
+                width: hasActive ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: hasActive ? AppColors.badgeNavyBg : AppColors.tealLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      hasActive ? Icons.directions_car : Icons.receipt_long,
+                      color: hasActive ? AppColors.textWhite : AppColors.primaryTeal,
+                      size: 22,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Belum ada sewa aktif',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasActive
+                            ? (vehicle?.name ?? 'Sewa Aktif Berjalan')
+                            : 'Belum ada sewa aktif',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Pilih armada siap pakai di Merauke',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
+                      const SizedBox(height: 2),
+                      Text(
+                        hasActive
+                            ? 'Kode: ${booking.activeBookingCode} • ${booking.durationDays} Hari (${booking.withDriver ? 'Dengan Sopir' : 'Lepas Kunci'})'
+                            : 'Pilih armada siap pakai di Merauke',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                if (hasActive)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.tealLight,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'AKTIF',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryTeal,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
+              ],
+            ),
           ),
         ),
       ],

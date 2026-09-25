@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
+import 'main_navigation_screen.dart';
 
 /// Layar pemilihan jadwal tanggal dan durasi sewa
 class DateTimeScreen extends StatefulWidget {
@@ -34,8 +37,11 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   @override
   void initState() {
     super.initState();
-    _displayedMonth = DateTime(2026, 4, 1);
-    _selectedDate = DateTime(2026, 4, 1);
+    final booking = context.read<BookingController>();
+    _displayedMonth = DateTime(booking.selectedDate.year, booking.selectedDate.month, 1);
+    _selectedDate = booking.selectedDate;
+    _selectedTime = booking.selectedTime;
+    _durationDays = booking.durationDays;
   }
 
   void _previousMonth() {
@@ -283,19 +289,30 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 
   Widget _buildDatesGrid(int totalDays, int startingWeekday) {
-    final List<Widget> dayWidgets = [];
+    final int emptyLeadingDays = startingWeekday - 1;
+    final int totalGridItems = emptyLeadingDays + totalDays;
 
-    for (int i = 1; i < startingWeekday; i++) {
-      dayWidgets.add(const SizedBox(width: 36, height: 36));
-    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: totalGridItems,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+        childAspectRatio: 1.0,
+      ),
+      itemBuilder: (context, index) {
+        if (index < emptyLeadingDays) {
+          return const SizedBox.shrink();
+        }
 
-    for (int day = 1; day <= totalDays; day++) {
-      final isSelected = _selectedDate.year == _displayedMonth.year &&
-          _selectedDate.month == _displayedMonth.month &&
-          _selectedDate.day == day;
+        final int day = index - emptyLeadingDays + 1;
+        final bool isSelected = _selectedDate.year == _displayedMonth.year &&
+            _selectedDate.month == _displayedMonth.month &&
+            _selectedDate.day == day;
 
-      dayWidgets.add(
-        InkWell(
+        return InkWell(
           onTap: () {
             setState(() {
               _selectedDate = DateTime(
@@ -307,8 +324,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           },
           borderRadius: BorderRadius.circular(18),
           child: Container(
-            width: 36,
-            height: 36,
             decoration: BoxDecoration(
               color: isSelected ? AppColors.primaryTeal : Colors.transparent,
               shape: BoxShape.circle,
@@ -325,15 +340,8 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               ),
             ),
           ),
-        ),
-      );
-    }
-
-    return Wrap(
-      alignment: WrapAlignment.start,
-      spacing: 6,
-      runSpacing: 6,
-      children: dayWidgets,
+        );
+      },
     );
   }
 
@@ -641,17 +649,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: AppColors.primaryNavy,
-                  content: Text(
-                    'Jadwal ${_selectedDate.day} ${_monthNames[_selectedDate.month - 1]} ${_selectedDate.year} ($_durationDays Hari) tersimpan. Siap ke Opsi Rental.',
-                    style: const TextStyle(fontFamily: 'Inter'),
-                  ),
-                ),
-              );
-            },
+            onPressed: () => _showBookingConfirmationSheet(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryNavy,
               foregroundColor: AppColors.textWhite,
@@ -671,6 +669,181 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showBookingConfirmationSheet(BuildContext context) {
+    final bookingController = context.read<BookingController>();
+    bookingController.setSchedule(
+      date: _selectedDate,
+      time: _selectedTime,
+      durationDays: _durationDays,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardWhite,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) {
+        final vehicle = bookingController.selectedVehicle ?? widget.vehicle;
+        final totalEstimate = bookingController.totalEstimatedCost;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.borderSubtle,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Ringkasan Jadwal & Biaya',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderSubtle, width: 1),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Armada Terpilih',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Inter'),
+                          ),
+                          Text(
+                            vehicle.name,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontFamily: 'Inter'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Mulai Sewa',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Inter'),
+                          ),
+                          Text(
+                            '${_selectedDate.day} ${_monthNames[_selectedDate.month - 1]} ${_selectedDate.year}, $_selectedTime',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontFamily: 'Inter'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Durasi Sewa',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Inter'),
+                          ),
+                          Text(
+                            '$_durationDays Hari',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontFamily: 'Inter'),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16, color: AppColors.borderSubtle),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Estimasi Total Biaya',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontFamily: 'Inter'),
+                          ),
+                          Text(
+                            'Rp ${totalEstimate ~/ 1000}.000',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primaryTeal, fontFamily: 'Inter'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      bookingController.confirmBooking();
+                      Navigator.pop(modalContext);
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                        (route) => false,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.primaryNavy,
+                          content: Text(
+                            'Pemesanan ${vehicle.name} berhasil diaktifkan! Status sewa kini tampil di Beranda.',
+                            style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryNavy,
+                      foregroundColor: AppColors.textWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Konfirmasi & Masukkan ke Status Reservasi',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(modalContext),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryNavy,
+                      side: const BorderSide(color: AppColors.primaryNavy),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Ubah Jadwal Kembali',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

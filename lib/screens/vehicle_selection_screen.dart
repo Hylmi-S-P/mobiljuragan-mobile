@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/booking_controller.dart';
+import '../controllers/vehicle_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -16,22 +19,33 @@ class VehicleSelectionScreen extends StatefulWidget {
 }
 
 class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
-  String _selectedCategory = 'Semua';
   String _selectedVehicleId = 'avanza-g-putih';
 
-  final List<String> _categories = ['Semua', 'MPV', 'SUV', 'Pickup'];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentVehicle = context.read<BookingController>().selectedVehicle;
+      if (currentVehicle != null && mounted) {
+        setState(() {
+          _selectedVehicleId = currentVehicle.id;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredVehicles = _selectedCategory == 'Semua'
-        ? VehicleModel.sampleVehicles
-        : VehicleModel.sampleVehicles
-            .where((v) => v.category == _selectedCategory)
-            .toList();
+    final vehicleController = context.watch<VehicleController>();
+    final filteredVehicles = vehicleController.filteredVehicles;
 
-    final selectedVehicle = VehicleModel.sampleVehicles.firstWhere(
+    final selectedVehicle = filteredVehicles.firstWhere(
       (v) => v.id == _selectedVehicleId,
-      orElse: () => VehicleModel.sampleVehicles.first,
+      orElse: () => filteredVehicles.isNotEmpty
+          ? filteredVehicles.first
+          : (vehicleController.vehicles.isNotEmpty
+              ? vehicleController.vehicles.first
+              : VehicleModel.sampleVehicles.first),
     );
 
     return Scaffold(
@@ -68,27 +82,31 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildCategoryFilterBar(),
+                  _buildCategoryFilterBar(vehicleController),
                   const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredVehicles.length,
-                    itemBuilder: (context, index) {
-                      final vehicle = filteredVehicles[index];
-                      return VehicleCardItem(
-                        vehicle: vehicle,
-                        isSelected: vehicle.id == _selectedVehicleId,
-                        onTap: () {
-                          setState(() {
-                            _selectedVehicleId = vehicle.id;
-                          });
-                        },
-                      );
-                    },
-                  ),
+                  if (filteredVehicles.isEmpty)
+                    _buildEmptyState(vehicleController)
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredVehicles.length,
+                      itemBuilder: (context, index) {
+                        final vehicle = filteredVehicles[index];
+                        return VehicleCardItem(
+                          vehicle: vehicle,
+                          isSelected: vehicle.id == _selectedVehicleId,
+                          onTap: () {
+                            setState(() {
+                              _selectedVehicleId = vehicle.id;
+                            });
+                            context.read<BookingController>().selectVehicle(vehicle);
+                          },
+                        );
+                      },
+                    ),
                   const SizedBox(height: 8),
-                  _buildNoticeCard(),
+                  _buildNoticeCard(filteredVehicles.length),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -100,22 +118,22 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  Widget _buildCategoryFilterBar() {
+  Widget _buildCategoryFilterBar(VehicleController controller) {
+    const categories = VehicleController.availableCategories;
+
     return SizedBox(
       height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
+        itemCount: categories.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final category = _categories[index];
-          final bool isSelected = _selectedCategory == category;
+          final category = categories[index];
+          final bool isSelected = controller.selectedCategory == category;
 
           return InkWell(
             onTap: () {
-              setState(() {
-                _selectedCategory = category;
-              });
+              controller.setCategory(category);
             },
             borderRadius: BorderRadius.circular(8),
             child: Container(
@@ -146,7 +164,39 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  Widget _buildNoticeCard() {
+  Widget _buildEmptyState(VehicleController controller) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.car_rental, size: 48, color: AppColors.textSecondary),
+          const SizedBox(height: 12),
+          Text(
+            'Tidak ada armada kategori "${controller.selectedCategory}"',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => controller.setCategory('Semua'),
+            child: const Text('Tampilkan Semua Armada'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoticeCard(int count) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -155,21 +205,21 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3), width: 1),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '5 kendaraan lainnya tersedia dalam armada',
-            style: TextStyle(
+            '$count kendaraan ditampilkan dalam kategori ini',
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AppColors.primaryTeal,
               fontFamily: 'Inter',
             ),
           ),
-          SizedBox(height: 2),
-          Text(
-            'Gunakan filter di atas untuk melihat pilihan lainnya',
+          const SizedBox(height: 2),
+          const Text(
+            'Gunakan filter di atas untuk melihat pilihan kategori lainnya',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w400,
@@ -196,6 +246,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           height: 48,
           child: ElevatedButton(
             onPressed: () {
+              context.read<BookingController>().selectVehicle(selectedVehicle);
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => VehicleDetailScreen(vehicle: selectedVehicle),
