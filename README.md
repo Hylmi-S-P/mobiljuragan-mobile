@@ -2,7 +2,7 @@
 
 Aplikasi mobile pelanggan untuk pemesanan dan layanan rental mobil **CV. Mobil Juragan Express Transport** di Merauke, Papua Selatan. Aplikasi ini dibangun dengan framework Flutter dan bahasa pemrograman Dart, mengimplementasikan antarmuka *High-Fidelity* (Hi-Fi) yang responsif dan mengikuti prinsip desain antarmuka modern.
 
-- **Desain Prototype (Figma):** [MobilJuragan MVP UI/UX Case Study (Hi-Fi)](https://www.figma.com/design/Rxdv5kRYC8NiQpdWJhoIGJ/MobilJuragan-MVP-%E2%80%94-UI-UX-Case-Study?node-id=1006-92&t=i7Sp7eCwUQ0gnFEu-1)
+- **Desain Prototype (Figma):** [MobilJuragan MVP UI/UX Case Study (Hi-Fi)](https://www.figma.com/design/Ps9d41PfofqpOFXO2O6YGj/Untitled?node-id=0-1&t=C3uIavBnCubfhXV4-1)
 
 ---
 
