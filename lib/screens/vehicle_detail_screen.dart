@@ -186,7 +186,7 @@ class VehicleDetailScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: SpecCardItem(
-                label: 'Kondisi Unit',
+                label: 'Status Unit',
                 value: vehicle.condition,
                 valueColor: AppColors.badgeGreenText,
               ),
