@@ -106,7 +106,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                       },
                     ),
                   const SizedBox(height: 8),
-                  _buildNoticeCard(filteredVehicles.length),
+                  _buildNoticeCard(vehicleController, filteredVehicles.length),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -196,7 +196,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  Widget _buildNoticeCard(int count) {
+  Widget _buildNoticeCard(VehicleController controller, int count) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -209,7 +209,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$count kendaraan ditampilkan dalam kategori ini',
+            '$count armada siap jalan (${controller.totalFleetCount} unit terdaftar di Merauke)',
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -219,7 +219,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           ),
           const SizedBox(height: 2),
           const Text(
-            'Gunakan filter di atas untuk melihat pilihan kategori lainnya',
+            'Gunakan filter di atas untuk melihat pilihan kategori armada lainnya',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w400,

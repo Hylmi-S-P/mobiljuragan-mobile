@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import 'order_status_screen.dart';
+import 'profile_screen.dart';
 import 'vehicle_detail_screen.dart';
 import 'vehicle_selection_screen.dart';
 
@@ -103,21 +105,29 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        Container(
-          width: 40,
-          height: 40,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryTeal,
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: Text(
-              'MJ',
-              style: TextStyle(
-                color: AppColors.textWhite,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Inter',
+        InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: AppColors.primaryTeal,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                'MJ',
+                style: TextStyle(
+                  color: AppColors.textWhite,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
           ),
@@ -326,7 +336,11 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 10),
         InkWell(
           onTap: () {
-            if (!hasActive && widget.onNavigateToPesan != null) {
+            if (hasActive) {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const OrderStatusScreen()),
+              );
+            } else if (widget.onNavigateToPesan != null) {
               widget.onNavigateToPesan!();
             }
           },
@@ -377,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 2),
                       Text(
                         hasActive
-                            ? 'Kode: ${booking.activeBookingCode} • ${booking.durationDays} Hari (${booking.withDriver ? 'Dengan Sopir' : 'Lepas Kunci'})'
+                            ? 'Kode: ${booking.activeBooking?.id ?? booking.activeBookingCode} • ${booking.activeBooking?.durationDays ?? booking.durationDays} Hari (${(booking.activeBooking?.withDriver ?? booking.withDriver) ? 'Dengan Sopir' : 'Lepas Kunci'})'
                             : 'Pilih armada siap pakai di Merauke',
                         style: const TextStyle(
                           fontSize: 11,

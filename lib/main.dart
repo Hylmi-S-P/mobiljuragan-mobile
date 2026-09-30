@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'controllers/auth_controller.dart';
 import 'controllers/booking_controller.dart';
+import 'controllers/support_controller.dart';
 import 'controllers/vehicle_controller.dart';
-import 'screens/main_navigation_screen.dart';
+import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Inisialisasi layanan notifikasi sistem perangkat
+  await NotificationService().init();
+
   // Set system overlay style untuk status bar yang bersih dan transparan
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -25,6 +31,8 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => VehicleController()),
         ChangeNotifierProvider(create: (_) => BookingController()),
+        ChangeNotifierProvider(create: (_) => AuthController()),
+        ChangeNotifierProvider(create: (_) => SupportController()),
       ],
       child: const MobilJuraganApp(),
     ),
@@ -41,7 +49,7 @@ class MobilJuraganApp extends StatelessWidget {
       title: 'MobilJuragan Mobile',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+      home: const SplashScreen(),
     );
   }
 }

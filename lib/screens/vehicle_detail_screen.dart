@@ -65,15 +65,16 @@ class VehicleDetailScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.badgeAmberBg,
+                          color: AppColors.badgeGreenBg,
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.badgeGreenText.withValues(alpha: 0.3), width: 1),
                         ),
                         child: const Text(
-                          'Data contoh',
+                          'Unit Siap Jalan',
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.badgeAmberText,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.badgeGreenText,
                             fontFamily: 'Inter',
                           ),
                         ),
@@ -213,7 +214,7 @@ class VehicleDetailScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Estimasi Tarif Sewa',
+                'Tarif Sewa Terhitung (Sistem Resmi)',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -234,7 +235,7 @@ class VehicleDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Tarif resmi dikonfirmasi tim MobilJuragan sesuai rute dan durasi pemakaian di Merauke.',
+            'Tarif resmi terhubung langsung dengan sistem reservasi MobilJuragan Merauke.',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w400,

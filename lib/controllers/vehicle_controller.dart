@@ -18,6 +18,9 @@ class VehicleController extends ChangeNotifier {
   /// Getter untuk seluruh armada
   List<VehicleModel> get vehicles => _vehicles;
 
+  /// Jumlah total unit armada di garasi Merauke
+  int get totalFleetCount => _vehicles.length;
+
   /// Kategori yang sedang dipilih
   String get selectedCategory => _selectedCategory;
 
@@ -34,6 +37,12 @@ class VehicleController extends ChangeNotifier {
           vehicle.plateNumber.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).toList();
+  }
+
+  /// Menghitung jumlah armada pilihan lainnya di luar armada yang sedang dipilih
+  int getOtherVehiclesCount(String selectedId) {
+    final count = _vehicles.where((v) => v.id != selectedId).length;
+    return count > 0 ? count : 0;
   }
 
   /// Mengubah kategori armada aktif
