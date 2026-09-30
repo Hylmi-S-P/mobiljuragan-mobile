@@ -468,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case BookingStatus.menungguTarifFinal:
         return 'Admin sedang menghitung rincian tarif final';
       case BookingStatus.menungguPembayaran:
-        return 'Rincian tarif terbit, silakan bayar via WhatsApp';
+        return 'Rincian tarif terbit, silakan bayar via Chat CS';
       case BookingStatus.pembayaranSelesai:
         return 'Pembayaran terkonfirmasi, armada disiapkan';
       case BookingStatus.mobilSiapDigunakan:

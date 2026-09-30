@@ -6,11 +6,12 @@ import '../models/booking_model.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
+import 'chat_support_screen.dart';
 import 'main_navigation_screen.dart';
 
 /// Layar pelacakan status pesanan (Frame 07)
 /// Mengikuti alur stepper Figma dengan penambahan tahap Menunggu Pembayaran
-/// Menjalankan verifikasi tarif final admin 15 detik di latar belakang dan memicu notifikasi native sistem
+/// Menjalankan verifikasi tarif final admin 10 detik di latar belakang dan memicu notifikasi native sistem
 class OrderStatusScreen extends StatefulWidget {
   final BookingModel? booking;
 
@@ -49,8 +50,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     _calculationTimer?.cancel();
     _notificationShown = false;
 
-    // Timer berjalan hening 15 detik di latar belakang tanpa hitung mundur visual
-    _calculationTimer = Timer(const Duration(seconds: 15), () {
+    // Timer berjalan hening 10 detik di latar belakang tanpa hitung mundur visual
+    _calculationTimer = Timer(const Duration(seconds: 10), () {
       if (mounted) {
         _onAdminCalculationCompleted();
       }
@@ -222,9 +223,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Panduan Pembayaran via WhatsApp Admin
+            // Panduan Pembayaran via Chat CS & Bot
             if (isWaitingPayment) ...[
-              _buildWhatsAppPaymentCard(context, activeBooking),
+              _buildChatPaymentCard(context, activeBooking),
               const SizedBox(height: 16),
             ] else if (isPaid) ...[
               _buildPaidStatusNoticeCard(activeBooking),
@@ -464,9 +465,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             stepNumber: 4,
             title: 'Menunggu Pembayaran',
             subtitle: step4Done
-                ? 'Pembayaran telah dikonfirmasi oleh admin via WhatsApp'
+                ? 'Pembayaran telah dikonfirmasi oleh tim CS'
                 : (step4Active
-                    ? 'Silakan lakukan pembayaran dan konfirmasi via WhatsApp'
+                    ? 'Silakan lakukan pembayaran dan konfirmasi via Chat CS & Bot'
                     : 'Menunggu penerbitan rincian tarif final resmi'),
             isDone: step4Done,
             isActive: step4Active,
@@ -833,7 +834,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Widget _buildWhatsAppPaymentCard(BuildContext context, BookingModel booking) {
+  Widget _buildChatPaymentCard(BuildContext context, BookingModel booking) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -849,7 +850,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               Icon(Icons.chat_bubble_outline, size: 20, color: Color(0xFF16A34A)),
               SizedBox(width: 8),
               Text(
-                'Pembayaran via WhatsApp Admin',
+                'Metode Pembayaran via Chat CS & Bot',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -861,7 +862,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Sesuai ketentuan operasional, pembayaran dan konfirmasi bukti transfer dilakukan langsung melalui WhatsApp Admin MobilJuragan Merauke (+62 812-4800-2910). Admin akan segera memverifikasi dan memperbarui status reservasi Anda.',
+            'Rincian tagihan resmi, nomor rekening transfer Bank BRI Merauke, dan validasi pembayaran dikirimkan langsung oleh bot melalui Chat CS. Buka chat untuk menerima instruksi lengkap dan konfirmasi pembayaran.',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w400,
@@ -892,7 +893,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Pembayaran Lunas via WhatsApp',
+                  'Pembayaran Lunas via Chat CS',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -902,7 +903,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Pembayaran telah divalidasi admin. Armada ${booking.vehicle.name} siap digunakan di ${booking.pickupLocation}.',
+                  'Pembayaran telah diverifikasi oleh tim CS. Armada ${booking.vehicle.name} siap digunakan di ${booking.pickupLocation}.',
                   style: const TextStyle(
                     fontSize: 11,
                     height: 1.4,
@@ -930,38 +931,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             height: 48,
             child: ElevatedButton.icon(
               onPressed: () {
-                final controller = context.read<BookingController>();
-                controller.confirmPaymentAndAdvance(booking.id);
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF166534),
-                    duration: const Duration(seconds: 4),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    content: Row(
-                      children: [
-                        const Icon(Icons.verified, color: Colors.white, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Pembayaran pesanan #${booking.id} berhasil diverifikasi admin via WhatsApp! Status masuk ke tahap: Mobil Siap Digunakan.',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatSupportScreen(booking: booking),
                   ),
                 );
               },
-              icon: const Icon(Icons.chat, size: 18, color: Colors.white),
+              icon: const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.white),
               label: const Text(
-                'Konfirmasi & Bayar via WhatsApp',
+                'Bayar & Konfirmasi via Chat CS',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -976,6 +954,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 6),
+          const Text(
+            'Metode pembayaran dan konfirmasi transfer diproses melalui Chat CS.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
           const SizedBox(height: 10),
         ] else ...[
           SizedBox(
@@ -983,15 +971,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             height: 46,
             child: OutlinedButton.icon(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Menghubungi Admin Operasional MobilJuragan Merauke (+62 812-4800-2910)...'),
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatSupportScreen(booking: booking),
                   ),
                 );
               },
               icon: const Icon(Icons.support_agent, size: 18, color: AppColors.primaryTeal),
               label: const Text(
-                'Hubungi Admin WhatsApp',
+                'Hubungi CS MobilJuragan',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,

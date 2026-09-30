@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../controllers/booking_controller.dart';
 import '../controllers/support_controller.dart';
+import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
 
-/// Layanan Live Chat Bantuan Pelanggan (AI Assistant & Handoff Staf Operasional Merauke)
+/// Layanan Live Chat Bantuan Pelanggan (AI Assistant, Handoff Staf Operasional & Pembayaran)
 class ChatSupportScreen extends StatefulWidget {
   final SupportTicketModel? ticket;
+  final BookingModel? booking;
 
-  const ChatSupportScreen({super.key, this.ticket});
+  const ChatSupportScreen({
+    super.key,
+    this.ticket,
+    this.booking,
+  });
 
   @override
   State<ChatSupportScreen> createState() => _ChatSupportScreenState();
@@ -19,12 +26,20 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  final List<String> _quickSuggestions = [
-    'Lokasi jemput Bandara Mopah',
-    'Konfirmasi armada siap',
-    'Perpanjang durasi sewa',
-    'Pertanyaan seputar BBM',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Jika diarahkan untuk pembayaran, kirimkan pesan tagihan resmi oleh bot secara otomatis
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bookingCtrl = context.read<BookingController>();
+      final targetBooking = widget.booking ?? bookingCtrl.activeBooking;
+      if (targetBooking != null &&
+          targetBooking.status == BookingStatus.menungguPembayaran) {
+        context.read<SupportController>().sendPaymentInstructionMessage(targetBooking);
+        _scrollToBottom();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -55,10 +70,48 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     _scrollToBottom();
   }
 
+  String _formatRupiah(int number) {
+    final str = number.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        buffer.write('.');
+      }
+    }
+    return buffer.toString().split('').reversed.join();
+  }
+
   @override
   Widget build(BuildContext context) {
     final support = context.watch<SupportController>();
+    final bookingCtrl = context.watch<BookingController>();
+
+    final currentBooking = widget.booking != null
+        ? (bookingCtrl.bookingHistory.firstWhere(
+            (b) => b.id == widget.booking!.id,
+            orElse: () => widget.booking!,
+          ))
+        : bookingCtrl.activeBooking;
+
     final activeTicket = widget.ticket ?? (support.tickets.isNotEmpty ? support.tickets.first : null);
+
+    final List<String> suggestions = currentBooking != null &&
+            currentBooking.status == BookingStatus.menungguPembayaran
+        ? [
+            'Konfirmasi Sudah Bayar',
+            'No. Rekening Bank BRI',
+            'Lokasi jemput Bandara Mopah',
+            'Panggil Staf Lapangan',
+          ]
+        : [
+            'Lokasi jemput Bandara Mopah',
+            'Konfirmasi armada siap',
+            'Perpanjang durasi sewa',
+            'Pertanyaan seputar BBM',
+          ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -72,10 +125,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Chat Bantuan',
-              style: TextStyle(
-                fontSize: 16,
+            Text(
+              currentBooking != null ? 'CS Pesanan #${currentBooking.id}' : 'Chat Bantuan CS',
+              style: const TextStyle(
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textWhite,
                 fontFamily: 'Inter',
@@ -95,7 +148,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 Text(
                   support.isAiHandoffToAdmin
                       ? 'Staf Operasional Merauke (Online)'
-                      : 'AI Assistant MobilJuragan',
+                      : 'Bot CS & AI MobilJuragan',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.tealLight,
@@ -115,7 +168,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               },
               icon: const Icon(Icons.support_agent, color: AppColors.primaryTeal, size: 18),
               label: const Text(
-                'Panggil Admin',
+                'Panggil Staf',
                 style: TextStyle(
                   color: AppColors.primaryTeal,
                   fontSize: 12,
@@ -137,7 +190,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   Icon(Icons.verified, color: AppColors.primaryTeal, size: 14),
                   SizedBox(width: 4),
                   Text(
-                    'Admin Aktif',
+                    'Staf Aktif',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -155,6 +208,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             // Banner Tiket Bantuan jika ada
             if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
 
+            // Card Aksi Pembayaran jika ada pesanan terkait
+            if (currentBooking != null)
+              _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
+
             // Daftar Pesan Chat
             Expanded(
               child: ListView.builder(
@@ -169,7 +226,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             ),
 
             // Chips Saran Pertanyaan Cepat
-            _buildQuickSuggestionsBar(support),
+            _buildQuickSuggestionsBar(suggestions, support, currentBooking, bookingCtrl),
 
             // Komposer Pesan
             _buildComposerBar(support),
@@ -179,10 +236,143 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
-  Widget _buildTicketSummaryBanner(SupportTicketModel ticket) {
+  Widget _buildBookingPaymentCard(
+    BookingModel booking,
+    SupportController support,
+    BookingController bookingCtrl,
+  ) {
+    final isWaiting = booking.status == BookingStatus.menungguPembayaran;
+    final isReady = booking.status == BookingStatus.mobilSiapDigunakan;
+
+    if (!isWaiting && !isReady) return const SizedBox.shrink();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isWaiting ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
+        border: Border(
+          bottom: BorderSide(
+            color: isWaiting ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isWaiting ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Icon(
+                isWaiting ? Icons.account_balance_wallet_outlined : Icons.check_circle_outline,
+                color: isWaiting ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isWaiting
+                          ? 'Tagihan: Rp ${_formatRupiah(booking.totalCost)}'
+                          : 'Pembayaran Lunas Diverifikasi',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isWaiting ? const Color(0xFF92400E) : const Color(0xFF166534),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isWaiting ? const Color(0xFFFEF2F2) : const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isWaiting ? 'MENUNGGU TRANSFER' : 'SIAP PAKAI',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: isWaiting ? const Color(0xFFB91C1C) : const Color(0xFF15803D),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isWaiting
+                      ? 'BRI Merauke: 0321-01-002847-53-1 (a.n MobilJuragan)'
+                      : 'Kunci siap diserahterimakan di ${booking.pickupLocation}.',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isWaiting ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isWaiting) ...[
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                support.confirmPaymentFromChat(
+                  booking: booking,
+                  onAdvance: () {
+                    bookingCtrl.confirmPaymentAndAdvance(booking.id);
+                  },
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF15803D),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    content: Text(
+                      'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
+                    ),
+                  ),
+                );
+                _scrollToBottom();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF15803D),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: const Size(44, 32),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+              child: const Text(
+                'Sudah Bayar',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTicketSummaryBanner(SupportTicketModel ticket) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         border: Border(
@@ -378,17 +568,22 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
-  Widget _buildQuickSuggestionsBar(SupportController controller) {
+  Widget _buildQuickSuggestionsBar(
+    List<String> suggestions,
+    SupportController controller,
+    BookingModel? booking,
+    BookingController bookingCtrl,
+  ) {
     return Container(
       height: 38,
       margin: const EdgeInsets.only(bottom: 6),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: _quickSuggestions.length,
+        itemCount: suggestions.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final suggestion = _quickSuggestions[index];
+          final suggestion = suggestions[index];
           return ActionChip(
             backgroundColor: AppColors.cardWhite,
             shape: RoundedRectangleBorder(
@@ -406,7 +601,27 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               ),
             ),
             onPressed: () {
-              controller.sendUserMessage(suggestion);
+              if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
+                controller.confirmPaymentFromChat(
+                  booking: booking,
+                  onAdvance: () {
+                    bookingCtrl.confirmPaymentAndAdvance(booking.id);
+                  },
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF15803D),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    content: Text(
+                      'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
+                    ),
+                  ),
+                );
+              } else {
+                controller.sendUserMessage(suggestion);
+              }
               _scrollToBottom();
             },
           );
@@ -443,7 +658,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _handleSendMessage(controller),
                     decoration: const InputDecoration(
-                      hintText: 'Ketik pesan atau pertanyaan...',
+                      hintText: 'Ketik pesan bantuan atau konfirmasi...',
                       hintStyle: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,

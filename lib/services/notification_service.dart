@@ -73,7 +73,7 @@ class NotificationService {
     await _notificationsPlugin.show(
       id: bookingId.hashCode,
       title: 'Biaya Final Sudah Tersedia',
-      body: 'Tarif resmi $vehicleName ($bookingId) sebesar Rp $formattedCost telah siap. Silakan selesaikan pembayaran via WhatsApp.',
+      body: 'Tarif resmi $vehicleName ($bookingId) sebesar Rp $formattedCost telah siap. Silakan selesaikan pembayaran melalui Chat CS.',
       notificationDetails: notificationDetails,
     );
   }

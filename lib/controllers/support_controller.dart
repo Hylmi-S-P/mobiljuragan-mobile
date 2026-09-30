@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
 
 /// Controller untuk mengelola tiket bantuan, FAQ, dan percakapan chat bantuan
@@ -129,5 +130,78 @@ class SupportController extends ChangeNotifier {
     );
     _chatMessages.add(systemNotice);
     notifyListeners();
+  }
+
+  /// Format angka ke representasi rupiah
+  String _formatRupiah(int number) {
+    final str = number.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      buffer.write(str[i]);
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        buffer.write('.');
+      }
+    }
+    return buffer.toString().split('').reversed.join();
+  }
+
+  /// Mengirim pesan bot berisi instruksi tagihan resmi dan nomor rekening Bank BRI Merauke
+  void sendPaymentInstructionMessage(BookingModel booking) {
+    final invoiceMsgId = 'pay-${booking.id}';
+    final alreadySent = _chatMessages.any((m) => m.id == invoiceMsgId);
+    if (alreadySent) return;
+
+    final invoiceText =
+        'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
+        '• Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
+        '• Bank Transfer: Bank BRI Merauke\n'
+        '• No. Rekening: 0321-01-002847-53-1\n'
+        '• Atas Nama: MobilJuragan Merauke\n\n'
+        'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
+
+    _chatMessages.add(
+      ChatMessageModel(
+        id: invoiceMsgId,
+        message: invoiceText,
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Bot CS MobilJuragan',
+        isAI: true,
+      ),
+    );
+    notifyListeners();
+  }
+
+  /// Konfirmasi pembayaran langsung dari ruang chat CS
+  void confirmPaymentFromChat({
+    required BookingModel booking,
+    required VoidCallback onAdvance,
+  }) {
+    onAdvance();
+
+    final userConfirmMsg = ChatMessageModel(
+      id: 'usr-pay-${DateTime.now().millisecondsSinceEpoch}',
+      message: 'Saya sudah melakukan transfer pembayaran sebesar Rp ${_formatRupiah(booking.totalCost)} untuk pesanan #${booking.id}.',
+      timestamp: DateTime.now(),
+      isFromUser: true,
+      senderName: 'Anda',
+    );
+    _chatMessages.add(userConfirmMsg);
+    notifyListeners();
+
+    Future.delayed(const Duration(milliseconds: 700), () {
+      final verifiedMsg = ChatMessageModel(
+        id: 'bot-paid-${DateTime.now().millisecondsSinceEpoch}',
+        message: 'Pembayaran pesanan #${booking.id} sebesar Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi lunas oleh sistem dan staf operasional Merauke!\n\nUnit ${booking.vehicle.name} siap diserahterimakan di ${booking.pickupLocation}.',
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Bot CS MobilJuragan',
+        isAI: true,
+      );
+      _chatMessages.add(verifiedMsg);
+      notifyListeners();
+    });
   }
 }
