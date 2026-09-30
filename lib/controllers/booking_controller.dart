@@ -48,8 +48,28 @@ class BookingController extends ChangeNotifier {
   bool get agreementChecked => _agreementChecked;
 
   // Getters Status & Riwayat
-  bool get hasActiveBooking => _hasActiveBooking;
-  BookingModel? get activeBooking => _activeBooking;
+  bool get hasActiveBooking {
+    if (_activeBooking != null &&
+        _activeBooking!.status != BookingStatus.selesai &&
+        _activeBooking!.status != BookingStatus.dibatalkan) {
+      return true;
+    }
+    return activeBookings.isNotEmpty;
+  }
+
+  BookingModel? get activeBooking {
+    if (_activeBooking != null &&
+        _activeBooking!.status != BookingStatus.selesai &&
+        _activeBooking!.status != BookingStatus.dibatalkan) {
+      return _activeBooking;
+    }
+    final actives = activeBookings;
+    if (actives.isNotEmpty) {
+      _activeBooking = actives.first;
+      return _activeBooking;
+    }
+    return null;
+  }
   List<BookingModel> get bookingHistory => List.unmodifiable(_bookingHistory);
 
   List<BookingModel> get activeBookings => _bookingHistory
@@ -173,9 +193,8 @@ class BookingController extends ChangeNotifier {
         status: BookingStatus.mobilSiapDigunakan,
       );
       _bookingHistory[index] = updated;
-      if (_activeBooking?.id == bookingId) {
-        _activeBooking = updated;
-      }
+      _activeBooking = updated;
+      _hasActiveBooking = true;
       notifyListeners();
     }
   }

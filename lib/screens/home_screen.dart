@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
+import '../models/booking_model.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import 'order_status_screen.dart';
@@ -291,8 +292,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildReservationStatusSection() {
     final booking = context.watch<BookingController>();
-    final hasActive = booking.hasActiveBooking;
-    final vehicle = booking.selectedVehicle;
+    final activeOrder = booking.activeBooking;
+    final hasActive = booking.hasActiveBooking && activeOrder != null;
+    final vehicle = activeOrder?.vehicle;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,21 +314,21 @@ class _HomeScreenState extends State<HomeScreen> {
             InkWell(
               onTap: () {
                 if (hasActive) {
-                  booking.cancelActiveBooking();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: AppColors.primaryNavy,
-                      content: Text('Status reservasi telah direset.'),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => OrderStatusScreen(booking: activeOrder),
                     ),
                   );
+                } else if (widget.onNavigateToPesan != null) {
+                  widget.onNavigateToPesan!();
                 }
               },
               child: Text(
-                hasActive ? 'Reset Sewa' : 'Riwayat ›',
-                style: TextStyle(
+                hasActive ? 'Detail Status ›' : 'Pesan Baru ›',
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: hasActive ? Colors.redAccent : AppColors.primaryTeal,
+                  color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
                 ),
               ),
@@ -338,7 +340,9 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: () {
             if (hasActive) {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const OrderStatusScreen()),
+                MaterialPageRoute(
+                  builder: (_) => OrderStatusScreen(booking: activeOrder),
+                ),
               );
             } else if (widget.onNavigateToPesan != null) {
               widget.onNavigateToPesan!();
@@ -351,23 +355,48 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.cardWhite,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: hasActive ? AppColors.primaryTeal : AppColors.borderSubtle,
+                color: hasActive
+                    ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
+                        ? const Color(0xFF16A34A)
+                        : AppColors.primaryTeal)
+                    : AppColors.borderSubtle,
                 width: hasActive ? 1.5 : 1,
               ),
+              boxShadow: hasActive
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primaryNavy.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: hasActive ? AppColors.badgeNavyBg : AppColors.tealLight,
+                    color: hasActive
+                        ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
+                            ? const Color(0xFFDCFCE7)
+                            : AppColors.badgeNavyBg)
+                        : AppColors.tealLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
                     child: Icon(
-                      hasActive ? Icons.directions_car : Icons.receipt_long,
-                      color: hasActive ? AppColors.textWhite : AppColors.primaryTeal,
+                      hasActive
+                          ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
+                              ? Icons.key
+                              : Icons.directions_car)
+                          : Icons.receipt_long,
+                      color: hasActive
+                          ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
+                              ? const Color(0xFF15803D)
+                              : AppColors.textWhite)
+                          : AppColors.primaryTeal,
                       size: 22,
                     ),
                   ),
@@ -391,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 2),
                       Text(
                         hasActive
-                            ? 'Kode: ${booking.activeBooking?.id ?? booking.activeBookingCode} • ${booking.activeBooking?.durationDays ?? booking.durationDays} Hari (${(booking.activeBooking?.withDriver ?? booking.withDriver) ? 'Dengan Sopir' : 'Lepas Kunci'})'
+                            ? 'Kode: ${activeOrder.id} • ${activeOrder.durationDays} Hari (${activeOrder.modeLabel})'
                             : 'Pilih armada siap pakai di Merauke',
                         style: const TextStyle(
                           fontSize: 11,
@@ -400,26 +429,26 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontFamily: 'Inter',
                         ),
                       ),
+                      if (hasActive) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _getReservationSubtitleHint(activeOrder),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: activeOrder.status == BookingStatus.mobilSiapDigunakan
+                                ? const Color(0xFF15803D)
+                                : AppColors.primaryTeal,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 if (hasActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.tealLight,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'AKTIF',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryTeal,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  )
+                  _buildReservationStatusBadge(activeOrder.status)
                 else
                   const Icon(
                     Icons.chevron_right,
@@ -431,6 +460,71 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  String _getReservationSubtitleHint(BookingModel order) {
+    switch (order.status) {
+      case BookingStatus.menungguTarifFinal:
+        return 'Admin sedang menghitung rincian tarif final';
+      case BookingStatus.menungguPembayaran:
+        return 'Rincian tarif terbit, silakan bayar via WhatsApp';
+      case BookingStatus.pembayaranSelesai:
+        return 'Pembayaran terkonfirmasi, armada disiapkan';
+      case BookingStatus.mobilSiapDigunakan:
+        return 'Kunci siap diserahterimakan di ${order.pickupLocation}';
+      default:
+        return 'Jadwal sewa unit terkonfirmasi';
+    }
+  }
+
+  Widget _buildReservationStatusBadge(BookingStatus status) {
+    Color bg;
+    Color text;
+    String label;
+
+    switch (status) {
+      case BookingStatus.mobilSiapDigunakan:
+        bg = const Color(0xFFDCFCE7);
+        text = const Color(0xFF15803D);
+        label = 'SIAP PAKAI';
+        break;
+      case BookingStatus.menungguPembayaran:
+        bg = const Color(0xFFFEF2F2);
+        text = const Color(0xFFB91C1C);
+        label = 'MENUNGGU BAYAR';
+        break;
+      case BookingStatus.menungguTarifFinal:
+        bg = const Color(0xFFFFFBEB);
+        text = const Color(0xFFB45309);
+        label = 'HITUNG TARIF';
+        break;
+      case BookingStatus.pembayaranSelesai:
+        bg = const Color(0xFFECFDF5);
+        text = const Color(0xFF047857);
+        label = 'LUNAS';
+        break;
+      default:
+        bg = AppColors.tealLight;
+        text = AppColors.primaryTeal;
+        label = 'AKTIF';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: text,
+          fontFamily: 'Inter',
+        ),
+      ),
     );
   }
 
