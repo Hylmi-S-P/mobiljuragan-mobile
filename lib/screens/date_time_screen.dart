@@ -484,11 +484,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     }
   }
 
-  String _formatTimeOfDay(TimeOfDay time) {
-    final h = time.hour.toString().padLeft(2, '0');
-    final m = time.minute.toString().padLeft(2, '0');
-    return '$h.$m WIT';
-  }
 
   String _getTimeDescription(int hour) {
     if (hour >= 5 && hour < 11) {
