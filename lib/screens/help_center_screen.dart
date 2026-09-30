@@ -741,7 +741,21 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       ),
       child: Row(
         children: [
-          const Text('⚠️', style: TextStyle(fontSize: 18)),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFFDBEAFE),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.support_agent_rounded,
+                color: Color(0xFF1E40AF),
+                size: 17,
+              ),
+            ),
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(

@@ -409,29 +409,59 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // AI Assistant Notice Box (Presisi Frame 10 Figma)
+                      // AI Assistant Notice Box (Peningkatan visual & icon badge profesional)
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF0FDF4),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFBBF7D0)),
                         ),
-                        child: const Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('🤖', style: TextStyle(fontSize: 16)),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Chat dibantu AI Assistant untuk respon instan awal.\nJika butuh penanganan armada fisik, dialihkan otomatis ke staf CS.',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  height: 1.35,
-                                  fontWeight: FontWeight.w500,
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCFCE7),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF86EFAC)),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.smart_toy_outlined,
                                   color: Color(0xFF15803D),
-                                  fontFamily: 'Inter',
+                                  size: 18,
                                 ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Dukungan Cepat AI Assistant',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF15803D),
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Chat dibantu AI Assistant untuk respon instan awal. Jika membutuhkan tindakan fisik di lapangan, sistem otomatis mengalihkan ke staf CS Merauke.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFF166534),
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -439,29 +469,59 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Emergency Hotline Box
+                      // Emergency Hotline Box (Icon badge profesional)
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFFECACA)),
                         ),
-                        child: const Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('⚠️', style: TextStyle(fontSize: 16)),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Kendala mogok atau darurat di perjalanan? Hubungi nomor darurat 24 jam Merauke di 0812-4800-9999.',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  height: 1.35,
-                                  fontWeight: FontWeight.w500,
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEE2E2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFFCA5A5)),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.warning_amber_rounded,
                                   color: Color(0xFFB91C1C),
-                                  fontFamily: 'Inter',
+                                  size: 18,
                                 ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Kondisi Darurat di Perjalanan',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFB91C1C),
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Kendala armada mogok atau darurat di perjalanan? Hubungi nomor darurat 24 jam Merauke di 0812-4800-9999.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFF991B1B),
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
