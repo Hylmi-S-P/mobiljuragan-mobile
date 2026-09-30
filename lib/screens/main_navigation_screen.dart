@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'home_screen.dart';
+import 'order_history_screen.dart';
 import 'vehicle_selection_screen.dart';
 
 /// Shell navigasi utama aplikasi
@@ -30,10 +31,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             },
           ),
           const VehicleSelectionScreen(showBottomNav: true),
-          _buildPlaceholderScreen(
-            title: 'Status Pesanan',
-            description: 'Pantau status verifikasi dan serah terima unit secara real-time.',
-            icon: Icons.access_time,
+          OrderHistoryScreen(
+            onNavigateToPesan: () {
+              setState(() {
+                _currentTabIndex = 1;
+              });
+            },
           ),
           _buildPlaceholderScreen(
             title: 'Pusat Bantuan',
