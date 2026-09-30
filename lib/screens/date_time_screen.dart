@@ -1,3 +1,10 @@
+import 'package:flutter/cupertino.dart'
+    show
+        CupertinoDatePicker,
+        CupertinoDatePickerMode,
+        CupertinoTextThemeData,
+        CupertinoTheme,
+        CupertinoThemeData;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
@@ -506,218 +513,19 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     });
   }
 
-  void _showSessionTimePickerSheet() {
-    final morningSlots = [
-      {'time': '06.00 WIT', 'desc': 'Pagi hari'},
-      {'time': '07.00 WIT', 'desc': 'Pagi hari'},
-      {'time': '07.30 WIT', 'desc': 'Pagi hari'},
-      {'time': '08.00 WIT', 'desc': 'Pagi hari'},
-      {'time': '08.30 WIT', 'desc': 'Pagi hari'},
-      {'time': '09.00 WIT', 'desc': 'Pagi hari'},
-      {'time': '09.30 WIT', 'desc': 'Pagi hari'},
-      {'time': '10.00 WIT', 'desc': 'Pagi hari'},
-      {'time': '10.30 WIT', 'desc': 'Pagi hari'},
-    ];
-
-    final afternoonSlots = [
-      {'time': '11.00 WIT', 'desc': 'Siang hari'},
-      {'time': '11.30 WIT', 'desc': 'Siang hari'},
-      {'time': '12.00 WIT', 'desc': 'Siang hari'},
-      {'time': '12.30 WIT', 'desc': 'Siang hari'},
-      {'time': '13.00 WIT', 'desc': 'Siang hari'},
-      {'time': '13.30 WIT', 'desc': 'Siang hari'},
-      {'time': '14.00 WIT', 'desc': 'Siang hari'},
-      {'time': '14.30 WIT', 'desc': 'Siang hari'},
-    ];
-
-    final eveningSlots = [
-      {'time': '15.00 WIT', 'desc': 'Sore hari'},
-      {'time': '15.30 WIT', 'desc': 'Sore hari'},
-      {'time': '16.00 WIT', 'desc': 'Sore hari'},
-      {'time': '16.30 WIT', 'desc': 'Sore hari'},
-      {'time': '17.00 WIT', 'desc': 'Sore hari'},
-      {'time': '17.30 WIT', 'desc': 'Sore hari'},
-      {'time': '18.00 WIT', 'desc': 'Sore hari'},
-    ];
-
-    final nightSlots = [
-      {'time': '19.00 WIT', 'desc': 'Malam hari'},
-      {'time': '19.30 WIT', 'desc': 'Malam hari'},
-      {'time': '20.00 WIT', 'desc': 'Malam hari'},
-      {'time': '20.30 WIT', 'desc': 'Malam hari'},
-      {'time': '21.00 WIT', 'desc': 'Malam hari'},
-      {'time': '22.00 WIT', 'desc': 'Malam hari'},
-    ];
-
+  void _showAlarmStyleTimePickerSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cardWhite,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.borderSubtle,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pilih Jam Penjemputan',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Format 24 Jam (WIT) sesuai waktu kedatangan',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                        color: AppColors.textSecondary,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  _buildSessionGroup(
-                    sheetContext: sheetContext,
-                    icon: Icons.wb_sunny_outlined,
-                    sessionTitle: 'Pagi Hari (06.00 - 10.30 WIT)',
-                    slots: morningSlots,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _buildSessionGroup(
-                    sheetContext: sheetContext,
-                    icon: Icons.wb_sunny_rounded,
-                    sessionTitle: 'Siang Hari (11.00 - 14.30 WIT)',
-                    slots: afternoonSlots,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _buildSessionGroup(
-                    sheetContext: sheetContext,
-                    icon: Icons.wb_twilight_rounded,
-                    sessionTitle: 'Sore Hari (15.00 - 18.00 WIT)',
-                    slots: eveningSlots,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _buildSessionGroup(
-                    sheetContext: sheetContext,
-                    icon: Icons.nightlight_round,
-                    sessionTitle: 'Malam Hari (19.00 - 22.00 WIT)',
-                    slots: nightSlots,
-                  ),
-                ],
-              ),
-            ),
-          ),
+        return _AlarmTimePickerSheet(
+          initialTime: _selectedTime,
+          onTimeSelected: (formattedTime, description) {
+            _applyTime(formattedTime, desc: description);
+          },
         );
       },
-    );
-  }
-
-  Widget _buildSessionGroup({
-    required BuildContext sheetContext,
-    required IconData icon,
-    required String sessionTitle,
-    required List<Map<String, String>> slots,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: AppColors.primaryTeal),
-            const SizedBox(width: 6),
-            Text(
-              sessionTitle,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: slots.map((item) {
-            final time = item['time']!;
-            final desc = item['desc']!;
-            final isSelected = _selectedTime == time;
-
-            return InkWell(
-              onTap: () {
-                _applyTime(time, desc: desc);
-                Navigator.pop(sheetContext);
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primaryNavy : AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
@@ -757,7 +565,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Waktu Mulai Penjemputan
+          // 1. Jam Sewa
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -770,7 +578,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   ),
                   SizedBox(width: 6),
                   Text(
-                    'Waktu Mulai Penjemputan',
+                    'Jam Sewa',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -781,14 +589,14 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 ],
               ),
               InkWell(
-                onTap: _showSessionTimePickerSheet,
+                onTap: _showAlarmStyleTimePickerSheet,
                 borderRadius: BorderRadius.circular(6),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Row(
                     children: [
                       Icon(
-                        Icons.access_time_filled_rounded,
+                        Icons.alarm_rounded,
                         size: 13,
                         color: AppColors.primaryTeal,
                       ),
@@ -815,38 +623,44 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                ...quickTimes.map((time) {
-                  final isSelected = _selectedTime == time;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: InkWell(
-                      onTap: () => _applyTime(time),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primaryNavy : AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-                            width: 1,
+                ...(() {
+                  final timesToShow = List<String>.from(quickTimes);
+                  if (!timesToShow.contains(_selectedTime)) {
+                    timesToShow.insert(0, _selectedTime);
+                  }
+                  return timesToShow.map((time) {
+                    final isSelected = _selectedTime == time;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: InkWell(
+                        onTap: () => _applyTime(time),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primaryNavy : AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
+                              width: 1,
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          time,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
-                            fontFamily: 'Inter',
+                          child: Text(
+                            time,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                              fontFamily: 'Inter',
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  });
+                })(),
                 InkWell(
-                  onTap: _showSessionTimePickerSheet,
+                  onTap: _showAlarmStyleTimePickerSheet,
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
@@ -860,7 +674,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.more_time_rounded, size: 14, color: AppColors.primaryTeal),
+                        Icon(Icons.alarm_rounded, size: 14, color: AppColors.primaryTeal),
                         SizedBox(width: 4),
                         Text(
                           'Jam Lain...',
@@ -880,7 +694,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Waktu terpilih: $_selectedTime (Sesi $_timeDescription)',
+            'Jam sewa terpilih: $_selectedTime (Sesi $_timeDescription)',
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
@@ -1212,6 +1026,388 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom Sheet Interaktif dengan roda pemutar (wheel scroll) jam dan menit 24 jam ala alarm
+class _AlarmTimePickerSheet extends StatefulWidget {
+  final String initialTime;
+  final Function(String formattedTime, String description) onTimeSelected;
+
+  const _AlarmTimePickerSheet({
+    required this.initialTime,
+    required this.onTimeSelected,
+  });
+
+  @override
+  State<_AlarmTimePickerSheet> createState() => _AlarmTimePickerSheetState();
+}
+
+class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
+  late final ValueNotifier<TimeOfDay> _selectedTimeNotifier;
+  int _pickerKey = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final parsed = _parseInitialTime(widget.initialTime);
+    _selectedTimeNotifier = ValueNotifier<TimeOfDay>(parsed);
+  }
+
+  @override
+  void dispose() {
+    _selectedTimeNotifier.dispose();
+    super.dispose();
+  }
+
+  TimeOfDay _parseInitialTime(String timeStr) {
+    try {
+      final clean = timeStr.replaceAll(' WIT', '').trim();
+      final parts = clean.contains(':') ? clean.split(':') : clean.split('.');
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      return TimeOfDay(hour: hour.clamp(0, 23), minute: minute.clamp(0, 59));
+    } catch (_) {
+      return const TimeOfDay(hour: 9, minute: 0);
+    }
+  }
+
+  String _getTimeDescription(int hour) {
+    if (hour >= 5 && hour < 11) {
+      return 'Pagi hari';
+    } else if (hour >= 11 && hour < 15) {
+      return 'Siang hari';
+    } else if (hour >= 15 && hour < 18) {
+      return 'Sore hari';
+    } else {
+      return 'Malam hari';
+    }
+  }
+
+  void _snapMinute(int targetMinute) {
+    final current = _selectedTimeNotifier.value;
+    final updated = TimeOfDay(hour: current.hour, minute: targetMinute);
+    _selectedTimeNotifier.value = updated;
+    setState(() {
+      _pickerKey++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderSubtle,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Header Judul & Tombol Tutup
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.tealLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.alarm_rounded,
+                        size: 18,
+                        color: AppColors.primaryTeal,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Atur Jam Sewa',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Geser jam dan menit (Format 24 Jam WIT)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Tampilan Digital Jam Real-time (Reaktif tanpa rebuild picker)
+            ValueListenableBuilder<TimeOfDay>(
+              valueListenable: _selectedTimeNotifier,
+              builder: (context, time, _) {
+                final hourStr = time.hour.toString().padLeft(2, '0');
+                final minuteStr = time.minute.toString().padLeft(2, '0');
+                final sessionDesc = _getTimeDescription(time.hour);
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.borderSubtle, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$hourStr : $minuteStr',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryNavy,
+                          letterSpacing: 2,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryNavy,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'WIT',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Sesi $sessionDesc',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryTeal,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Area Roda Pemutar Jam & Menit Native Cupertino Wheel
+            Container(
+              height: 190,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: CupertinoTheme(
+                data: const CupertinoThemeData(
+                  brightness: Brightness.light,
+                  primaryColor: AppColors.primaryTeal,
+                  textTheme: CupertinoTextThemeData(
+                    dateTimePickerTextStyle: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+                child: CupertinoDatePicker(
+                  key: ValueKey(_pickerKey),
+                  mode: CupertinoDatePickerMode.time,
+                  use24hFormat: true,
+                  initialDateTime: DateTime(
+                    2026,
+                    1,
+                    1,
+                    _selectedTimeNotifier.value.hour,
+                    _selectedTimeNotifier.value.minute,
+                  ),
+                  onDateTimeChanged: (DateTime newDateTime) {
+                    _selectedTimeNotifier.value = TimeOfDay(
+                      hour: newDateTime.hour,
+                      minute: newDateTime.minute,
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Tombol Pintas Menit (:00, :15, :30, :45)
+            ValueListenableBuilder<TimeOfDay>(
+              valueListenable: _selectedTimeNotifier,
+              builder: (context, time, _) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Bulatkan Menit: ',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    ...[0, 15, 30, 45].map((quickMin) {
+                      final isCurrentMin = time.minute == quickMin;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: InkWell(
+                          onTap: () => _snapMinute(quickMin),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isCurrentMin ? AppColors.tealLight : AppColors.surfaceLight,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isCurrentMin ? AppColors.primaryTeal : AppColors.borderSubtle,
+                              ),
+                            ),
+                            child: Text(
+                              ':${quickMin.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isCurrentMin ? FontWeight.w700 : FontWeight.w500,
+                                color: isCurrentMin ? AppColors.primaryTeal : AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+
+            // Tombol Aksi
+            Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: SizedBox(
+                    height: 46,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.borderSubtle),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Batal',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final current = _selectedTimeNotifier.value;
+                        final formattedTime =
+                            '${current.hour.toString().padLeft(2, '0')}.${current.minute.toString().padLeft(2, '0')} WIT';
+                        final sessionDesc = _getTimeDescription(current.hour);
+                        widget.onTimeSelected(formattedTime, sessionDesc);
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryNavy,
+                        foregroundColor: AppColors.textWhite,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Terapkan Jam Sewa',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
