@@ -19,7 +19,6 @@ class BookingController extends ChangeNotifier {
   static const int standardServiceFee = 25000;
 
   // Status pesanan aktif dan daftar riwayat pesanan
-  bool _hasActiveBooking = true;
   BookingModel? _activeBooking;
   final List<BookingModel> _bookingHistory = [];
 
@@ -32,8 +31,6 @@ class BookingController extends ChangeNotifier {
     _bookingHistory.addAll(samples);
     if (_bookingHistory.isNotEmpty) {
       _activeBooking = _bookingHistory.first;
-      _hasActiveBooking = _activeBooking?.status != BookingStatus.selesai &&
-          _activeBooking?.status != BookingStatus.dibatalkan;
     }
   }
 
@@ -159,7 +156,6 @@ class BookingController extends ChangeNotifier {
 
     _bookingHistory.insert(0, newBooking);
     _activeBooking = newBooking;
-    _hasActiveBooking = true;
     notifyListeners();
     return newBooking;
   }
@@ -194,7 +190,6 @@ class BookingController extends ChangeNotifier {
       );
       _bookingHistory[index] = updated;
       _activeBooking = updated;
-      _hasActiveBooking = true;
       notifyListeners();
     }
   }
@@ -215,17 +210,12 @@ class BookingController extends ChangeNotifier {
       _bookingHistory[index] = updated;
     }
 
-    _hasActiveBooking = updated.status != BookingStatus.selesai &&
-        updated.status != BookingStatus.dibatalkan;
-
     notifyListeners();
   }
 
   /// Memilih pesanan tertentu dari riwayat untuk dilihat detail statusnya
   void selectBookingForStatusView(BookingModel booking) {
     _activeBooking = booking;
-    _hasActiveBooking = booking.status != BookingStatus.selesai &&
-        booking.status != BookingStatus.dibatalkan;
     notifyListeners();
   }
 
@@ -234,7 +224,6 @@ class BookingController extends ChangeNotifier {
     if (_activeBooking != null) {
       updateActiveBookingStatus(BookingStatus.dibatalkan);
     }
-    _hasActiveBooking = false;
     notifyListeners();
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'help_center_screen.dart';
 import 'home_screen.dart';
 import 'order_history_screen.dart';
 import 'vehicle_selection_screen.dart';
@@ -38,11 +39,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               });
             },
           ),
-          _buildPlaceholderScreen(
-            title: 'Pusat Bantuan',
-            description: 'Layanan pelanggan dan bantuan informasi operasional MobilJuragan Merauke.',
-            icon: Icons.help_outline,
-          ),
+          const HelpCenterScreen(),
         ],
       ),
       bottomNavigationBar: CustomBottomNavBar(
@@ -52,63 +49,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             _currentTabIndex = index;
           });
         },
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderScreen({
-    required String title,
-    required String description,
-    required IconData icon,
-  }) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-        ),
-        backgroundColor: AppColors.primaryNavy,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.tealLight,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: AppColors.primaryTeal, size: 32),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
