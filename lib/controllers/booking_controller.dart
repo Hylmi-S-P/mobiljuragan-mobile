@@ -164,6 +164,22 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Simulasi konfirmasi pembayaran via WhatsApp admin
+  /// Memindahkan status pesanan dari menungguPembayaran ke mobilSiapDigunakan (tahap selanjutnya)
+  void confirmPaymentAndAdvance(String bookingId) {
+    final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
+    if (index != -1) {
+      final updated = _bookingHistory[index].copyWith(
+        status: BookingStatus.mobilSiapDigunakan,
+      );
+      _bookingHistory[index] = updated;
+      if (_activeBooking?.id == bookingId) {
+        _activeBooking = updated;
+      }
+      notifyListeners();
+    }
+  }
+
   /// Alias metode konfirmasi pemesanan untuk kompatibilitas alur terdahulu
   void confirmBooking() {
     submitBooking();

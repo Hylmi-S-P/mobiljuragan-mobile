@@ -227,7 +227,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               _buildWhatsAppPaymentCard(context, activeBooking),
               const SizedBox(height: 16),
             ] else if (isPaid) ...[
-              _buildPaidStatusNoticeCard(),
+              _buildPaidStatusNoticeCard(activeBooking),
               const SizedBox(height: 16),
             ],
 
@@ -385,40 +385,34 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  /// Stepper Mengikuti Tahapan Figma + Penambahan Menunggu Pembayaran
+  /// Stepper Mengikuti 5 Tahapan Resmi (Tanpa Verifikasi Fisik KTP)
   Widget _buildFigmaStepper(BookingModel booking) {
     final status = booking.status;
 
-    // Tahap 1 Figma: Permintaan diterima
+    // Tahap 1: Permintaan diterima
     final step1Done = true;
 
-    // Tahap 2 Figma: Pemeriksaan armada (siap & jadwal terkonfirmasi)
+    // Tahap 2: Pemeriksaan armada (siap & jadwal terkonfirmasi)
     final step2Done = true;
 
-    // Tahap 3 Figma: Konfirmasi tarif final
+    // Tahap 3: Konfirmasi tarif final
     final step3Active = status == BookingStatus.menungguTarifFinal;
     final step3Done = booking.isFinalTariffConfirmed ||
         status == BookingStatus.menungguPembayaran ||
         status == BookingStatus.pembayaranSelesai ||
-        status == BookingStatus.verifikasiKantor ||
         status == BookingStatus.mobilSiapDigunakan ||
         status == BookingStatus.selesai;
 
-    // Tahap 4 (Tambahan): Menunggu Pembayaran
+    // Tahap 4: Menunggu Pembayaran
     final step4Active = status == BookingStatus.menungguPembayaran;
     final step4Done = status == BookingStatus.pembayaranSelesai ||
-        status == BookingStatus.verifikasiKantor ||
         status == BookingStatus.mobilSiapDigunakan ||
         status == BookingStatus.selesai;
 
-    // Tahap 5: Verifikasi Dokumen Fisik di Kantor
-    final step5Active = status == BookingStatus.verifikasiKantor;
-    final step5Done = status == BookingStatus.mobilSiapDigunakan ||
-        status == BookingStatus.selesai;
-
-    // Tahap 6 Figma: Mobil siap digunakan
-    final step6Active = status == BookingStatus.mobilSiapDigunakan;
-    final step6Done = status == BookingStatus.selesai;
+    // Tahap 5: Mobil siap digunakan
+    final step5Active = status == BookingStatus.mobilSiapDigunakan ||
+        status == BookingStatus.pembayaranSelesai;
+    final step5Done = status == BookingStatus.selesai;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -480,22 +474,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           _buildStepRow(
             stepNumber: 5,
-            title: 'Verifikasi Fisik di Kantor',
+            title: 'Mobil siap digunakan',
             subtitle: step5Done
-                ? 'KTP dan SIM A fisik telah divalidasi saat serah terima'
-                : 'Pemeriksaan fisik KTP asli dan SIM A di kantor Merauke',
+                ? 'Masa sewa telah selesai dan unit telah kembali'
+                : (step5Active
+                    ? 'Pembayaran tervalidasi. Kunci dan armada siap diserahterimakan di ${booking.pickupLocation}'
+                    : 'Kunci dan armada akan diserahkan setelah pembayaran selesai'),
             isDone: step5Done,
             isActive: step5Active,
-            isLast: false,
-          ),
-          _buildStepRow(
-            stepNumber: 6,
-            title: 'Mobil siap digunakan',
-            subtitle: step6Done
-                ? 'Masa sewa telah selesai dan unit telah kembali'
-                : 'Kunci dan armada diserahkan di ${booking.pickupLocation}',
-            isDone: step6Done,
-            isActive: step6Active,
             isLast: true,
           ),
         ],
@@ -889,7 +875,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Widget _buildPaidStatusNoticeCard() {
+  Widget _buildPaidStatusNoticeCard(BookingModel booking) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -897,19 +883,35 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.badgeGreenText.withValues(alpha: 0.3), width: 1),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.check_circle_outline, size: 20, color: AppColors.badgeGreenText),
-          SizedBox(width: 10),
+          const Icon(Icons.check_circle_outline, size: 22, color: AppColors.badgeGreenText),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              'Pembayaran telah dikonfirmasi admin. Silakan bawa KTP dan SIM A fisik asli saat serah terima unit di kantor.',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.badgeGreenText,
-                fontFamily: 'Inter',
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Pembayaran Lunas via WhatsApp',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.badgeGreenText,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Pembayaran telah divalidasi admin. Armada ${booking.vehicle.name} siap digunakan di ${booking.pickupLocation}.',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.badgeGreenText,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -928,11 +930,31 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             height: 48,
             child: ElevatedButton.icon(
               onPressed: () {
+                final controller = context.read<BookingController>();
+                controller.confirmPaymentAndAdvance(booking.id);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: const Color(0xFF166534),
-                    content: Text(
-                      'Menghubungi WhatsApp Admin (+62 812-4800-2910) untuk konfirmasi pembayaran pesanan #${booking.id}...',
+                    duration: const Duration(seconds: 4),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    content: Row(
+                      children: [
+                        const Icon(Icons.verified, color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Pembayaran pesanan #${booking.id} berhasil diverifikasi admin via WhatsApp! Status masuk ke tahap: Mobil Siap Digunakan.',
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
