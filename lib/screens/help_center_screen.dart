@@ -50,7 +50,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     {
       'category': 'Pembayaran',
       'question': 'Metode pembayaran apa saja yang berlaku?',
-      'answer': 'Pembayaran dilakukan melalui transfer rekening bank resmi (BRI / Mandiri) setelah admin mengonfirmasi rincian tarif final. Rincian tagihan dan konfirmasi pembayaran dikirimkan langsung oleh bot melalui Chat CS.',
+      'answer': 'Pembayaran dilakukan melalui transfer rekening bank resmi (BRI / Mandiri) setelah admin mengonfirmasi rincian tarif final. Rincian tagihan dan konfirmasi pembayaran dikirimkan langsung melalui Chat CS.',
     },
     {
       'category': 'Armada',

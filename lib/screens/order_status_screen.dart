@@ -467,7 +467,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             subtitle: step4Done
                 ? 'Pembayaran telah dikonfirmasi oleh tim CS'
                 : (step4Active
-                    ? 'Silakan lakukan pembayaran dan konfirmasi via Chat CS & Bot'
+                    ? 'Silakan lakukan pembayaran dan konfirmasi via Chat CS'
                     : 'Menunggu penerbitan rincian tarif final resmi'),
             isDone: step4Done,
             isActive: step4Active,
@@ -850,7 +850,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               Icon(Icons.chat_bubble_outline, size: 20, color: Color(0xFF16A34A)),
               SizedBox(width: 8),
               Text(
-                'Metode Pembayaran via Chat CS & Bot',
+                'Metode Pembayaran via Chat CS',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -862,7 +862,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Rincian tagihan resmi, nomor rekening transfer Bank BRI Merauke, dan validasi pembayaran dikirimkan langsung oleh bot melalui Chat CS. Buka chat untuk menerima instruksi lengkap dan konfirmasi pembayaran.',
+            'Rincian tagihan resmi, nomor rekening transfer Bank BRI Merauke, dan validasi pembayaran dikirimkan langsung melalui Chat CS. Buka chat untuk menerima instruksi lengkap dan konfirmasi pembayaran.',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w400,

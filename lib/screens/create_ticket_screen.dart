@@ -430,7 +430,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                               ),
                               child: const Center(
                                 child: Icon(
-                                  Icons.smart_toy_outlined,
+                                  Icons.headset_mic_rounded,
                                   color: Color(0xFF15803D),
                                   size: 18,
                                 ),
@@ -442,7 +442,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Dukungan Cepat AI Assistant',
+                                    'Dukungan Cepat Layanan Bantuan',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
@@ -452,72 +452,12 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                   ),
                                   SizedBox(height: 2),
                                   Text(
-                                    'Chat dibantu AI Assistant untuk respon instan awal. Jika membutuhkan tindakan fisik di lapangan, sistem otomatis mengalihkan ke staf CS Merauke.',
+                                    'Tiket bantuan terhubung dengan sistem layanan respons cepat. Jika membutuhkan penanganan fisik di lapangan, sistem otomatis mengalihkan ke staf operasional Merauke.',
                                     style: TextStyle(
                                       fontSize: 11,
                                       height: 1.35,
                                       fontWeight: FontWeight.w400,
                                       color: Color(0xFF166534),
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Emergency Hotline Box (Icon badge profesional)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFFECACA)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEE2E2),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFFCA5A5)),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: Color(0xFFB91C1C),
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Kondisi Darurat di Perjalanan',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFFB91C1C),
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Kendala armada mogok atau darurat di perjalanan? Hubungi nomor darurat 24 jam Merauke di 0812-4800-9999.',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      height: 1.35,
-                                      fontWeight: FontWeight.w400,
-                                      color: Color(0xFF991B1B),
                                       fontFamily: 'Inter',
                                     ),
                                   ),
@@ -575,7 +515,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                 const SizedBox(height: 10),
                 const Center(
                   child: Text(
-                    'Tiket terhubung langsung ke AI Assistant & staf operasional Merauke.',
+                    'Tiket terhubung langsung ke layanan bantuan & staf operasional Merauke.',
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.textSecondary,

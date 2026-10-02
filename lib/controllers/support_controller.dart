@@ -21,7 +21,7 @@ class SupportController extends ChangeNotifier {
         message: 'Halo! Saya asisten virtual MobilJuragan Merauke. Ada yang bisa kami bantu seputar sewa mobil hari ini?',
         timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
         isFromUser: false,
-        senderName: 'Asisten AI MobilJuragan',
+        senderName: 'Customer Service MobilJuragan',
         isAI: true,
       ),
     ]);
@@ -167,7 +167,7 @@ class SupportController extends ChangeNotifier {
         message: invoiceText,
         timestamp: DateTime.now(),
         isFromUser: false,
-        senderName: 'Bot CS MobilJuragan',
+        senderName: 'Customer Service MobilJuragan',
         isAI: true,
       ),
     );
@@ -197,7 +197,7 @@ class SupportController extends ChangeNotifier {
         message: 'Pembayaran pesanan #${booking.id} sebesar Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi lunas oleh sistem dan staf operasional Merauke!\n\nUnit ${booking.vehicle.name} siap diserahterimakan di ${booking.pickupLocation}.',
         timestamp: DateTime.now(),
         isFromUser: false,
-        senderName: 'Bot CS MobilJuragan',
+        senderName: 'Customer Service MobilJuragan',
         isAI: true,
       );
       _chatMessages.add(verifiedMsg);

@@ -148,7 +148,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 Text(
                   support.isAiHandoffToAdmin
                       ? 'Staf Operasional Merauke (Online)'
-                      : 'Bot CS & AI MobilJuragan',
+                      : 'Customer Service MobilJuragan',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.tealLight,
@@ -483,7 +483,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   ),
                   child: Center(
                     child: Icon(
-                      msg.isAI ? Icons.smart_toy : Icons.person,
+                      msg.isAI ? Icons.headset_mic_rounded : Icons.person,
                       size: 12,
                       color: msg.isAI ? AppColors.primaryTeal : AppColors.textWhite,
                     ),
