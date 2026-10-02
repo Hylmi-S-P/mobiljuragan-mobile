@@ -29,9 +29,8 @@ class BookingController extends ChangeNotifier {
   void _initSampleData() {
     final samples = BookingModel.initialSampleBookings;
     _bookingHistory.addAll(samples);
-    if (_bookingHistory.isNotEmpty) {
-      _activeBooking = _bookingHistory.first;
-    }
+    // Pesanan aktif diatur 0 / null pada awal run simulasi
+    _activeBooking = null;
   }
 
   // Getters Formulir Pemesanan
@@ -86,7 +85,7 @@ class BookingController extends ChangeNotifier {
   int get serviceFee => standardServiceFee;
   int get totalCalculatedCost => vehicleSubtotal + driverSubtotal + serviceFee;
   int get totalEstimatedCost => totalCalculatedCost;
-  String get activeBookingCode => _activeBooking?.id ?? 'MBJ-2026-0042';
+  String get activeBookingCode => _activeBooking?.id ?? '-';
 
   // Mutator Formulir Pemesanan
   void selectVehicle(VehicleModel vehicle) {
@@ -224,6 +223,21 @@ class BookingController extends ChangeNotifier {
     if (_activeBooking != null) {
       updateActiveBookingStatus(BookingStatus.dibatalkan);
     }
+    notifyListeners();
+  }
+
+  /// Mengatur ulang pesanan aktif agar bernilai 0 / tidak ada
+  void clearActiveBooking() {
+    _activeBooking = null;
+    notifyListeners();
+  }
+
+  /// Mengatur ulang seluruh riwayat dan pesanan aktif ke kondisi awal simulasi (0 pesanan aktif)
+  void resetToInitialState() {
+    _bookingHistory.clear();
+    _bookingHistory.addAll(BookingModel.initialSampleBookings);
+    _activeBooking = null;
+    resetForm();
     notifyListeners();
   }
 

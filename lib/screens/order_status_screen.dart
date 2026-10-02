@@ -123,10 +123,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             (b) => b.id == widget.booking!.id,
             orElse: () => widget.booking!,
           ))
-        : (bookingController.activeBooking ??
-            (bookingController.bookingHistory.isNotEmpty
-                ? bookingController.bookingHistory.first
-                : null));
+        : bookingController.activeBooking;
 
     if (activeBooking == null) {
       return Scaffold(

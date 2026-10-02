@@ -195,29 +195,13 @@ class BookingModel {
     ),
   ];
 
-  /// Data dummy riwayat pesanan awal untuk keperluan pengujian dan demonstrasi
+  /// Data dummy riwayat pesanan awal untuk keperluan pengujian dan demonstrasi (tanpa pesanan aktif pada awal start)
   static List<BookingModel> get initialSampleBookings {
-    final sampleVehicle = VehicleModel.sampleVehicles.first;
     final secondVehicle = VehicleModel.sampleVehicles.length > 1
         ? VehicleModel.sampleVehicles[1]
-        : sampleVehicle;
+        : VehicleModel.sampleVehicles.first;
 
     return [
-      BookingModel(
-        id: 'MBJ-2026-0042',
-        vehicle: sampleVehicle,
-        startDate: DateTime.now().add(const Duration(days: 1)),
-        startTime: '09.00 WIT',
-        durationDays: 2,
-        withDriver: false,
-        pickupLocation: 'Bandara Mopah Merauke',
-        note: 'Antar langsung ke lobi kedatangan Bandara Mopah Merauke',
-        status: BookingStatus.menungguTarifFinal,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-        dailyRate: sampleVehicle.pricePerDay,
-        adminAdjustments: const [],
-        isFinalTariffConfirmed: false,
-      ),
       BookingModel(
         id: 'MBJ-2026-0038',
         vehicle: secondVehicle,
