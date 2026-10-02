@@ -76,116 +76,6 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     }).toList();
   }
 
-  void _showWhatsAppHotlineDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.chat, color: Color(0xFF15803D), size: 22),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hotline WhatsApp CS Merauke',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    Text(
-                      'Layanan Pelanggan & Darurat Operasional',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Hubungi staf operasional MobilJuragan Merauke langsung via WhatsApp untuk pertanyaan darurat, perpanjangan sewa, atau serah terima unit di Bandara Mopah.',
-              style: TextStyle(fontSize: 12, height: 1.4, color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Nomor CS: +62 812-4800-9999',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                  ),
-                  Text(
-                    'Aktif 24 Jam',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Menghubungkan ke WhatsApp CS Merauke (+62 812-4800-9999)...'),
-                      backgroundColor: const Color(0xFF15803D),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.send, size: 18),
-                label: const Text(
-                  'Buka Obrolan WhatsApp',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF15803D),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final support = context.watch<SupportController>();
@@ -242,11 +132,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
               // Tiket Bantuan Saya (Jika ada tiket)
               _buildUserTicketsSection(support),
-              const SizedBox(height: 20),
-
-              // Banner Kondisi Darurat
-              _buildEmergencyBanner(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               // Tombol Utama Buat Tiket Bantuan
               SizedBox(
@@ -388,7 +274,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             },
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
 
         // Action 2: Buat Tiket
         Expanded(
@@ -403,19 +289,6 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
               );
             },
-          ),
-        ),
-        const SizedBox(width: 10),
-
-        // Action 3: WhatsApp CS
-        Expanded(
-          child: _buildActionCardItem(
-            icon: Icons.phone_in_talk_outlined,
-            label: 'WhatsApp CS',
-            subtitle: 'Hotline 24 Jam',
-            color: const Color(0xFF15803D),
-            bgColor: const Color(0xFFDCFCE7),
-            onTap: _showWhatsAppHotlineDialog,
           ),
         ),
       ],
@@ -730,61 +603,5 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       ],
     );
   }
-
-  Widget _buildEmergencyBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: const Color(0xFFDBEAFE),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.support_agent_rounded,
-                color: Color(0xFF1E40AF),
-                size: 17,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Kondisi darurat di perjalanan? Hotline siaga 24 jam Merauke.',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1E40AF),
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: _showWhatsAppHotlineDialog,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: const Size(44, 32),
-            ),
-            child: const Text(
-              'Hubungi',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E40AF),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
+
