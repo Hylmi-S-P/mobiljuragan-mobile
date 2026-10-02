@@ -21,6 +21,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _otpController = TextEditingController(text: '123456');
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final FocusNode _passwordFocusNode = FocusNode();
 
   bool _isOtpSent = false;
   bool _isPasswordVisible = false;
@@ -28,13 +29,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordFocusNode.addListener(_onPasswordFocusChanged);
+  }
+
+  void _onPasswordFocusChanged() {
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    _passwordFocusNode.removeListener(_onPasswordFocusChanged);
+    _passwordFocusNode.dispose();
     _identifierController.dispose();
     _otpController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
+
 
   void _handleSendOtp() {
     final id = _identifierController.text.trim();
@@ -459,6 +473,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 6),
           TextFormField(
             controller: _passwordController,
+            focusNode: _passwordFocusNode,
             obscureText: !_isPasswordVisible,
             onChanged: (_) => setState(() {}),
             style: const TextStyle(
@@ -506,16 +521,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 12),
 
-          // Kotak Persyaratan Password Terlihat (Checklist Real-time)
-          _buildPasswordCriteriaBox(
-            hasMinLength: hasMinLength,
-            hasUppercase: hasUppercase,
-            hasNumber: hasNumber,
-            hasSymbol: hasSymbol,
-          ),
+          // Kotak Persyaratan Password (Hanya muncul saat mulai menulis password)
+          if (_passwordFocusNode.hasFocus || passwordText.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildPasswordCriteriaBox(
+              hasMinLength: hasMinLength,
+              hasUppercase: hasUppercase,
+              hasNumber: hasNumber,
+              hasSymbol: hasSymbol,
+            ),
+          ],
           const SizedBox(height: 16),
+
 
           // Input Konfirmasi Password Baru
           const Text(
@@ -620,24 +638,39 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     required bool hasNumber,
     required bool hasSymbol,
   }) {
-    return Container(
+    final bool isAllMet = hasMinLength && hasUppercase && hasNumber && hasSymbol;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+        color: isAllMet ? const Color(0xFFF0FDF4) : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(
+          color: isAllMet ? const Color(0xFF86EFAC) : AppColors.borderSubtle,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Syarat Keamanan Password:',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
+          Row(
+            children: [
+              Icon(
+                isAllMet ? Icons.shield_rounded : Icons.shield_outlined,
+                size: 15,
+                color: isAllMet ? const Color(0xFF16A34A) : AppColors.primaryTeal,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Syarat Keamanan Password:',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isAllMet ? const Color(0xFF166534) : AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           _buildCriteriaRow('Minimal 8 karakter panjangnya', hasMinLength),
@@ -647,32 +680,72 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           _buildCriteriaRow('Minimal 1 angka (0-9)', hasNumber),
           const SizedBox(height: 4),
           _buildCriteriaRow('Minimal 1 karakter simbol (@, #, \$, dll.)', hasSymbol),
+          if (isAllMet) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.verified_user_rounded, color: Color(0xFF16A34A), size: 14),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Password baru kuat dan siap disimpan.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF166534),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildCriteriaRow(String text, bool isMet) {
-    return Row(
-      children: [
-        Icon(
-          isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-          size: 14,
-          color: isMet ? const Color(0xFF16A34A) : AppColors.textMuted,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isMet ? FontWeight.w600 : FontWeight.w400,
-            color: isMet ? const Color(0xFF166534) : AppColors.textSecondary,
-            fontFamily: 'Inter',
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+            child: Icon(
+              isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              key: ValueKey<bool>(isMet),
+              size: 15,
+              color: isMet ? const Color(0xFF16A34A) : AppColors.textMuted,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isMet ? FontWeight.w700 : FontWeight.w500,
+                color: isMet ? const Color(0xFF166534) : AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
+
 
   Widget _buildFooterBackToLogin() {
     return Center(
