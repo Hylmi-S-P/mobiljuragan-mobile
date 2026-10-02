@@ -43,8 +43,8 @@ class AuthController extends ChangeNotifier {
 
   /// Verifikasi kode OTP dengan dukungan simulasi error (Frame 12b)
   bool verifyOtp(String code) {
-    // Kode valid default untuk demo pengujian: 1234
-    if (code == '1234' || code == '8888') {
+    // Kode valid default untuk demo pengujian: 123456 atau 1234
+    if (code == '123456' || code == '888888' || code == '1234' || code == '8888') {
       _isLoggedIn = true;
       _hasLoginError = false;
       _errorMessage = null;
@@ -53,10 +53,24 @@ class AuthController extends ChangeNotifier {
       return true;
     } else {
       _hasLoginError = true;
-      _errorMessage = 'Kode OTP tidak cocok. Masukkan 1234 untuk simulasi.';
+      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk simulasi.';
       notifyListeners();
       return false;
     }
+  }
+
+  /// Memicu tampilan State Error (Frame 12b) secara manual untuk demonstrasi
+  void triggerErrorState([String? message]) {
+    _hasLoginError = true;
+    _errorMessage = message ?? 'Kode OTP tidak sesuai atau kedaluwarsa.';
+    notifyListeners();
+  }
+
+  /// Membersihkan State Error kembali ke Frame 12 (Clean State)
+  void clearErrorState() {
+    _hasLoginError = false;
+    _errorMessage = null;
+    notifyListeners();
   }
 
   /// Pendaftaran akun pengguna baru
