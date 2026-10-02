@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../models/booking_model.dart';
 import '../models/vehicle_model.dart';
@@ -64,6 +65,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTopHeader() {
+    final auth = context.watch<AuthController>();
+    final isLoggedIn = auth.isLoggedIn && auth.currentUser != null;
+    final initials = isLoggedIn ? (auth.currentUser!.avatarInitials) : 'MJ';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -116,15 +121,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryTeal,
+            decoration: BoxDecoration(
+              color: isLoggedIn ? AppColors.primaryTeal : AppColors.surfaceLight,
               shape: BoxShape.circle,
+              border: isLoggedIn ? null : Border.all(color: AppColors.borderSubtle, width: 1.5),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'MJ',
+                initials,
                 style: TextStyle(
-                  color: AppColors.textWhite,
+                  color: isLoggedIn ? AppColors.textWhite : AppColors.textSecondary,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Inter',

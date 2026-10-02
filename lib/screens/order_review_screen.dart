@@ -5,6 +5,8 @@ import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
+import 'auth/login_screen.dart';
+import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
@@ -714,13 +716,21 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 height: 46,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    auth.loginAsDefault();
                     Navigator.pop(modalCtx);
-                    _processOrderSubmission(context, booking, vehicle);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => LoginScreen(
+                          onSuccess: () {
+                            Navigator.pop(context); // Pop dari LoginScreen
+                            _processOrderSubmission(context, booking, vehicle);
+                          },
+                        ),
+                      ),
+                    );
                   },
-                  icon: const Icon(Icons.login, size: 18),
+                  icon: const Icon(Icons.lock_open_rounded, size: 18),
                   label: const Text(
-                    'Masuk Cepat sebagai Harun (Demo)',
+                    'Masuk via WhatsApp & OTP',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -741,18 +751,58 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 44,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(modalCtx),
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(modalCtx);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RegisterScreen(
+                          onSuccess: () {
+                            Navigator.pop(context); // Pop dari RegisterScreen
+                            _processOrderSubmission(context, booking, vehicle);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primaryTeal),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   child: const Text(
-                    'Nanti Saja (Kembali ke Pesanan)',
+                    'Daftar Akun Baru',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
                     ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      auth.loginAsDefault();
+                      Navigator.pop(modalCtx);
+                      _processOrderSubmission(context, booking, vehicle);
+                    },
+                    child: const Text(
+                      'Pintasan Demo: Masuk Cepat sebagai Harun',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -5,10 +5,13 @@ import '../controllers/booking_controller.dart';
 import '../models/user_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
+import 'auth/login_screen.dart';
+import 'auth/register_screen.dart';
+import 'help_center_screen.dart';
 import 'order_status_screen.dart';
 
 /// Layar Profil Pengguna (Frame 13)
-/// Menampilkan data akun pelanggan Merauke, statistik pesanan, dan menu pengaturan
+/// Menampilkan data akun pelanggan Merauke, statistik pesanan, pengaturan akun, dan alur login/logout
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -17,6 +20,7 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.watch<AuthController>();
     final booking = context.watch<BookingController>();
     final user = auth.currentUser ?? UserModel.defaultUser;
+    final isLoggedIn = auth.isLoggedIn;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -29,18 +33,32 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildUserIdentityCard(user.name, user.phone, user.email, user.nik, user.city),
-            const SizedBox(height: 16),
-            _buildStatisticsRow(
-              activeCount: booking.activeBookings.length,
-              completedCount: booking.completedBookings.length,
-              totalCount: booking.bookingHistory.length,
-            ),
+            if (isLoggedIn) ...[
+              _buildUserIdentityCard(
+                context,
+                name: user.name,
+                phone: user.phone,
+                email: user.email,
+                nik: user.nik,
+                city: user.city,
+                initials: user.avatarInitials,
+              ),
+              const SizedBox(height: 16),
+              _buildStatisticsRow(
+                activeCount: booking.activeBookings.length,
+                completedCount: booking.completedBookings.length,
+                totalCount: booking.bookingHistory.length,
+              ),
+            ] else ...[
+              _buildGuestIdentityCard(context),
+            ],
             const SizedBox(height: 20),
-            _buildMenuSection(context),
+            _buildMenuSection(context, isLoggedIn, auth, user),
             const SizedBox(height: 24),
-            _buildLogoutButton(context, auth),
-            const SizedBox(height: 16),
+            if (isLoggedIn) ...[
+              _buildLogoutButton(context, auth),
+              const SizedBox(height: 16),
+            ],
             const Center(
               child: Text(
                 'MobilJuragan Mobile • Versi 1.0.0 (Merauke Edition)',
@@ -58,13 +76,131 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildGuestIdentityCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.primaryTeal.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.account_circle_outlined,
+                size: 32,
+                color: AppColors.primaryTeal,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Anda Belum Masuk Akun',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Masuk atau daftar untuk melihat identitas sewa terverifikasi, memantau status mobil di Merauke, dan mengakses riwayat pemesanan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.45,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primaryNavy),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Daftar Baru',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryNavy,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryNavy,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Masuk Akun',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildUserIdentityCard(
-    String name,
-    String phone,
-    String email,
-    String nik,
-    String city,
-  ) {
+    BuildContext context, {
+    required String name,
+    required String phone,
+    required String email,
+    required String nik,
+    required String city,
+    required String initials,
+  }) {
+    final maskedNik = nik.length >= 10
+        ? '${nik.substring(0, 6)}******${nik.substring(nik.length - 4)}'
+        : nik;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -83,10 +219,10 @@ class ProfileScreen extends StatelessWidget {
                   color: AppColors.primaryNavy,
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
-                    'HR',
-                    style: TextStyle(
+                    initials.isNotEmpty ? initials : 'MJ',
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -102,13 +238,16 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              fontFamily: 'Inter',
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -167,10 +306,33 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               Text(
-                '${nik.substring(0, 6)}******${nik.substring(nik.length - 4)}',
+                maskedNik,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Alamat Email Terdaftar',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              Text(
+                email,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
                 ),
@@ -238,45 +400,62 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: Column(
-        children: [
-          _buildMenuItem(
-            icon: Icons.receipt_long_outlined,
-            title: 'Status Pesanan Terkini',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const OrderStatusScreen()),
-              );
-            },
-          ),
-          const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
-          _buildMenuItem(
-            icon: Icons.shield_outlined,
-            title: 'Syarat & Kebijakan Rental Kantor',
-            onTap: () {
-              _showTermsModal(context);
-            },
-          ),
-          const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
-          _buildMenuItem(
-            icon: Icons.help_outline_rounded,
-            title: 'Bantuan Layanan Pelanggan',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Buka Tab Bantuan di bilah navigasi bawah untuk melihat FAQ & Chat CS.'),
-                ),
-              );
-            },
-          ),
-        ],
+  Widget _buildMenuSection(
+    BuildContext context,
+    bool isLoggedIn,
+    AuthController auth,
+    UserModel user,
+  ) {
+    return Material(
+      color: AppColors.cardWhite,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.borderSubtle, width: 1),
+        ),
+        child: Column(
+          children: [
+            if (isLoggedIn) ...[
+              _buildMenuItem(
+                icon: Icons.receipt_long_outlined,
+                title: 'Status Pesanan Terkini',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const OrderStatusScreen()),
+                  );
+                },
+              ),
+              const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
+              _buildMenuItem(
+                icon: Icons.edit_note_outlined,
+                title: 'Ubah Data Kontak & Profil',
+                onTap: () {
+                  _showEditProfileModal(context, auth, user);
+                },
+              ),
+              const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
+            ],
+            _buildMenuItem(
+              icon: Icons.shield_outlined,
+              title: 'Syarat & Kebijakan Rental Kantor',
+              onTap: () {
+                _showTermsModal(context);
+              },
+            ),
+            const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
+            _buildMenuItem(
+              icon: Icons.help_outline_rounded,
+              title: 'Pusat Bantuan & Layanan CS',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const HelpCenterScreen()),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -358,7 +537,6 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () {
               auth.logout();
               Navigator.pop(dialogCtx);
-              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Anda telah keluar dari akun.')),
               );
@@ -371,6 +549,131 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Keluar'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditProfileModal(
+    BuildContext context,
+    AuthController auth,
+    UserModel user,
+  ) {
+    final nameController = TextEditingController(text: user.name);
+    final phoneController = TextEditingController(text: user.phone.replaceAll('+62 ', ''));
+    final emailController = TextEditingController(text: user.email);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardWhite,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderSubtle,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Perbarui Data Profil',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Perubahan nama dan kontak akan digunakan pada tanda terima sewa resmi.',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nama Lengkap',
+                  filled: true,
+                  fillColor: AppColors.surfaceLight,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'Nomor WhatsApp',
+                  prefixText: '+62 ',
+                  filled: true,
+                  fillColor: AppColors.surfaceLight,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Alamat Email',
+                  filled: true,
+                  fillColor: AppColors.surfaceLight,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    auth.register(
+                      name: nameController.text.trim(),
+                      phone: '+62 ${phoneController.text.trim()}',
+                      email: emailController.text.trim(),
+                      idCard: user.nik,
+                    );
+                    Navigator.pop(sheetCtx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profil berhasil diperbarui.'),
+                        backgroundColor: Color(0xFF16A34A),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Simpan Perubahan'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -403,6 +706,7 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
+                height: 44,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(modalCtx),
                   style: ElevatedButton.styleFrom(
