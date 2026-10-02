@@ -1,47 +1,116 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
-import 'forgot_password_screen.dart';
-import 'register_screen.dart';
 
-/// Layar Masuk / Login Standar Aplikasi Mobile
-/// Pengguna hanya perlu memasukkan Email atau Nomor HP dan Password
-/// Dilengkapi fitur Lupa Password, toggle show/hide password, dan pintasan akun demo
-class LoginScreen extends StatefulWidget {
+/// Layar Verifikasi OTP untuk Pendaftaran Akun Baru (Frame 12 & 12b style)
+/// Muncul setelah pengguna mengisi formulir pendaftaran akun baru
+class OtpVerificationScreen extends StatefulWidget {
+  final String phoneNumber;
+  final String email;
   final VoidCallback? onSuccess;
 
-  const LoginScreen({
+  const OtpVerificationScreen({
     super.key,
+    required this.phoneNumber,
+    required this.email,
     this.onSuccess,
   });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _identifierController =
-      TextEditingController(text: 'harun.merauke@gmail.com');
-  final TextEditingController _passwordController =
-      TextEditingController(text: 'Merauke#2026');
+class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  final List<TextEditingController> _otpControllers =
+      List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _otpFocusNodes =
+      List.generate(6, (_) => FocusNode());
 
-  bool _isPasswordVisible = false;
-  bool _rememberMe = true;
   bool _isLoading = false;
+  bool _agreeTerms = true;
+  int _resendSeconds = 105; // 01:45 hitung mundur
+  Timer? _resendTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdownTimer();
+  }
 
   @override
   void dispose() {
-    _identifierController.dispose();
-    _passwordController.dispose();
+    _resendTimer?.cancel();
+    for (final c in _otpControllers) {
+      c.dispose();
+    }
+    for (final f in _otpFocusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
-  void _handleLogin() {
-    if (!_formKey.currentState!.validate()) {
+  void _startCountdownTimer() {
+    _resendTimer?.cancel();
+    setState(() {
+      _resendSeconds = 105;
+    });
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendSeconds > 0) {
+        setState(() {
+          _resendSeconds--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  String get _formattedTimer {
+    final minutes = (_resendSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_resendSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _handleResendOtp() {
+    if (_resendSeconds > 0) return;
+    _startCountdownTimer();
+    context.read<AuthController>().sendOtp(widget.phoneNumber);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Kode OTP 6 digit baru telah dikirimkan ke ${widget.phoneNumber} via WhatsApp/SMS.'),
+        backgroundColor: AppColors.primaryTeal,
+      ),
+    );
+  }
+
+  void _handleVerifyOtp() {
+    if (!_agreeTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap setujui Ketentuan Layanan dan Kebijakan Privasi terlebih dahulu.'),
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
+      return;
+    }
+
+    final code = _otpControllers.map((c) => c.text.trim()).join();
+    if (code.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap masukkan 6 digit kode OTP secara lengkap.'),
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
       return;
     }
 
@@ -49,13 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final id = _identifierController.text.trim();
-    final pass = _passwordController.text;
-
     Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      final isSuccess = auth.loginWithPassword(identifier: id, password: pass);
+      final isSuccess = auth.verifyRegisterOtp(code);
 
       setState(() {
         _isLoading = false;
@@ -64,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (isSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Login berhasil! Selamat datang kembali di MobilJuragan.'),
+            content: Text('Verifikasi nomor berhasil! Akun Anda aktif dan siap digunakan.'),
             backgroundColor: Color(0xFF16A34A),
           ),
         );
@@ -72,7 +138,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (widget.onSuccess != null) {
           widget.onSuccess!();
         } else {
-          Navigator.of(context).pop(true);
+          // Tutup layar register dan otp hingga kembali ke halaman utama / beranda
+          Navigator.of(context).popUntil((route) => route.isFirst);
         }
       } else {
         HapticFeedback.vibrate();
@@ -80,19 +147,36 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _fillDemoAccount(bool isCorrect) {
+  void _fillDemoOtp(String code) {
     final auth = context.read<AuthController>();
     auth.clearErrorState();
 
-    if (isCorrect) {
-      _identifierController.text = 'harun.merauke@gmail.com';
-      _passwordController.text = auth.currentPassword;
-      _handleLogin();
-    } else {
-      _identifierController.text = 'harun.merauke@gmail.com';
-      _passwordController.text = 'SalahPassword123!';
-      _handleLogin();
+    for (int i = 0; i < 6; i++) {
+      if (i < code.length) {
+        _otpControllers[i].text = code[i];
+      } else {
+        _otpControllers[i].clear();
+      }
     }
+
+    if (code.length >= 6) {
+      _otpFocusNodes[5].requestFocus();
+      _handleVerifyOtp();
+    } else {
+      _otpFocusNodes[code.length].requestFocus();
+    }
+  }
+
+  void _resetOtpForm() {
+    final auth = context.read<AuthController>();
+    auth.clearErrorState();
+    for (final c in _otpControllers) {
+      c.clear();
+    }
+    setState(() {
+      _isLoading = false;
+    });
+    _otpFocusNodes[0].requestFocus();
   }
 
   void _showSupportDialog() {
@@ -126,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Icon(Icons.headset_mic_rounded, color: AppColors.primaryNavy, size: 24),
                   SizedBox(width: 10),
                   Text(
-                    'Pusat Bantuan CS Merauke',
+                    'Pusat Bantuan Aktivasi Akun',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -138,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Mengalami kendala saat login atau lupa data akun Anda? Layanan pelanggan CV. Mobil Juragan Merauke siap membantu 24/7.',
+                'Kendala saat menerima kode OTP verifikasi WhatsApp? Tim CS MobilJuragan Merauke siap membantu aktivasi akun pendaftaran Anda.',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -163,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'WhatsApp Resmi CS',
+                            'WhatsApp Resmi CS Merauke',
                             style: TextStyle(
                               fontSize: 11,
                               color: AppColors.textSecondary,
@@ -228,10 +312,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       appBar: CustomAppBar(
-        title: 'Masuk Akun',
+        title: 'Verifikasi Nomor OTP',
         stepSubtitle: hasError
-            ? 'Login Gagal • Kredensial Tidak Sesuai'
-            : 'Merauke, Papua Selatan',
+            ? 'Kode OTP Tidak Cocok'
+            : 'Langkah 2 dari 2 • Aktivasi Pendaftaran',
         showBackButton: true,
         actions: [
           Container(
@@ -245,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             child: Text(
-              hasError ? 'State: Error' : 'Masuk',
+              hasError ? 'State: Error' : 'Tahap OTP',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
@@ -258,35 +342,41 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Hero Card Sambutan
-              _buildHeroCard(),
-              const SizedBox(height: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Hero Card
+            _buildHeroCard(),
+            const SizedBox(height: 16),
 
-              // 2. Form Login Card (Email/No HP & Password)
-              _buildFormCard(auth, hasError),
-              const SizedBox(height: 16),
+            // 2. Form Card 6 Kotak OTP
+            _buildFormCard(auth, hasError),
+            const SizedBox(height: 16),
 
-              // 3. Tombol Masuk Utama
-              _buildSubmitButton(auth, hasError),
-              const SizedBox(height: 14),
+            // 3. Tombol Aksi Utama
+            _buildSubmitButton(auth, hasError),
+            const SizedBox(height: 14),
 
-              // 4. Support Box CS Merauke
-              _buildSupportBox(),
-              const SizedBox(height: 16),
+            // 4. Support Box CS Merauke
+            _buildSupportBox(),
+            const SizedBox(height: 16),
 
-              // 5. Helper Pengujian Demo UAS
-              _buildDemoHelper(auth),
-              const SizedBox(height: 20),
+            // 5. Helper Pintasan Demo UAS
+            _buildDemoHelper(auth),
+            const SizedBox(height: 20),
 
-              // 6. Footer Registrasi & Grounding Identitas
-              _buildFooter(),
-            ],
-          ),
+            // 6. Grounding Footer
+            const Center(
+              child: Text(
+                'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -313,19 +403,19 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: const Center(
               child: Icon(
-                Icons.person_pin_circle_outlined,
+                Icons.mark_email_read_outlined,
                 color: AppColors.primaryTeal,
                 size: 22,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Portal Layanan Rental Pelanggan',
+                const Text(
+                  'Verifikasi Akun Baru',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -333,10 +423,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontFamily: 'Inter',
                   ),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
-                  'Masuk menggunakan Email atau Nomor HP terdaftar untuk mengelola sewa dan memantau status pesanan.',
-                  style: TextStyle(
+                  'Masukkan 6 digit kode OTP yang telah dikirimkan ke nomor ${widget.phoneNumber} untuk mengaktifkan akun rental Anda.',
+                  style: const TextStyle(
                     fontSize: 11.5,
                     color: AppColors.textSecondary,
                     height: 1.35,
@@ -366,28 +456,98 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner Error (jika login gagal)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nomor WhatsApp Terdaftar',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.phoneNumber,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Ubah Data',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryTeal,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(color: AppColors.borderSubtle, thickness: 1, height: 1),
+          const SizedBox(height: 14),
+
+          // Label OTP
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Kode Verifikasi OTP (6 Digit)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              if (hasError)
+                const Text(
+                  'Kode Tidak Cocok',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFDC2626),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+            ],
+          ),
+
+          // Error Banner jika OTP keliru
           if (hasError) ...[
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF2F2),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFFFCA5A5)),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.error_outline_rounded,
                     size: 16,
                     color: Color(0xFFDC2626),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      auth.errorMessage ?? 'Email/No HP atau password salah. Cek kembali data Anda.',
-                      style: const TextStyle(
+                      'Kode OTP tidak sesuai atau kedaluwarsa. Silakan periksa kembali pesan WhatsApp Anda.',
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFFB91C1C),
@@ -400,167 +560,146 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 12),
 
-          // Field 1: Email atau Nomor WhatsApp
-          const Text(
-            'Email atau Nomor WhatsApp',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _identifierController,
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-            decoration: InputDecoration(
-              hintText: 'nama@domain.com atau 812-xxxx-xxxx',
-              hintStyle: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12.5,
-                fontFamily: 'Inter',
-              ),
-              prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primaryTeal, size: 20),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-              ),
-            ),
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) {
-                return 'Email atau Nomor WhatsApp wajib diisi.';
-              }
-              return null;
-            },
+          // 6 Kotak Digit OTP
+          Row(
+            children: List.generate(6, (index) {
+              return Expanded(
+                child: Container(
+                  height: 48,
+                  margin: EdgeInsets.only(
+                    left: index == 0 ? 0 : 3,
+                    right: index == 5 ? 0 : 3,
+                  ),
+                  child: TextField(
+                    controller: _otpControllers[index],
+                    focusNode: _otpFocusNodes[index],
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    maxLength: 1,
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                    ),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      contentPadding: EdgeInsets.zero,
+                      filled: true,
+                      fillColor: hasError
+                          ? const Color(0xFFFEF2F2)
+                          : AppColors.surfaceLight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: hasError ? const Color(0xFFDC2626) : AppColors.borderMedium,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: hasError ? const Color(0xFFDC2626) : AppColors.borderMedium,
+                          width: hasError ? 1.5 : 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: hasError ? const Color(0xFFDC2626) : AppColors.primaryTeal,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      if (hasError) {
+                        auth.clearErrorState();
+                      }
+                      if (value.isNotEmpty) {
+                        if (index < 5) {
+                          _otpFocusNodes[index + 1].requestFocus();
+                        } else {
+                          _otpFocusNodes[index].unfocus();
+                          _handleVerifyOtp();
+                        }
+                      } else if (value.isEmpty && index > 0) {
+                        _otpFocusNodes[index - 1].requestFocus();
+                      }
+                    },
+                  ),
+                ),
+              );
+            }),
           ),
           const SizedBox(height: 14),
 
-          // Field 2: Password
-          const Text(
-            'Password Akun',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: !_isPasswordVisible,
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-            decoration: InputDecoration(
-              hintText: 'Masukkan password Anda',
-              hintStyle: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12.5,
-                fontFamily: 'Inter',
-              ),
-              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.primaryTeal, size: 20),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: AppColors.textSecondary,
-                  size: 20,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _isPasswordVisible = !_isPasswordVisible;
-                  });
-                },
-                tooltip: _isPasswordVisible ? 'Sembunyikan password' : 'Lihat password',
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-              ),
-            ),
-            validator: (val) {
-              if (val == null || val.isEmpty) {
-                return 'Password tidak boleh kosong.';
-              }
-              return null;
-            },
+          // Timer Hitung Mundur 01:45
+          Center(
+            child: _resendSeconds > 0
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: AppColors.primaryTeal,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Kirim ulang kode dalam $_formattedTimer',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryTeal,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  )
+                : TextButton.icon(
+                    onPressed: _handleResendOtp,
+                    icon: const Icon(Icons.refresh_rounded, size: 14, color: AppColors.primaryTeal),
+                    label: const Text(
+                      'Kirim Ulang Kode OTP Sekarang',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryTeal,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(height: 10),
 
-          // Baris Ingat Saya & Lupa Password
+          // Checkbox Persetujuan Syarat
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      onChanged: (val) => setState(() => _rememberMe = val ?? true),
-                      activeColor: AppColors.primaryTeal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Ingat Saya',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: _agreeTerms,
+                  onChanged: (val) {
+                    setState(() {
+                      _agreeTerms = val ?? true;
+                    });
+                  },
+                  activeColor: AppColors.primaryTeal,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ForgotPasswordScreen(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Lupa Password?',
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Saya menyetujui Ketentuan Layanan dan Kebijakan Privasi MobilJuragan.',
                   style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryTeal,
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    height: 1.35,
                     fontFamily: 'Inter',
                   ),
                 ),
@@ -577,7 +716,9 @@ class _LoginScreenState extends State<LoginScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
+        onPressed: _isLoading
+            ? null
+            : (hasError ? _resetOtpForm : _handleVerifyOtp),
         style: ElevatedButton.styleFrom(
           backgroundColor: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
           foregroundColor: AppColors.textWhite,
@@ -594,7 +735,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               )
             : Text(
-                hasError ? 'Coba Lagi' : 'Masuk Sekarang',
+                hasError ? 'Coba Lagi' : 'Verifikasi & Selesaikan Pendaftaran',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -638,7 +779,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Butuh Bantuan Masuk?',
+                    'Butuh Bantuan Aktivasi?',
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
@@ -701,7 +842,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _fillDemoAccount(true),
+                  onPressed: () => _fillDemoOtp('123456'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     side: const BorderSide(color: Color(0xFF16A34A)),
@@ -710,7 +851,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   child: const Text(
-                    'Akun Demo (Harun)',
+                    'Uji Sukses (123456)',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -723,7 +864,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _fillDemoAccount(false),
+                  onPressed: () => _fillDemoOtp('999999'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     side: const BorderSide(color: Color(0xFFDC2626)),
@@ -732,7 +873,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   child: const Text(
-                    'Uji Password Salah',
+                    'Uji Error (999999)',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -746,57 +887,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Column(
-      children: [
-        Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Belum memiliki akun rental?',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RegisterScreen(onSuccess: widget.onSuccess),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Daftar Sekarang',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryTeal,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Center(
-          child: Text(
-            'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              fontFamily: 'Inter',
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

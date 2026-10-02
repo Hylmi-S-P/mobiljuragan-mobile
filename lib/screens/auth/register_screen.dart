@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import 'otp_verification_screen.dart';
 
-/// Layar Registrasi Akun Pengguna Baru (Frame 12c)
-/// Mengumpulkan data identitas resmi penyewa untuk verifikasi rental di Merauke
+/// Layar Registrasi Akun Pengguna Baru
+/// Mengumpulkan data diri lengkap beserta kata sandi yang memenuhi kriteria keamanan
+/// Selanjutnya mengarahkan pengguna ke tahap Verifikasi OTP untuk aktivasi akun
 class RegisterScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
 
@@ -25,7 +27,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController(text: 'harun.merauke@gmail.com');
   final _nikController = TextEditingController(text: '9101012304980002');
   final _cityController = TextEditingController(text: 'Merauke, Papua Selatan');
+  final _passwordController = TextEditingController(text: 'Merauke#2026');
+  final _confirmPasswordController = TextEditingController(text: 'Merauke#2026');
 
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _agreementChecked = true;
   bool _isLoading = false;
 
@@ -36,18 +42,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _nikController.dispose();
     _cityController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleRegister() {
+  void _handleContinueToOtp() {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final password = _passwordController.text;
+    if (!PasswordRules.isValid(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password belum memenuhi seluruh kriteria keamanan yang dipersyaratkan.'),
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
       return;
     }
 
     if (!_agreementChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Harap setujui pernyataan keabsahan data sebelum mendaftar.'),
+          content: Text('Harap setujui pernyataan keabsahan data sebelum melanjutkan.'),
           backgroundColor: Color(0xFFDC2626),
         ),
       );
@@ -58,36 +77,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
     });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      final fullPhone = _phoneController.text.trim().startsWith('+62')
-          ? _phoneController.text.trim()
-          : '+62 ${_phoneController.text.trim()}';
+      final rawPhone = _phoneController.text.trim();
+      final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
+      final email = _emailController.text.trim();
 
-      auth.register(
+      // Simpan data pendaftaran ke controller untuk verifikasi OTP berikutnya
+      auth.setPendingRegistration(
         name: _nameController.text.trim(),
         phone: fullPhone,
-        email: _emailController.text.trim(),
+        email: email,
         idCard: _nikController.text.trim(),
+        city: _cityController.text.trim(),
+        password: password,
       );
+
+      auth.sendOtp(fullPhone);
 
       setState(() {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pendaftaran berhasil! Akun Anda telah aktif dan terverifikasi.'),
-          backgroundColor: Color(0xFF16A34A),
+      // Buka Layar Verifikasi OTP Pendaftaran (Frame 12/12b style)
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            phoneNumber: fullPhone,
+            email: email,
+            onSuccess: widget.onSuccess,
+          ),
         ),
       );
-
-      if (widget.onSuccess != null) {
-        widget.onSuccess!();
-      } else {
-        Navigator.of(context).pop(true);
-      }
     });
   }
 
@@ -97,6 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Pendaftaran Akun',
+        stepSubtitle: 'Langkah 1 dari 2 • Data Diri & Keamanan',
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -107,13 +130,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeaderNotice(),
-              const SizedBox(height: 20),
-              _buildFormFields(),
+              const SizedBox(height: 18),
+              _buildPersonalDataSection(),
+              const SizedBox(height: 18),
+              _buildSecuritySection(),
               const SizedBox(height: 16),
               _buildAgreementCheckbox(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
               _buildSubmitButton(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               _buildLoginFooter(),
               const SizedBox(height: 20),
             ],
@@ -125,11 +150,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildHeaderNotice() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Sesuai ketentuan rental di Merauke, data identitas digunakan untuk perjanjian sewa sah dan verifikasi penjemputan unit.',
+                  'Lengkapi data resmi untuk reservasi unit rental di Merauke. Kode OTP 6 digit akan dikirimkan pada tahap berikutnya.',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -178,17 +203,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildFormFields() {
+  Widget _buildPersonalDataSection() {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'Informasi Identitas Diri',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryNavy,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 14),
+
           _buildInputLabel('Nama Lengkap (Sesuai KTP)', isRequired: true),
           const SizedBox(height: 6),
           TextFormField(
@@ -211,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           _buildInputLabel('Nomor WhatsApp', isRequired: true),
           const SizedBox(height: 6),
@@ -236,7 +272,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           _buildInputLabel('Alamat Email Aktif', isRequired: true),
           const SizedBox(height: 6),
@@ -260,7 +296,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           _buildInputLabel('Nomor Induk Kependudukan (NIK KTP)', isRequired: true),
           const SizedBox(height: 6),
@@ -285,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           _buildInputLabel('Domisili / Kota Asal', isRequired: false),
           const SizedBox(height: 6),
@@ -304,6 +340,211 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSecuritySection() {
+    final passwordText = _passwordController.text;
+    final hasMinLength = PasswordRules.hasMinLength(passwordText);
+    final hasUppercase = PasswordRules.hasUppercase(passwordText);
+    final hasNumber = PasswordRules.hasNumber(passwordText);
+    final hasSymbol = PasswordRules.hasSymbol(passwordText);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Keamanan & Password Akun',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryNavy,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          _buildInputLabel('Password Akun', isRequired: true),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: !_isPasswordVisible,
+            onChanged: (_) => setState(() {}),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+            decoration: InputDecoration(
+              hintText: 'Masukkan password Anda',
+              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.primaryTeal, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+                tooltip: _isPasswordVisible ? 'Sembunyikan password' : 'Lihat password',
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              filled: true,
+              fillColor: AppColors.surfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderMedium),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderMedium),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
+              ),
+            ),
+            validator: (val) {
+              if (val == null || !PasswordRules.isValid(val)) {
+                return 'Password belum memenuhi seluruh kriteria di bawah.';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Checklist Syarat Keamanan Password (Dapat Terlihat)
+          _buildPasswordCriteriaBox(
+            hasMinLength: hasMinLength,
+            hasUppercase: hasUppercase,
+            hasNumber: hasNumber,
+            hasSymbol: hasSymbol,
+          ),
+          const SizedBox(height: 14),
+
+          _buildInputLabel('Konfirmasi Password', isRequired: true),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _confirmPasswordController,
+            obscureText: !_isConfirmPasswordVisible,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+            decoration: InputDecoration(
+              hintText: 'Ulangi password di atas',
+              prefixIcon: const Icon(Icons.lock_reset_rounded, color: AppColors.primaryTeal, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isConfirmPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                  });
+                },
+                tooltip: _isConfirmPasswordVisible ? 'Sembunyikan password' : 'Lihat password',
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              filled: true,
+              fillColor: AppColors.surfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderMedium),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderMedium),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
+              ),
+            ),
+            validator: (val) {
+              if (val != _passwordController.text) {
+                return 'Konfirmasi password tidak cocok dengan password di atas.';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasswordCriteriaBox({
+    required bool hasMinLength,
+    required bool hasUppercase,
+    required bool hasNumber,
+    required bool hasSymbol,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Syarat Keamanan Password:',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildCriteriaRow('Minimal 8 karakter panjangnya', hasMinLength),
+          const SizedBox(height: 4),
+          _buildCriteriaRow('Minimal 1 huruf kapital (A-Z)', hasUppercase),
+          const SizedBox(height: 4),
+          _buildCriteriaRow('Minimal 1 angka (0-9)', hasNumber),
+          const SizedBox(height: 4),
+          _buildCriteriaRow('Minimal 1 karakter simbol (@, #, \$, dll.)', hasSymbol),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCriteriaRow(String text, bool isMet) {
+    return Row(
+      children: [
+        Icon(
+          isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          size: 14,
+          color: isMet ? const Color(0xFF16A34A) : AppColors.textMuted,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isMet ? FontWeight.w600 : FontWeight.w400,
+            color: isMet ? const Color(0xFF166534) : AppColors.textSecondary,
+            fontFamily: 'Inter',
+          ),
+        ),
+      ],
     );
   }
 
@@ -431,7 +672,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       width: double.infinity,
       height: 48,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleRegister,
+        onPressed: _isLoading ? null : _handleContinueToOtp,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryNavy,
           foregroundColor: AppColors.textWhite,
@@ -447,13 +688,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
-                'Daftar & Masuk ke Akun',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Lanjut ke Verifikasi OTP',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 16),
+                ],
               ),
       ),
     );
