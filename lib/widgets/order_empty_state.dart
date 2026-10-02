@@ -103,17 +103,8 @@ class OrderEmptyState extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: 48,
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: onCtaPressed,
-              icon: const Icon(Icons.directions_car, size: 18),
-              label: Text(
-                ctaText,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
-              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryNavy,
                 foregroundColor: Colors.white,
@@ -121,6 +112,14 @@ class OrderEmptyState extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
+              ),
+              child: Text(
+                ctaText,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
           ),
