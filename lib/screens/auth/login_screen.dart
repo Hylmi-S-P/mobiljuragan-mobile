@@ -80,21 +80,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _fillDemoAccount(bool isCorrect) {
-    final auth = context.read<AuthController>();
-    auth.clearErrorState();
-
-    if (isCorrect) {
-      _identifierController.text = 'harun.merauke@gmail.com';
-      _passwordController.text = auth.currentPassword;
-      _handleLogin();
-    } else {
-      _identifierController.text = 'harun.merauke@gmail.com';
-      _passwordController.text = 'SalahPassword123!';
-      _handleLogin();
-    }
-  }
-
   void _showSupportDialog() {
     showModalBottomSheet(
       context: context,
@@ -277,15 +262,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // 4. Support Box CS Merauke
               _buildSupportBox(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // 5. Helper Pengujian Demo UAS
-              _buildDemoHelper(auth),
-              const SizedBox(height: 20),
-
-              // 6. Footer Registrasi & Grounding Identitas
+              // 5. Footer Registrasi & Grounding Identitas
               _buildFooter(),
             ],
+
           ),
         ),
       ),
@@ -666,85 +648,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDemoHelper(AuthController auth) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.touch_app_outlined, size: 14, color: AppColors.primaryTeal),
-              SizedBox(width: 6),
-              Text(
-                'Pintasan Pengujian Demo UAS:',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _fillDemoAccount(true),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: const BorderSide(color: Color(0xFF16A34A)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Akun Demo (Harun)',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF16A34A),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _fillDemoAccount(false),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: const BorderSide(color: Color(0xFFDC2626)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Uji Password Salah',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFDC2626),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

@@ -35,7 +35,15 @@ class AuthController extends ChangeNotifier {
     '081248002910': 'Merauke#2026',
   };
 
+  // Database pengguna dalam memori untuk prototyping
+  final Map<String, UserModel> _usersDb = {
+    'harun.merauke@gmail.com': UserModel.defaultUser,
+    '81248002910': UserModel.defaultUser,
+    '+6281248002910': UserModel.defaultUser,
+  };
+
   // Data sementara saat pendaftaran sebelum verifikasi OTP
+
   Map<String, String>? _pendingRegistration;
 
   UserModel? get currentUser => _currentUser;
@@ -89,7 +97,7 @@ class AuthController extends ChangeNotifier {
       _isLoggedIn = true;
       _hasLoginError = false;
       _errorMessage = null;
-      _currentUser ??= UserModel.defaultUser;
+      _currentUser = _usersDb[cleanId] ?? _usersDb[cleanPhone] ?? UserModel.defaultUser;
       notifyListeners();
       return true;
     } else {
@@ -134,7 +142,7 @@ class AuthController extends ChangeNotifier {
         final city = _pendingRegistration!['city']!;
         final password = _pendingRegistration!['password']!;
 
-        _currentUser = UserModel(
+        final newUser = UserModel(
           id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
           name: name,
           phoneNumber: phone,
@@ -149,10 +157,18 @@ class AuthController extends ChangeNotifier {
           isVerified: true,
         );
 
-        // Daftarkan password baru ke kredensial
+        _currentUser = newUser;
+
+        // Daftarkan ke database memori
         _currentPassword = password;
-        _userPasswords[email.toLowerCase()] = password;
-        _userPasswords[phone.replaceAll(RegExp(r'[\s\-]'), '')] = password;
+        final cleanEmail = email.toLowerCase();
+        final cleanPhone = phone.replaceAll(RegExp(r'[\s\-]'), '');
+
+        _userPasswords[cleanEmail] = password;
+        _userPasswords[cleanPhone] = password;
+        _usersDb[cleanEmail] = newUser;
+        _usersDb[cleanPhone] = newUser;
+
         _pendingRegistration = null;
       } else {
         _currentUser = UserModel.defaultUser;

@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
+import '../../services/notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 
 /// Layar Verifikasi OTP untuk Pendaftaran Akun Baru (Frame 12 & 12b style)
-/// Muncul setelah pengguna mengisi formulir pendaftaran akun baru
+/// Menggunakan simulasi notifikasi WhatsApp alami dan saran autofill tanpa tombol pintasan demo
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String email;
@@ -32,18 +33,22 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   bool _isLoading = false;
   bool _agreeTerms = true;
+  bool _showWhatsAppBanner = false;
   int _resendSeconds = 105; // 01:45 hitung mundur
   Timer? _resendTimer;
+  Timer? _bannerDismissTimer;
 
   @override
   void initState() {
     super.initState();
     _startCountdownTimer();
+    _triggerSimulatedOtpDelivery();
   }
 
   @override
   void dispose() {
     _resendTimer?.cancel();
+    _bannerDismissTimer?.cancel();
     for (final c in _otpControllers) {
       c.dispose();
     }
@@ -51,6 +56,28 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       f.dispose();
     }
     super.dispose();
+  }
+
+  void _triggerSimulatedOtpDelivery() {
+    // 1. Kirim notifikasi sistem native (muncul di status bar Android/iOS jika diizinkan)
+    NotificationService().showOtpNotification(otp: '123456');
+
+    // 2. Munculkan banner notifikasi WhatsApp mengambang di dalam aplikasi
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() {
+        _showWhatsAppBanner = true;
+      });
+
+      // Hilangkan otomatis setelah 6 detik
+      _bannerDismissTimer?.cancel();
+      _bannerDismissTimer = Timer(const Duration(seconds: 6), () {
+        if (!mounted) return;
+        setState(() {
+          _showWhatsAppBanner = false;
+        });
+      });
+    });
   }
 
   void _startCountdownTimer() {
@@ -83,10 +110,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (_resendSeconds > 0) return;
     _startCountdownTimer();
     context.read<AuthController>().sendOtp(widget.phoneNumber);
+    _triggerSimulatedOtpDelivery();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Kode OTP 6 digit baru telah dikirimkan ke ${widget.phoneNumber} via WhatsApp/SMS.'),
+        content: Text('Kode OTP baru telah dikirimkan ke ${widget.phoneNumber} via WhatsApp.'),
         backgroundColor: AppColors.primaryTeal,
       ),
     );
@@ -130,7 +158,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (isSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Verifikasi nomor berhasil! Akun Anda aktif dan siap digunakan.'),
+            content: Text('Verifikasi berhasil! Selamat datang di MobilJuragan Merauke.'),
             backgroundColor: Color(0xFF16A34A),
           ),
         );
@@ -138,7 +166,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         if (widget.onSuccess != null) {
           widget.onSuccess!();
         } else {
-          // Tutup layar register dan otp hingga kembali ke halaman utama / beranda
+          // Tutup layar auth dan kembali ke halaman utama aplikasi
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       } else {
@@ -147,7 +175,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     });
   }
 
-  void _fillDemoOtp(String code) {
+  void _fillAutofillOtp(String code) {
     final auth = context.read<AuthController>();
     auth.clearErrorState();
 
@@ -159,12 +187,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       }
     }
 
-    if (code.length >= 6) {
-      _otpFocusNodes[5].requestFocus();
-      _handleVerifyOtp();
-    } else {
-      _otpFocusNodes[code.length].requestFocus();
-    }
+    _otpFocusNodes[5].requestFocus();
+    _handleVerifyOtp();
   }
 
   void _resetOtpForm() {
@@ -340,40 +364,122 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Hero Card
+                _buildHeroCard(),
+                const SizedBox(height: 16),
+
+                // 2. Form Card 6 Kotak OTP
+                _buildFormCard(auth, hasError),
+                const SizedBox(height: 16),
+
+                // 3. Tombol Aksi Utama
+                _buildSubmitButton(auth, hasError),
+                const SizedBox(height: 14),
+
+                // 4. Support Box CS Merauke
+                _buildSupportBox(),
+                const SizedBox(height: 24),
+
+                // 5. Grounding Footer Institusional
+                const Center(
+                  child: Text(
+                    'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+
+          // Simulasi Notifikasi WhatsApp Mengambang (Heads-up Notification Banner)
+          if (_showWhatsAppBanner)
+            Positioned(
+              top: 12,
+              left: 16,
+              right: 16,
+              child: _buildWhatsAppBanner(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Banner Notifikasi Push WhatsApp yang realistis
+  Widget _buildWhatsAppBanner() {
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(14),
+      shadowColor: Colors.black26,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF334155)),
+        ),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Hero Card
-            _buildHeroCard(),
-            const SizedBox(height: 16),
-
-            // 2. Form Card 6 Kotak OTP
-            _buildFormCard(auth, hasError),
-            const SizedBox(height: 16),
-
-            // 3. Tombol Aksi Utama
-            _buildSubmitButton(auth, hasError),
-            const SizedBox(height: 14),
-
-            // 4. Support Box CS Merauke
-            _buildSupportBox(),
-            const SizedBox(height: 16),
-
-            // 5. Helper Pintasan Demo UAS
-            _buildDemoHelper(auth),
-            const SizedBox(height: 20),
-
-            // 6. Grounding Footer
-            const Center(
-              child: Text(
-                'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted,
-                  fontFamily: 'Inter',
-                ),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: Color(0xFF25D366),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'WhatsApp • MobilJuragan Merauke',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showWhatsAppBanner = false;
+                          });
+                        },
+                        child: const Icon(Icons.close_rounded, color: Colors.white54, size: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Kode OTP pendaftaran akun Anda adalah 123456. Jangan berikan kode ini kepada siapa pun.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: Color(0xFFCBD5E1),
+                      height: 1.35,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -632,7 +738,40 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               );
             }),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
+
+          // Saran Autofill Native dari Pesan (Fitur Realistis Ponsel)
+          Center(
+            child: InkWell(
+              onTap: () => _fillAutofillOtp('123456'),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.tealLight,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.sms_outlined, size: 14, color: AppColors.primaryTeal),
+                    SizedBox(width: 6),
+                    Text(
+                      'Dari WhatsApp: 123456 (Sentuh untuk isi)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryTeal,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Timer Hitung Mundur 01:45
           Center(
@@ -807,85 +946,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDemoHelper(AuthController auth) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.touch_app_outlined, size: 14, color: AppColors.primaryTeal),
-              SizedBox(width: 6),
-              Text(
-                'Pintasan Pengujian Demo UAS:',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _fillDemoOtp('123456'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: const BorderSide(color: Color(0xFF16A34A)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Uji Sukses (123456)',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF16A34A),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _fillDemoOtp('999999'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: const BorderSide(color: Color(0xFFDC2626)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Uji Error (999999)',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFDC2626),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
