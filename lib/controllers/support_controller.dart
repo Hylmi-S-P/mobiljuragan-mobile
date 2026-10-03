@@ -156,8 +156,12 @@ class SupportController extends ChangeNotifier {
       'answer': 'Mobil diserahterimakan dengan indikator BBM tertentu (umumnya terisi minimal setengah bar). Penyewa diharapkan mengembalikan unit dengan posisi BBM setara saat serah terima awal.',
     },
     {
-      'question': 'Apakah tersedia layanan bantuan darurat di jalan?',
-      'answer': 'Ya, MobilJuragan menyediakan layanan darurat 24 jam untuk wilayah Merauke Kota, Kurik, Tanah Miring, hingga Semangga. Hubungi nomor darurat operasional kami melalui tombol WhatsApp.',
+      'question': 'Metode pembayaran apa saja yang berlaku?',
+      'answer': 'Pembayaran dapat diselesaikan langsung di aplikasi menggunakan QRIS Dinamis, Virtual Account / Transfer Bank (BRI / Mandiri), atau Tunai di Tempat (COD) saat serah terima unit di Merauke. Layanan bantuan via Chat CS juga siap mendampingi konfirmasi pembayaran Anda.',
+    },
+    {
+      'question': 'Apakah tersedia bantuan jika terjadi kendala armada di jalan?',
+      'answer': 'MobilJuragan siap membantu penanganan kendala armada selama jam operasional (06.00 - 22.00 WIT) untuk wilayah Merauke Kota, Kurik, Tanah Miring, hingga Semangga. Hubungi nomor operasional kami melalui tombol WhatsApp.',
     },
   ];
 

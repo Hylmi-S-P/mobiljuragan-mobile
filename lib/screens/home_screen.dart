@@ -86,27 +86,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            InkWell(
-              onTap: () {},
-              borderRadius: BorderRadius.circular(4),
-              child: const Row(
-                children: [
-                  Text(
-                    'Merauke, Papua Selatan',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_drop_down,
-                    color: AppColors.textPrimary,
-                    size: 20,
-                  ),
-                ],
+            const Text(
+              'Merauke, Papua Selatan',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                fontFamily: 'Inter',
               ),
             ),
           ],
@@ -202,9 +188,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Toyota New Avanza 1.3 G',
-              style: TextStyle(
+            Text(
+              vehicle.name,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -212,9 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 2),
-            const Text(
-              'MPV 7 Kursi • Manual • AC Double Dingin',
-              style: TextStyle(
+            Text(
+              '${vehicle.bodyType} • ${vehicle.seatCapacity} • ${vehicle.transmission}',
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textSecondary,
@@ -267,7 +253,11 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _selectedOptionIndex = index;
           });
-          context.read<BookingController>().toggleDriver(index == 1);
+          final booking = context.read<BookingController>();
+          booking.toggleDriver(index == 1);
+          if (index == 2) {
+            booking.setPickupLocation('Bandara Mopah Merauke', -8.5202, 140.4180);
+          }
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(
@@ -474,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case BookingStatus.menungguTarifFinal:
         return 'Admin sedang menghitung rincian tarif final';
       case BookingStatus.menungguPembayaran:
-        return 'Rincian tarif terbit, silakan bayar via Chat CS';
+        return 'Rincian tarif terbit, silakan selesaikan pembayaran di aplikasi';
       case BookingStatus.pembayaranSelesai:
         return 'Pembayaran terkonfirmasi, armada disiapkan';
       case BookingStatus.mobilSiapDigunakan:

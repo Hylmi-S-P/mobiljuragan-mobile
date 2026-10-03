@@ -52,7 +52,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Pilih Kendaraan',
-        stepSubtitle: 'Langkah 1 dari 5',
+        stepSubtitle: 'Langkah 1 dari 4',
       ),
       body: Column(
         children: [

@@ -312,6 +312,9 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
               options: MapOptions(
                 initialCenter: _currentCenter,
                 initialZoom: 14.0,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.none,
+                ),
                 onTap: (tapPosition, point) async {
                   if (widget.isWithDriver && widget.onCustomCoordinateSelected != null) {
                     setState(() {

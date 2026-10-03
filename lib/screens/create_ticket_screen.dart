@@ -120,7 +120,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Buat Ticket Bantuan',
+              'Buat Tiket Bantuan',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -187,9 +187,9 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Divider(color: AppColors.borderSubtle, height: 1),
                       const SizedBox(height: 16),
 
-                      // Input 1: Judul Ticket
+                      // Input 1: Judul Tiket
                       const Text(
-                        'Judul Ticket',
+                        'Judul Tiket',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -213,11 +213,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle),
+                            borderSide: const BorderSide(color: AppColors.borderMedium),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle),
+                            borderSide: const BorderSide(color: AppColors.borderMedium),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -307,11 +307,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle),
+                            borderSide: const BorderSide(color: AppColors.borderMedium),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle),
+                            borderSide: const BorderSide(color: AppColors.borderMedium),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -348,11 +348,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                           contentPadding: const EdgeInsets.all(14),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle),
+                            borderSide: const BorderSide(color: AppColors.borderMedium),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderSubtle),
+                            borderSide: const BorderSide(color: AppColors.borderMedium),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -499,7 +499,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Kirim Ticket & Buka Chat',
+                                'Kirim Tiket & Buka Chat',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

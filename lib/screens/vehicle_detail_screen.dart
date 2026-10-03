@@ -24,7 +24,7 @@ class VehicleDetailScreen extends StatelessWidget {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Detail Kendaraan',
-        stepSubtitle: 'Langkah 2 dari 5',
+        stepSubtitle: 'Langkah 1 dari 4',
       ),
       body: Column(
         children: [

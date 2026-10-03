@@ -16,10 +16,12 @@ import 'main_navigation_screen.dart';
 /// Menjalankan verifikasi tarif final admin 10 detik di latar belakang dan memicu notifikasi native sistem
 class OrderStatusScreen extends StatefulWidget {
   final BookingModel? booking;
+  final bool fromOrderSubmission;
 
   const OrderStatusScreen({
     super.key,
     this.booking,
+    this.fromOrderSubmission = false,
   });
 
   @override
@@ -190,11 +192,20 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         title: 'Status Pesanan',
         showBackButton: true,
         onBackPressed: () {
-          if (Navigator.canPop(context)) {
+          if (widget.fromOrderSubmission) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainNavigationScreen(initialTabIndex: 0),
+              ),
+              (route) => false,
+            );
+          } else if (Navigator.canPop(context)) {
             Navigator.pop(context);
           } else {
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+              MaterialPageRoute(
+                builder: (_) => const MainNavigationScreen(initialTabIndex: 0),
+              ),
               (route) => false,
             );
           }

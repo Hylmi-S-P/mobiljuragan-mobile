@@ -42,7 +42,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Tinjau Pesanan',
-        stepSubtitle: 'Langkah 4 dari 5',
+        stepSubtitle: 'Langkah 4 dari 4',
       ),
       body: Column(
         children: [
@@ -110,7 +110,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderMedium, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +201,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${vehicle.transmission} • ${vehicle.seatCapacity} Kursi • ${vehicle.bodyType}',
+                      '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.bodyType}',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -232,7 +232,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderMedium, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,7 +299,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderMedium, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +437,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderMedium, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,7 +446,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Estimasi Biaya',
+                'Rincian Biaya Sewa',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -492,7 +492,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Estimasi Biaya',
+                'Total Terhitung',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -644,7 +644,10 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     final newBooking = booking.submitBooking();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => OrderStatusScreen(booking: newBooking),
+        builder: (_) => OrderStatusScreen(
+          booking: newBooking,
+          fromOrderSubmission: true,
+        ),
       ),
       (route) => route.isFirst,
     );

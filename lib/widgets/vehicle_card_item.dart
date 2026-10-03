@@ -71,6 +71,16 @@ class VehicleCardItem extends StatelessWidget {
                           fontFamily: 'Inter',
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Rp ${_formatRupiah(vehicle.pricePerDay)} / hari',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryNavy,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -80,7 +90,7 @@ class VehicleCardItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     width: 110,
-                    height: 68,
+                    height: 76,
                     color: AppColors.surfaceLight,
                     child: Image.asset(
                       vehicle.imageUrl,
@@ -102,6 +112,13 @@ class VehicleCardItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  String _formatRupiah(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
     );
   }
 }

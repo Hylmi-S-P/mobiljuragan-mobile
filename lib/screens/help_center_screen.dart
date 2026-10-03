@@ -50,12 +50,12 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     {
       'category': 'Pembayaran',
       'question': 'Metode pembayaran apa saja yang berlaku?',
-      'answer': 'Pembayaran dilakukan melalui transfer rekening bank resmi (BRI / Mandiri) setelah admin mengonfirmasi rincian tarif final. Rincian tagihan dan konfirmasi pembayaran dikirimkan langsung melalui Chat CS.',
+      'answer': 'Pembayaran dapat diselesaikan langsung di aplikasi menggunakan QRIS Dinamis, Virtual Account / Transfer Bank (BRI / Mandiri), atau Tunai di Tempat (COD) saat serah terima unit di Merauke. Layanan konfirmasi manual melalui Chat CS juga siap membantu jika Anda memerlukan bantuan pembayaran.',
     },
     {
       'category': 'Armada',
-      'question': 'Apakah tersedia layanan darurat jika terjadi kendala armada di jalan?',
-      'answer': 'Ya, MobilJuragan menyediakan layanan darurat 24 jam untuk wilayah Merauke Kota, Kurik, Tanah Miring, hingga Semangga. Hubungi nomor darurat operasional kami jika membutuhkan penanganan mekanik.',
+      'question': 'Apakah tersedia bantuan jika terjadi kendala armada di jalan?',
+      'answer': 'MobilJuragan siap membantu penanganan kendala armada selama jam operasional (06.00 - 22.00 WIT) untuk wilayah Merauke Kota, Kurik, Tanah Miring, hingga Semangga. Hubungi nomor operasional kami jika membutuhkan bantuan darurat.',
     },
   ];
 
@@ -146,7 +146,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                   },
                   icon: const Icon(Icons.add, size: 20),
                   label: const Text(
-                    'Buat Ticket Bantuan Baru',
+                    'Buat Tiket Bantuan Baru',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -493,7 +493,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Ticket Bantuan Saya',
+              'Tiket Bantuan Saya',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

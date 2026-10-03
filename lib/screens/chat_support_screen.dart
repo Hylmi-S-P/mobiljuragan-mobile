@@ -525,7 +525,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       );
     }
 
-    final timeString = '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')} WIT';
+    final timeString = '${msg.timestamp.hour.toString().padLeft(2, '0')}.${msg.timestamp.minute.toString().padLeft(2, '0')} WIT';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

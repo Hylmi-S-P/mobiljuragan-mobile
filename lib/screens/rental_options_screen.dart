@@ -98,7 +98,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Opsi Rental',
-        stepSubtitle: 'Langkah 2 dari 5',
+        stepSubtitle: 'Langkah 2 dari 4',
       ),
       body: Column(
         children: [
@@ -331,9 +331,9 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                               color: const Color(0xFFEFF6FF),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              '+Rp 150.000 / hari',
-                              style: TextStyle(
+                            child: Text(
+                              '+Rp ${_formatRupiah(BookingController.driverCostPerDay)} / hari',
+                              style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF1D4ED8),
@@ -781,5 +781,15 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         ),
       ),
     );
+  }
+
+  String _formatRupiah(int amount) {
+    final chars = amount.toString().split('').reversed.toList();
+    final out = <String>[];
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) out.add('.');
+      out.add(chars[i]);
+    }
+    return out.reversed.join('');
   }
 }

@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Mengalami kendala saat login atau lupa data akun Anda? Layanan pelanggan CV. Mobil Juragan Merauke siap membantu 24/7.',
+                'Mengalami kendala saat login atau lupa data akun Anda? Layanan pelanggan CV. Mobil Juragan Merauke siap membantu pada jam operasional (06.00 - 22.00 WIT).',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -218,28 +218,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ? 'Login Gagal • Kredensial Tidak Sesuai'
             : 'Merauke, Papua Selatan',
         showBackButton: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 14),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: hasError ? const Color(0xFFFEE2E2) : AppColors.badgeAmberBg,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: hasError ? const Color(0xFFFCA5A5) : const Color(0xFFFDE68A),
-              ),
-            ),
-            child: Text(
-              hasError ? 'State: Error' : 'Masuk',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: hasError ? const Color(0xFFB91C1C) : AppColors.badgeAmberText,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

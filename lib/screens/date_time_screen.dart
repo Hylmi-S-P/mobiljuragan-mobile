@@ -82,7 +82,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Tanggal & Waktu',
-        stepSubtitle: 'Langkah 3 dari 5',
+        stepSubtitle: 'Langkah 3 dari 4',
       ),
       body: Column(
         children: [
@@ -462,19 +462,22 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  TimeOfDay _parseTimeOfDay(String timeStr) {
+  TimeOfDay? _parseTimeOfDay(String timeStr) {
     try {
       final clean = timeStr.replaceAll(' WIT', '').trim();
       final parts = clean.contains(':') ? clean.split(':') : clean.split('.');
+      if (parts.length != 2) return null;
       final hour = int.parse(parts[0]);
       final minute = int.parse(parts[1]);
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
       return TimeOfDay(hour: hour, minute: minute);
     } catch (_) {
-      return const TimeOfDay(hour: 9, minute: 0);
+      return null;
     }
   }
 
-  bool _isWithinOperationalHours(TimeOfDay time) {
+  bool _isWithinOperationalHours(TimeOfDay? time) {
+    if (time == null) return false;
     final totalMinutes = time.hour * 60 + time.minute;
     return totalMinutes >= 360 && totalMinutes <= 1320;
   }
@@ -493,14 +496,26 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
   void _applyTime(String timeStr, {String? desc}) {
     final parsed = _parseTimeOfDay(timeStr);
+    if (parsed == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Format jam tidak valid. Silakan pilih waktu yang tersedia.',
+          ),
+          backgroundColor: Color(0xFFDC2626),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
     if (!_isWithinOperationalHours(parsed)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Jam sewa di luar jam operasional (06.00 s.d. 22.00 WIT). Silakan pilih jam lain.',
+            'Jam sewa di luar jam operasional (06.00 s.d. 22.00 WIT). Untuk penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
           ),
           backgroundColor: Color(0xFFDC2626),
-          duration: Duration(seconds: 3),
+          duration: Duration(seconds: 4),
         ),
       );
       return;
@@ -544,9 +559,9 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       {'label': '2 Hari', 'days': 2},
       {'label': '3 Hari', 'days': 3},
       {'label': '5 Hari', 'days': 5},
-      {'label': '1 Minggu (7 Hari)', 'days': 7},
-      {'label': '2 Minggu (14 Hari)', 'days': 14},
-      {'label': '1 Bulan (30 Hari)', 'days': 30},
+      {'label': '7 Hari (1 Mgg)', 'days': 7},
+      {'label': '14 Hari (2 Mgg)', 'days': 14},
+      {'label': '30 Hari (1 Bln)', 'days': 30},
     ];
 
     final returnDate = _selectedDate.add(Duration(days: _durationDays));
@@ -721,6 +736,34 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline, size: 14, color: AppColors.primaryTeal),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Untuk kebutuhan penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -947,7 +990,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: AppColors.borderMedium),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1025,7 +1068,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT).',
+                            'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT). Hubungi Chat CS Merauke jika butuh penjemputan khusus.',
                           ),
                           backgroundColor: Color(0xFFDC2626),
                         ),
@@ -1329,12 +1372,13 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                             const SizedBox(width: 8),
                             const Expanded(
                               child: Text(
-                                'Waktu operasional tersedia pukul 06.00 s.d. 22.00 WIT.',
+                                'Waktu operasional tersedia pukul 06.00 s.d. 22.00 WIT. Untuk penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF92400E),
                                   fontFamily: 'Inter',
+                                  height: 1.3,
                                 ),
                               ),
                             ),

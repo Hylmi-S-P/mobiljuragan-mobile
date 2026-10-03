@@ -8,14 +8,25 @@ import 'vehicle_selection_screen.dart';
 
 /// Shell navigasi utama aplikasi
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  final int initialTabIndex;
+
+  const MainNavigationScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentTabIndex = 0;
+  late int _currentTabIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTabIndex = widget.initialTabIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
