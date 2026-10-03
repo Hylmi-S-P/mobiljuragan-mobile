@@ -77,38 +77,5 @@ class NotificationService {
       notificationDetails: notificationDetails,
     );
   }
-
-  /// Menampilkan notifikasi native saat kode OTP dikirimkan
-  Future<void> showOtpNotification({
-    required String otp,
-  }) async {
-    await init();
-
-    const androidDetails = AndroidNotificationDetails(
-      'mobiljuragan_otp',
-      'Verifikasi Kode OTP MobilJuragan',
-      channelDescription: 'Notifikasi kode keamanan verifikasi akun dan reset password.',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      icon: '@mipmap/ic_launcher',
-    );
-
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      ),
-    );
-
-    await _notificationsPlugin.show(
-      id: 9999,
-      title: 'WhatsApp • MobilJuragan Merauke',
-      body: 'Kode OTP verifikasi akun Anda adalah $otp. Rahasiakan kode ini dari pihak lain.',
-      notificationDetails: notificationDetails,
-    );
-  }
 }
 

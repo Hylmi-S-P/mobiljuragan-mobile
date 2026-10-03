@@ -6,7 +6,7 @@ import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
 
-/// Layanan Live Chat Bantuan Pelanggan (AI Assistant, Handoff Staf Operasional & Pembayaran)
+/// Layanan Live Chat Bantuan Pelanggan terisolasi per sesi pesanan/tiket (AI Assistant, Handoff Staf Operasional & Pembayaran)
 class ChatSupportScreen extends StatefulWidget {
   final SupportTicketModel? ticket;
   final BookingModel? booking;
@@ -26,17 +26,37 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
+  /// Menghasilkan key unik sesi percakapan agar tidak tercampur antar transaksi/tiket
+  String get conversationKey {
+    if (widget.booking != null) {
+      return SupportController.buildConversationKey(bookingId: widget.booking!.id);
+    }
+    if (widget.ticket != null) {
+      return SupportController.buildConversationKey(ticketId: widget.ticket!.id);
+    }
+    return SupportController.buildConversationKey();
+  }
+
   @override
   void initState() {
     super.initState();
-    // Jika diarahkan untuk pembayaran, kirimkan pesan tagihan resmi oleh bot secara otomatis
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final bookingCtrl = context.read<BookingController>();
-      final targetBooking = widget.booking ?? bookingCtrl.activeBooking;
-      if (targetBooking != null &&
-          targetBooking.status == BookingStatus.menungguPembayaran) {
-        context.read<SupportController>().sendPaymentInstructionMessage(targetBooking);
-        _scrollToBottom();
+      // Inisialisasi otomatis hanya jika chat dibuka dari pesanan sewa mobil spesifik
+      if (widget.booking != null) {
+        final bookingCtrl = context.read<BookingController>();
+        final targetBooking = bookingCtrl.bookingHistory.firstWhere(
+          (b) => b.id == widget.booking!.id,
+          orElse: () => widget.booking!,
+        );
+
+        if (targetBooking.status == BookingStatus.mobilSiapDigunakan ||
+            targetBooking.status == BookingStatus.pembayaranSelesai) {
+          context.read<SupportController>().sendPickupCoordinationMessage(targetBooking);
+          _scrollToBottom();
+        } else if (targetBooking.status == BookingStatus.menungguPembayaran) {
+          context.read<SupportController>().sendPaymentInstructionMessage(targetBooking);
+          _scrollToBottom();
+        }
       }
     });
   }
@@ -65,7 +85,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    controller.sendUserMessage(text);
+    controller.sendUserMessage(text: text, conversationKey: conversationKey);
     _messageController.clear();
     _scrollToBottom();
   }
@@ -89,29 +109,74 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     final support = context.watch<SupportController>();
     final bookingCtrl = context.watch<BookingController>();
 
+    // Isolasi state: currentBooking hanya ada jika layar ini memang dibuka untuk booking tertentu
     final currentBooking = widget.booking != null
         ? (bookingCtrl.bookingHistory.firstWhere(
             (b) => b.id == widget.booking!.id,
             orElse: () => widget.booking!,
           ))
-        : bookingCtrl.activeBooking;
+        : null;
 
-    final activeTicket = widget.ticket ?? (support.tickets.isNotEmpty ? support.tickets.first : null);
+    // activeTicket hanya ada jika layar ini memang dibuka untuk tiket keluhan tertentu
+    final activeTicket = widget.ticket;
 
-    final List<String> suggestions = currentBooking != null &&
-            currentBooking.status == BookingStatus.menungguPembayaran
-        ? [
-            'Konfirmasi Sudah Bayar',
-            'No. Rekening Bank BRI',
-            'Lokasi jemput Bandara Mopah',
-            'Panggil Staf Lapangan',
-          ]
-        : [
-            'Lokasi jemput Bandara Mopah',
-            'Konfirmasi armada siap',
-            'Perpanjang durasi sewa',
-            'Pertanyaan seputar BBM',
-          ];
+    // Ambil daftar pesan dan status handoff terisolasi untuk sesi saat ini
+    final messages = support.getMessages(conversationKey);
+    final isHandedOff = support.isAiHandoffToAdminFor(conversationKey);
+
+    // Rekomendasi pesan cepat sesuai konteks sesi
+    final List<String> suggestions;
+    if (currentBooking != null) {
+      if (currentBooking.status == BookingStatus.menungguPembayaran) {
+        suggestions = [
+          'Konfirmasi Sudah Bayar',
+          'No. Rekening Bank BRI',
+          'Lokasi jemput Bandara Mopah',
+          'Panggil Staf Lapangan',
+        ];
+      } else {
+        suggestions = [
+          'Lokasi jemput Bandara Mopah',
+          'Konfirmasi armada siap',
+          'Perpanjang durasi sewa',
+          'Pertanyaan seputar BBM',
+        ];
+      }
+    } else if (activeTicket != null) {
+      suggestions = [
+        'Status penanganan tiket',
+        'Hubungi staf lapangan',
+        'Estimasi tindak lanjut',
+        'Panggil Staf Admin',
+      ];
+    } else {
+      suggestions = [
+        'Lokasi jemput Bandara Mopah',
+        'Verifikasi KTP & SIM A',
+        'Tarif sewa & supir',
+        'Panggil Staf Admin',
+      ];
+    }
+
+    // Tentukan judul dan subjudul header AppBar
+    final String screenTitle;
+    final String screenSubtitle;
+    if (currentBooking != null) {
+      screenTitle = 'CS Pesanan #${currentBooking.id}';
+      screenSubtitle = isHandedOff
+          ? 'Staf Operasional Merauke (Online)'
+          : '${currentBooking.vehicle.name} (${currentBooking.vehicle.plateNumber})';
+    } else if (activeTicket != null) {
+      screenTitle = 'Tiket #${activeTicket.id}';
+      screenSubtitle = isHandedOff
+          ? 'Staf Penanganan Aktif (Online)'
+          : 'Kategori: ${activeTicket.categoryLabel}';
+    } else {
+      screenTitle = 'Chat Bantuan CS';
+      screenSubtitle = isHandedOff
+          ? 'Staf Operasional Merauke (Online)'
+          : 'Customer Service MobilJuragan';
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -126,7 +191,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              currentBooking != null ? 'CS Pesanan #${currentBooking.id}' : 'Chat Bantuan CS',
+              screenTitle,
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -146,9 +211,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  support.isAiHandoffToAdmin
-                      ? 'Staf Operasional Merauke (Online)'
-                      : 'Customer Service MobilJuragan',
+                  screenSubtitle,
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.tealLight,
@@ -160,10 +223,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           ],
         ),
         actions: [
-          if (!support.isAiHandoffToAdmin)
+          if (!isHandedOff)
             TextButton.icon(
               onPressed: () {
-                support.handoffToAdmin();
+                support.handoffToAdmin(conversationKey: conversationKey);
                 _scrollToBottom();
               },
               icon: const Icon(Icons.support_agent, color: AppColors.primaryTeal, size: 18),
@@ -205,21 +268,21 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Banner Tiket Bantuan jika ada
+            // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
             if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
 
-            // Card Aksi Pembayaran jika ada pesanan terkait
+            // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
             if (currentBooking != null)
               _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
 
-            // Daftar Pesan Chat
+            // Daftar Pesan Chat terisolasi per sesi
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: support.chatMessages.length,
+                itemCount: messages.length,
                 itemBuilder: (context, index) {
-                  final msg = support.chatMessages[index];
+                  final msg = messages[index];
                   return _buildMessageItem(msg, support);
                 },
               ),
@@ -619,8 +682,14 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     ),
                   ),
                 );
+              } else if (suggestion == 'Panggil Staf Lapangan' ||
+                  suggestion == 'Panggil Staf Admin') {
+                controller.handoffToAdmin(conversationKey: conversationKey);
               } else {
-                controller.sendUserMessage(suggestion);
+                controller.sendUserMessage(
+                  text: suggestion,
+                  conversationKey: conversationKey,
+                );
               }
               _scrollToBottom();
             },

@@ -429,6 +429,54 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           ),
           const SizedBox(height: 12),
 
+          if (booking.status == BookingStatus.dibatalkan) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.remove_circle_outline_rounded, size: 13, color: Color(0xFF64748B)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Alasan: ${booking.cancellationReason ?? "Dibatalkan oleh pelanggan"}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF475569),
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (booking.cancellationRefundAmount != null &&
+                      booking.cancellationRefundAmount! > 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pengembalian Dana: Rp ${_formatRupiah(booking.cancellationRefundAmount!)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF166534),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Tarif & Aksi
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

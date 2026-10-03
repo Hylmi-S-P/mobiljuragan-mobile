@@ -11,7 +11,7 @@ import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
-import 'rental_options_screen.dart';
+import 'order_review_screen.dart';
 
 /// Layar pemilihan jadwal tanggal dan durasi sewa
 class DateTimeScreen extends StatefulWidget {
@@ -47,7 +47,12 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     final booking = context.read<BookingController>();
     _displayedMonth = DateTime(booking.selectedDate.year, booking.selectedDate.month, 1);
     _selectedDate = booking.selectedDate;
-    _selectedTime = booking.selectedTime;
+    final initialParsed = _parseTimeOfDay(booking.selectedTime);
+    if (_isWithinOperationalHours(initialParsed)) {
+      _selectedTime = booking.selectedTime;
+    } else {
+      _selectedTime = '09.00 WIT';
+    }
     _durationDays = booking.durationDays.clamp(1, 30);
   }
 
@@ -106,48 +111,26 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 
   Widget _buildHeaderSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Tentukan Jadwal Rental',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              'Pilih tanggal mulai sewa dan durasi pemakaian.',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textSecondary,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.tealLight,
-            borderRadius: BorderRadius.circular(6),
+        Text(
+          'Tentukan Jadwal Rental',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
           ),
-          child: const Text(
-            'Jadwal Fleksibel',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryTeal,
-              fontFamily: 'Inter',
-            ),
+        ),
+        SizedBox(height: 2),
+        Text(
+          'Pilih tanggal mulai sewa dan durasi pemakaian.',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textSecondary,
+            fontFamily: 'Inter',
           ),
         ),
       ],
@@ -491,9 +474,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     }
   }
 
+  bool _isWithinOperationalHours(TimeOfDay time) {
+    final totalMinutes = time.hour * 60 + time.minute;
+    return totalMinutes >= 360 && totalMinutes <= 1320;
+  }
 
   String _getTimeDescription(int hour) {
-    if (hour >= 5 && hour < 11) {
+    if (hour >= 6 && hour < 11) {
       return 'Pagi hari';
     } else if (hour >= 11 && hour < 15) {
       return 'Siang hari';
@@ -506,6 +493,18 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
   void _applyTime(String timeStr, {String? desc}) {
     final parsed = _parseTimeOfDay(timeStr);
+    if (!_isWithinOperationalHours(parsed)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Jam sewa di luar jam operasional (06.00 s.d. 22.00 WIT). Silakan pilih jam lain.',
+          ),
+          backgroundColor: Color(0xFFDC2626),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
     final description = desc ?? _getTimeDescription(parsed.hour);
     setState(() {
       _selectedTime = timeStr;
@@ -531,12 +530,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
   Widget _buildScheduleConfigCard() {
     final quickTimes = [
+      '06.00 WIT',
       '08.00 WIT',
-      '09.00 WIT',
       '10.00 WIT',
       '13.00 WIT',
       '16.00 WIT',
       '19.00 WIT',
+      '22.00 WIT',
     ];
 
     final quickDays = [
@@ -569,21 +569,39 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.access_time_rounded,
                     size: 16,
                     color: AppColors.primaryTeal,
                   ),
-                  SizedBox(width: 6),
-                  Text(
+                  const SizedBox(width: 6),
+                  const Text(
                     'Jam Sewa',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                       fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: const Text(
+                      '06.00 - 22.00 WIT',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
                     ),
                   ),
                 ],
@@ -596,13 +614,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.alarm_rounded,
+                        Icons.tune_rounded,
                         size: 13,
                         color: AppColors.primaryTeal,
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'Jam Lain',
+                        'Pilih Jam Lain',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -626,7 +644,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 ...(() {
                   final timesToShow = List<String>.from(quickTimes);
                   if (!timesToShow.contains(_selectedTime)) {
-                    timesToShow.insert(0, _selectedTime);
+                    final parsed = _parseTimeOfDay(_selectedTime);
+                    if (_isWithinOperationalHours(parsed)) {
+                      timesToShow.insert(0, _selectedTime);
+                    }
                   }
                   return timesToShow.map((time) {
                     final isSelected = _selectedTime == time;
@@ -917,6 +938,9 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 
   Widget _buildRentalPolicyNotice() {
+    final booking = context.watch<BookingController>();
+    final isDriver = booking.withDriver;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -925,15 +949,17 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primaryTeal),
-          SizedBox(width: 8),
+          const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primaryTeal),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Hitungan sewa berlaku 24 jam sejak serah terima di Merauke. Opsi layanan supir atau lepas kunci dipilih pada langkah berikutnya.',
-              style: TextStyle(
+              isDriver
+                  ? 'Layanan supir aktif 12 jam per hari (mulai pukul $_selectedTime). Supir standby setiap hari sesuai jadwal di Merauke.'
+                  : 'Hitungan sewa berlaku 24 jam penuh per hari sejak serah terima kunci unit di Merauke.',
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textSecondary,
@@ -994,6 +1020,18 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 height: 44,
                 child: ElevatedButton(
                   onPressed: () {
+                    final parsed = _parseTimeOfDay(_selectedTime);
+                    if (!_isWithinOperationalHours(parsed)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT).',
+                          ),
+                          backgroundColor: Color(0xFFDC2626),
+                        ),
+                      );
+                      return;
+                    }
                     context.read<BookingController>().setSchedule(
                           date: _selectedDate,
                           time: _selectedTime,
@@ -1001,7 +1039,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                         );
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => RentalOptionsScreen(
+                        builder: (context) => OrderReviewScreen(
                           vehicle: widget.vehicle,
                         ),
                       ),
@@ -1017,7 +1055,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
                   child: const Text(
-                    'Lanjutkan',
+                    'Lanjut ke Tinjau Pesanan',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -1077,8 +1115,13 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
     }
   }
 
+  bool _isWithinOperationalHours(TimeOfDay time) {
+    final totalMinutes = time.hour * 60 + time.minute;
+    return totalMinutes >= 360 && totalMinutes <= 1320;
+  }
+
   String _getTimeDescription(int hour) {
-    if (hour >= 5 && hour < 11) {
+    if (hour >= 6 && hour < 11) {
       return 'Pagi hari';
     } else if (hour >= 11 && hour < 15) {
       return 'Siang hari';
@@ -1093,6 +1136,13 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
     final current = _selectedTimeNotifier.value;
     final updated = TimeOfDay(hour: current.hour, minute: targetMinute);
     _selectedTimeNotifier.value = updated;
+    setState(() {
+      _pickerKey++;
+    });
+  }
+
+  void _setTime(int hour, int minute) {
+    _selectedTimeNotifier.value = TimeOfDay(hour: hour, minute: minute);
     setState(() {
       _pickerKey++;
     });
@@ -1130,48 +1180,53 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
 
             // Header Judul & Tombol Tutup
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(7),
-                      decoration: BoxDecoration(
-                        color: AppColors.tealLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.alarm_rounded,
-                        size: 18,
-                        color: AppColors.primaryTeal,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Atur Jam Sewa',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
-                          ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppColors.tealLight,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Geser jam dan menit (Format 24 Jam WIT)',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
-                          ),
+                        child: const Icon(
+                          Icons.alarm_rounded,
+                          size: 18,
+                          color: AppColors.primaryTeal,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Atur Jam Sewa',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Geser jam dan menit (Format 24 Jam WIT)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
@@ -1188,65 +1243,132 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
             ValueListenableBuilder<TimeOfDay>(
               valueListenable: _selectedTimeNotifier,
               builder: (context, time, _) {
+                final isValid = _isWithinOperationalHours(time);
                 final hourStr = time.hour.toString().padLeft(2, '0');
                 final minuteStr = time.minute.toString().padLeft(2, '0');
                 final sessionDesc = _getTimeDescription(time.hour);
 
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.borderSubtle, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$hourStr : $minuteStr',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primaryNavy,
-                          letterSpacing: 2,
-                          fontFamily: 'Inter',
+                return Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isValid ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                          width: 1,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryNavy,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'WIT',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 3),
                           Text(
-                            'Sesi $sessionDesc',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryTeal,
+                            '$hourStr : $minuteStr',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: isValid ? AppColors.primaryNavy : const Color(0xFF64748B),
+                              letterSpacing: 2,
                               fontFamily: 'Inter',
                             ),
                           ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isValid ? AppColors.primaryNavy : const Color(0xFFE2E8F0),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  isValid ? 'WIT' : 'TUTUP',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: isValid ? Colors.white : const Color(0xFF475569),
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                isValid ? 'Sesi $sessionDesc' : 'Di luar jam operasional',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isValid ? AppColors.primaryTeal : const Color(0xFF64748B),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
+                    ),
+                    if (!isValid) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 16,
+                              color: Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Waktu operasional tersedia pukul 06.00 s.d. 22.00 WIT.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF92400E),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                if (time.hour < 6) {
+                                  _setTime(6, 0);
+                                } else {
+                                  _setTime(22, 0);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD97706),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  time.hour < 6 ? 'Atur 06.00' : 'Atur 22.00',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 );
               },
             ),
@@ -1295,6 +1417,59 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
               ),
             ),
             const SizedBox(height: 12),
+
+            // Tombol Pintas Jam Operasional Cepat
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  const Text(
+                    'Jam Populer: ',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  ...[
+                    {'label': '06.00', 'h': 6, 'm': 0},
+                    {'label': '09.00', 'h': 9, 'm': 0},
+                    {'label': '13.00', 'h': 13, 'm': 0},
+                    {'label': '17.00', 'h': 17, 'm': 0},
+                    {'label': '22.00', 'h': 22, 'm': 0},
+                  ].map((preset) {
+                    final h = preset['h'] as int;
+                    final m = preset['m'] as int;
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: InkWell(
+                        onTap: () => _setTime(h, m),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.borderSubtle),
+                          ),
+                          child: Text(
+                            preset['label'] as String,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryNavy,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
 
             // Tombol Pintas Menit (:00, :15, :30, :45)
             ValueListenableBuilder<TimeOfDay>(
@@ -1348,66 +1523,88 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
             const SizedBox(height: 18),
 
             // Tombol Aksi
-            Row(
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: SizedBox(
-                    height: 46,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.borderSubtle),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Batal',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: SizedBox(
-                    height: 46,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final current = _selectedTimeNotifier.value;
-                        final formattedTime =
-                            '${current.hour.toString().padLeft(2, '0')}.${current.minute.toString().padLeft(2, '0')} WIT';
-                        final sessionDesc = _getTimeDescription(current.hour);
-                        widget.onTimeSelected(formattedTime, sessionDesc);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryNavy,
-                        foregroundColor: AppColors.textWhite,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Terapkan Jam Sewa',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Inter',
+            ValueListenableBuilder<TimeOfDay>(
+              valueListenable: _selectedTimeNotifier,
+              builder: (context, time, _) {
+                final isValid = _isWithinOperationalHours(time);
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 46,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.borderSubtle),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: isValid
+                              ? () {
+                                  final current = _selectedTimeNotifier.value;
+                                  final formattedTime =
+                                      '${current.hour.toString().padLeft(2, '0')}.${current.minute.toString().padLeft(2, '0')} WIT';
+                                  final sessionDesc = _getTimeDescription(current.hour);
+                                  widget.onTimeSelected(formattedTime, sessionDesc);
+                                  Navigator.pop(context);
+                                }
+                              : () {
+                                  if (time.hour < 6) {
+                                    _setTime(6, 0);
+                                  } else {
+                                    _setTime(22, 0);
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isValid ? AppColors.primaryNavy : const Color(0xFFF1F5F9),
+                            foregroundColor: isValid ? AppColors.textWhite : AppColors.primaryNavy,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(
+                                color: isValid ? Colors.transparent : AppColors.borderSubtle,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            isValid
+                                ? 'Terapkan Jam Sewa'
+                                : (time.hour < 6
+                                    ? 'Atur ke Jam Buka (06.00)'
+                                    : 'Atur ke Jam Tutup (22.00)'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isValid ? Colors.white : AppColors.primaryNavy,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

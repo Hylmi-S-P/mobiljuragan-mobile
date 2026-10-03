@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/merauke_location_map_picker.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
+import 'rental_options_screen.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
 /// Menampilkan 3 kartu ringkasan pesanan dengan tombol Ubah dan rincian tarif resmi
@@ -39,7 +42,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Tinjau Pesanan',
-        stepSubtitle: 'Langkah 5 dari 5',
+        stepSubtitle: 'Langkah 4 dari 5',
       ),
       body: Column(
         children: [
@@ -57,7 +60,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   const SizedBox(height: 14),
                   _buildRentalOptionsSummaryCard(context, booking),
                   const SizedBox(height: 16),
-                  _buildPhysicalVerificationNotice(),
+                  _buildPhysicalVerificationNotice(booking),
                   const SizedBox(height: 16),
                   _buildCostBreakdownCard(booking),
                   const SizedBox(height: 16),
@@ -254,8 +257,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               ),
               InkWell(
                 onTap: () {
-                  // Kembali ke pengaturan jadwal sewa
-                  Navigator.pop(context); // Pop dari Opsi Rental atau pop dua kali
+                  // Kembali ke pengaturan jadwal sewa (Langkah 3)
+                  Navigator.pop(context);
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
@@ -279,12 +282,17 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           _buildInfoRow('Durasi Pemakaian', '${booking.durationDays} Hari'),
           const SizedBox(height: 6),
           _buildInfoRow('Selesai Sewa', '$endStr, ${booking.selectedTime}'),
+          const SizedBox(height: 6),
+          _buildInfoRow(
+            'Ketentuan Jam',
+            booking.withDriver ? 'Layanan sopir 12 jam/hari' : 'Penggunaan mandiri 24 jam/hari',
+          ),
         ],
       ),
     );
   }
 
-  /// Kartu Ringkasan 3: Moda Rental & Lokasi Penjemputan
+  /// Kartu Ringkasan 3: Moda Rental & Lokasi Penjemputan dengan Mini Map Preview
   Widget _buildRentalOptionsSummaryCard(BuildContext context, BookingController booking) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -316,7 +324,12 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               ),
               InkWell(
                 onTap: () {
-                  Navigator.pop(context); // Kembali ke Opsi Rental
+                  final vehicle = booking.selectedVehicle ?? widget.vehicle;
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RentalOptionsScreen(vehicle: vehicle),
+                    ),
+                  );
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
@@ -340,46 +353,72 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci (Self-Drive)',
           ),
           const SizedBox(height: 6),
-          _buildInfoRow('Titik Serah Terima', booking.pickupLocation),
+          _buildInfoRow(
+            booking.withDriver ? 'Titik Penjemputan' : 'Titik Serah Terima',
+            booking.pickupLocation,
+          ),
+          const SizedBox(height: 12),
+          // Cuplikan Mini Map Preview
+          MeraukeLocationMapPicker(
+            selectedLocationName: booking.pickupLocation,
+            selectedCoordinates: (booking.pickupLatitude != null && booking.pickupLongitude != null)
+                ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
+                : null,
+            isMiniPreview: true,
+            isWithDriver: booking.withDriver,
+          ),
         ],
       ),
     );
   }
 
-  /// Banner Pemberitahuan Verifikasi Fisik di Kantor (Bukan Online)
-  Widget _buildPhysicalVerificationNotice() {
+  /// Banner Pemberitahuan Ketentuan Dokumen / Staf Sopir (Adaptif)
+  Widget _buildPhysicalVerificationNotice(BookingController booking) {
+    final isDriver = booking.withDriver;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF), // Soft Blue tint
+        color: isDriver ? const Color(0xFFF0FDF4) : const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFBFDBFE), width: 1),
+        border: Border.all(
+          color: isDriver ? const Color(0xFFBBF7D0) : const Color(0xFFBFDBFE),
+          width: 1,
+        ),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.verified_user_outlined, size: 20, color: Color(0xFF1D4ED8)),
+          Icon(
+            isDriver ? Icons.airline_seat_recline_normal : Icons.verified_user_outlined,
+            size: 20,
+            color: isDriver ? const Color(0xFF16A34A) : const Color(0xFF1D4ED8),
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Verifikasi Fisik Dokumen di Kantor',
+                  isDriver
+                      ? 'Layanan Sopir Karyawan Tetap & Bebas Deposit'
+                      : 'Verifikasi Fisik Dokumen di Kantor / Lapangan',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1D4ED8),
+                    color: isDriver ? const Color(0xFF166534) : const Color(0xFF1D4ED8),
                     fontFamily: 'Inter',
                   ),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
-                  'Sesuai ketentuan resmi MobilJuragan Merauke, verifikasi fisik KTP asli dan SIM A dilakukan langsung oleh staf kantor saat serah terima unit kendaraan.',
+                  isDriver
+                      ? 'Armada dikemudikan langsung oleh staf pengemudi resmi MobilJuragan. Bebas uang deposit jaminan sewa dan tidak memerlukan SIM A dari penyewa.'
+                      : 'Sesuai ketentuan resmi MobilJuragan Merauke, verifikasi fisik KTP asli dan SIM A dilakukan langsung oleh staf lapangan saat serah terima unit kendaraan.',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF1E40AF),
+                    color: isDriver ? const Color(0xFF14532D) : const Color(0xFF1E40AF),
                     fontFamily: 'Inter',
                   ),
                 ),
@@ -480,15 +519,17 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFFDE68A)),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, size: 16, color: Color(0xFFB45309)),
-                SizedBox(width: 8),
+                const Icon(Icons.info_outline, size: 16, color: Color(0xFFB45309)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Rincian biaya final resmi (termasuk biaya layanan jam operasional, deposit jaminan refundable, atau diskon promo pengguna baru) akan diinput dan dikonfirmasi langsung oleh admin dari dashboard setelah pengajuan dikirim.',
-                    style: TextStyle(
+                    booking.withDriver
+                        ? 'Rincian biaya final resmi (termasuk konfirmasi rute luar kota jika ada, durasi jam operasional 12 jam/hari, atau diskon promo pengguna baru) akan dikonfirmasi langsung oleh admin dari dashboard.'
+                        : 'Rincian biaya final resmi (termasuk biaya layanan jam operasional kantor, deposit jaminan refundable, atau diskon promo pengguna baru) akan dikonfirmasi langsung oleh admin dari dashboard.',
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
                       height: 1.4,
@@ -813,7 +854,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
 
   Widget _buildInfoRow(String label, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -824,13 +865,17 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             fontFamily: 'Inter',
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-            fontFamily: 'Inter',
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
           ),
         ),
       ],

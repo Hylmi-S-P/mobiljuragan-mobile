@@ -64,6 +64,7 @@ class ChatMessageModel {
   final bool isFromUser;
   final String senderName;
   final bool isAI;
+  final String? conversationKey;
 
   const ChatMessageModel({
     required this.id,
@@ -72,5 +73,6 @@ class ChatMessageModel {
     required this.isFromUser,
     required this.senderName,
     this.isAI = false,
+    this.conversationKey,
   });
 }

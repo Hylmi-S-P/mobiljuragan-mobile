@@ -5,12 +5,20 @@ enum BookingStatus {
   permintaanDiterima, // Tahap 1 Figma: Permintaan diterima
   pemeriksaanArmada, // Tahap 2 Figma: Pemeriksaan armada (jadwal & unit terkonfirmasi)
   menungguTarifFinal, // Tahap 3 Figma: Konfirmasi tarif final (sedang dihitung admin)
-  menungguPembayaran, // Tahap Tambahan: Menunggu Pembayaran (tarif final terbit + no rekening BRI)
+  menungguPembayaran, // Tahap Tambahan: Menunggu Pembayaran (tarif final terbit)
   pembayaranSelesai, // Pembayaran sewa tervalidasi
   verifikasiKantor, // Verifikasi dokumen fisik KTP & SIM A di kantor saat serah terima
   mobilSiapDigunakan, // Tahap 4 Figma: Mobil siap digunakan (kunci diserahkan di lokasi)
   selesai, // Riwayat sewa selesai & unit kembali
   dibatalkan, // Dibatalkan oleh pelanggan atau sistem
+}
+
+/// Jenis metode pembayaran yang dipilih oleh pelanggan
+enum PaymentMethodType {
+  belumDipilih,
+  qrisOtomatis,
+  virtualAccount,
+  tunaiDiTempat, // COD saat serah terima unit dan cek fisik
 }
 
 /// Model item penyesuaian biaya / surcharge / deposit / diskon yang diinput dinamis oleh admin dari dashboard website
@@ -28,6 +36,21 @@ class BookingFeeAdjustment {
   bool get isDeduction => amount < 0;
 }
 
+/// Entitas data staf pengemudi tetap MobilJuragan
+class DriverAssignment {
+  final String driverName;
+  final String staffId;
+  final String phoneNumber;
+  final String operationalRole;
+
+  const DriverAssignment({
+    required this.driverName,
+    required this.staffId,
+    required this.phoneNumber,
+    this.operationalRole = 'Staf Pengemudi Tetap MobilJuragan Merauke',
+  });
+}
+
 /// Entitas data pemesanan rental mobil pelanggan
 class BookingModel {
   final String id;
@@ -37,6 +60,9 @@ class BookingModel {
   final int durationDays;
   final bool withDriver;
   final String pickupLocation;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
+  final DriverAssignment? assignedDriver;
   final String? note;
   final BookingStatus status;
   final DateTime createdAt;
@@ -46,6 +72,19 @@ class BookingModel {
   final String paymentAccountNumber;
   final List<BookingFeeAdjustment> adminAdjustments;
   final bool isFinalTariffConfirmed;
+  final String? cancellationReason;
+  final DateTime? cancelledAt;
+  final double? cancellationRefundRate;
+  final int? cancellationRefundAmount;
+  final String? cancellationBank;
+  final String? cancellationAccountNumber;
+  final String? cancellationAccountName;
+  final PaymentMethodType? _paymentMethodType;
+  final DateTime? paidAt;
+  final String? paymentReference;
+
+  PaymentMethodType get paymentMethodType =>
+      _paymentMethodType ?? PaymentMethodType.belumDipilih;
 
   const BookingModel({
     required this.id,
@@ -55,6 +94,9 @@ class BookingModel {
     required this.durationDays,
     required this.withDriver,
     required this.pickupLocation,
+    this.pickupLatitude,
+    this.pickupLongitude,
+    this.assignedDriver,
     this.note,
     required this.status,
     required this.createdAt,
@@ -64,7 +106,17 @@ class BookingModel {
     this.paymentAccountNumber = '0087-01-002345-53-1',
     this.adminAdjustments = const [],
     this.isFinalTariffConfirmed = false,
-  });
+    this.cancellationReason,
+    this.cancelledAt,
+    this.cancellationRefundRate,
+    this.cancellationRefundAmount,
+    this.cancellationBank,
+    this.cancellationAccountNumber,
+    this.cancellationAccountName,
+    PaymentMethodType? paymentMethodType = PaymentMethodType.belumDipilih,
+    this.paidAt,
+    this.paymentReference,
+  }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
 
   /// Tanggal selesai masa sewa
   DateTime get endDate => startDate.add(Duration(days: durationDays));
@@ -137,6 +189,42 @@ class BookingModel {
     }
   }
 
+  /// Apakah pesanan menggunakan skema bayar di tempat (COD)
+  bool get isCodPayment => paymentMethodType == PaymentMethodType.tunaiDiTempat;
+
+  /// Apakah pesanan sudah lunas terverifikasi secara online atau otomatis
+  bool get isPaidOnline =>
+      (status == BookingStatus.pembayaranSelesai ||
+          status == BookingStatus.verifikasiKantor ||
+          status == BookingStatus.mobilSiapDigunakan ||
+          status == BookingStatus.selesai) &&
+      !isCodPayment;
+
+  /// Judul ringkas metode pembayaran
+  String get paymentMethodTitle {
+    switch (paymentMethodType) {
+      case PaymentMethodType.qrisOtomatis:
+        return 'QRIS (Otomatis)';
+      case PaymentMethodType.virtualAccount:
+        return 'Virtual Account Bank';
+      case PaymentMethodType.tunaiDiTempat:
+        return 'Tunai di Tempat (COD)';
+      case PaymentMethodType.belumDipilih:
+        return 'Belum Dipilih';
+    }
+  }
+
+  /// Badge status pelunasan resmi untuk E-Ticket
+  String get paymentTicketBadge {
+    if (isCodPayment) {
+      return 'COD (BAYAR SAAT SERAH TERIMA)';
+    }
+    if (isPaidOnline) {
+      return 'LUNAS (TERVERIFIKASI OTOMATIS)';
+    }
+    return 'MENUNGGU PEMBAYARAN';
+  }
+
   BookingModel copyWith({
     String? id,
     VehicleModel? vehicle,
@@ -145,6 +233,9 @@ class BookingModel {
     int? durationDays,
     bool? withDriver,
     String? pickupLocation,
+    double? pickupLatitude,
+    double? pickupLongitude,
+    DriverAssignment? assignedDriver,
     String? note,
     BookingStatus? status,
     DateTime? createdAt,
@@ -154,6 +245,16 @@ class BookingModel {
     String? paymentAccountNumber,
     List<BookingFeeAdjustment>? adminAdjustments,
     bool? isFinalTariffConfirmed,
+    String? cancellationReason,
+    DateTime? cancelledAt,
+    double? cancellationRefundRate,
+    int? cancellationRefundAmount,
+    String? cancellationBank,
+    String? cancellationAccountNumber,
+    String? cancellationAccountName,
+    PaymentMethodType? paymentMethodType,
+    DateTime? paidAt,
+    String? paymentReference,
   }) {
     return BookingModel(
       id: id ?? this.id,
@@ -163,6 +264,9 @@ class BookingModel {
       durationDays: durationDays ?? this.durationDays,
       withDriver: withDriver ?? this.withDriver,
       pickupLocation: pickupLocation ?? this.pickupLocation,
+      pickupLatitude: pickupLatitude ?? this.pickupLatitude,
+      pickupLongitude: pickupLongitude ?? this.pickupLongitude,
+      assignedDriver: assignedDriver ?? this.assignedDriver,
       note: note ?? this.note,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -173,6 +277,20 @@ class BookingModel {
       adminAdjustments: adminAdjustments ?? this.adminAdjustments,
       isFinalTariffConfirmed:
           isFinalTariffConfirmed ?? this.isFinalTariffConfirmed,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      cancellationRefundRate:
+          cancellationRefundRate ?? this.cancellationRefundRate,
+      cancellationRefundAmount:
+          cancellationRefundAmount ?? this.cancellationRefundAmount,
+      cancellationBank: cancellationBank ?? this.cancellationBank,
+      cancellationAccountNumber:
+          cancellationAccountNumber ?? this.cancellationAccountNumber,
+      cancellationAccountName:
+          cancellationAccountName ?? this.cancellationAccountName,
+      paymentMethodType: paymentMethodType ?? this.paymentMethodType,
+      paidAt: paidAt ?? this.paidAt,
+      paymentReference: paymentReference ?? this.paymentReference,
     );
   }
 
@@ -195,27 +313,6 @@ class BookingModel {
     ),
   ];
 
-  /// Data dummy riwayat pesanan awal untuk keperluan pengujian dan demonstrasi (tanpa pesanan aktif pada awal start)
-  static List<BookingModel> get initialSampleBookings {
-    final secondVehicle = VehicleModel.sampleVehicles.length > 1
-        ? VehicleModel.sampleVehicles[1]
-        : VehicleModel.sampleVehicles.first;
-
-    return [
-      BookingModel(
-        id: 'MBJ-2026-0038',
-        vehicle: secondVehicle,
-        startDate: DateTime.now().subtract(const Duration(days: 7)),
-        startTime: '10.00 WIT',
-        durationDays: 3,
-        withDriver: true,
-        pickupLocation: 'Hotel Swiss-Belhotel Merauke',
-        status: BookingStatus.selesai,
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        dailyRate: secondVehicle.pricePerDay,
-        adminAdjustments: standardAdminAdjustments,
-        isFinalTariffConfirmed: true,
-      ),
-    ];
-  }
+  /// Data dummy riwayat pesanan awal (dikosongkan agar riwayat selesai bernilai 0 di awal aplikasi)
+  static List<BookingModel> get initialSampleBookings => const [];
 }

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
-import 'order_review_screen.dart';
+import '../widgets/merauke_location_map_picker.dart';
+import 'date_time_screen.dart';
 
-/// Layar pemilihan opsi rental (Frame 05)
-/// Memungkinkan pemilihan moda Lepas Kunci vs Dengan Sopir dan titik jemput di Merauke
-/// Catatan: Form informasi kedatangan/penerbangan dihilangkan sesuai arahan
+/// Layar pemilihan opsi rental (Langkah 2 dari 5)
+/// Memungkinkan pemilihan moda Lepas Kunci vs Dengan Sopir dan titik penjemputan/serah terima dengan peta interaktif
 class RentalOptionsScreen extends StatefulWidget {
   final VehicleModel vehicle;
 
@@ -22,11 +23,71 @@ class RentalOptionsScreen extends StatefulWidget {
 }
 
 class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
-  final List<String> _locationOptions = [
-    'Bandara Mopah Merauke',
-    'Swiss-Belhotel Merauke',
-    'Hotel Grand Merauke',
-    'Kantor / Pool MobilJuragan Merauke',
+  // Preset lokasi khusus Lepas Kunci (fokus titik serah terima resmi)
+  final List<Map<String, dynamic>> _selfDriveLocations = [
+    {
+      'name': 'Pool Kantor MobilJuragan (Gratis)',
+      'shortName': 'Pool Kantor',
+      'desc': 'Jl. Brawijaya No. 88, Merauke Kota',
+      'coords': const LatLng(-8.4905, 140.3995),
+      'isFree': true,
+    },
+    {
+      'name': 'Diantar ke Bandara Mopah Merauke',
+      'shortName': 'Bandara Mopah',
+      'desc': 'Lobi Kedatangan & Parkir VIP Bandara',
+      'coords': const LatLng(-8.5202, 140.4180),
+      'isFree': false,
+    },
+    {
+      'name': 'Diantar ke Swiss-Belhotel Merauke',
+      'shortName': 'Swiss-Belhotel',
+      'desc': 'Jl. Raya Mandala No. 53, Merauke',
+      'coords': const LatLng(-8.4845, 140.3878),
+      'isFree': false,
+    },
+    {
+      'name': 'Diantar ke Hotel Grand Merauke',
+      'shortName': 'Hotel Grand',
+      'desc': 'Jl. Raya Mandala No. 12, Merauke',
+      'coords': const LatLng(-8.4950, 140.4020),
+      'isFree': false,
+    },
+  ];
+
+  // Preset lokasi khusus Dengan Sopir (fleksibel di mana saja di Merauke)
+  final List<Map<String, dynamic>> _withDriverLocations = [
+    {
+      'name': 'Bandara Mopah Merauke',
+      'shortName': 'Bandara Mopah',
+      'desc': 'Lobi Kedatangan & Parkir VIP Bandara Mopah',
+      'coords': const LatLng(-8.5202, 140.4180),
+    },
+    {
+      'name': 'Swiss-Belhotel Merauke',
+      'shortName': 'Swiss-Belhotel',
+      'desc': 'Jl. Raya Mandala No. 53, Merauke',
+      'coords': const LatLng(-8.4845, 140.3878),
+    },
+    {
+      'name': 'Hotel Grand Merauke',
+      'shortName': 'Hotel Grand',
+      'desc': 'Jl. Raya Mandala No. 12, Merauke',
+      'coords': const LatLng(-8.4950, 140.4020),
+    },
+    {
+      'name': 'Pool Kantor MobilJuragan',
+      'shortName': 'Pool Kantor',
+      'desc': 'Jl. Brawijaya No. 88, Merauke Kota',
+      'coords': const LatLng(-8.4905, 140.3995),
+    },
+    {
+      'name': 'Alamat / Titik Lain di Merauke',
+      'shortName': 'Titik Lain',
+      'desc': 'Tentukan titik jemput bebas pada peta di bawah',
+      'coords': const LatLng(-8.4991, 140.4011),
+      'isCustom': true,
+    },
   ];
 
   @override
@@ -37,7 +98,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Opsi Rental',
-        stepSubtitle: 'Langkah 4 dari 5',
+        stepSubtitle: 'Langkah 2 dari 5',
       ),
       body: Column(
         children: [
@@ -51,9 +112,9 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                   const SizedBox(height: 16),
                   _buildModeSelectionCards(booking),
                   const SizedBox(height: 20),
-                  _buildPickupLocationSection(booking),
+                  _buildUnifiedLocationCard(booking),
                   const SizedBox(height: 20),
-                  _buildRentalPoliciesCard(),
+                  _buildRentalPoliciesCard(booking),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -80,7 +141,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         ),
         SizedBox(height: 4),
         Text(
-          'Tentukan preferensi berkendara dan lokasi serah terima unit di Merauke.',
+          'Tentukan moda sewa dan titik lokasi penjemputan atau serah terima unit di Merauke.',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w400,
@@ -99,7 +160,11 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       children: [
         // Opsi 1: Lepas Kunci
         InkWell(
-          onTap: () => booking.toggleDriver(false),
+          onTap: () {
+            booking.toggleDriver(false);
+            // Default titik serah terima lepas kunci: Pool Kantor (gratis)
+            booking.setPickupLocation('Pool Kantor MobilJuragan (Gratis)', -8.4905, 140.3995);
+          },
           borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -165,7 +230,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
-                              'Rekomendasi Hemat',
+                              'Bebas Biaya Sopir',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -178,21 +243,11 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Kemudi mandiri, fleksibilitas penuh untuk aktivitas keluarga atau pekerjaan di Merauke.',
+                        'Kemudi mandiri 24 jam penuh per hari. Fleksibilitas tinggi untuk mobilitas pribadi, pekerjaan, atau keluarga.',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Tarif: Termasuk dalam harga harian unit (Rp 0)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryTeal,
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -205,9 +260,13 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Opsi 2: Dengan Sopir
+        // Opsi 2: Dengan Sopir Lokal
         InkWell(
-          onTap: () => booking.toggleDriver(true),
+          onTap: () {
+            booking.toggleDriver(true);
+            // Default titik penjemputan dengan sopir: Bandara Mopah Merauke
+            booking.setPickupLocation('Bandara Mopah Merauke', -8.5202, 140.4180);
+          },
           borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -286,21 +345,11 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Didampingi pengemudi lokal profesional dan ramah yang hafal kondisi rute Merauke.',
+                        'Didampingi staf pengemudi tetap MobilJuragan yang ramah dan hafal seluruh kondisi rute Merauke. Durasi layanan 12 jam/hari.',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Tarif: +Rp 150.000 per hari (akomodasi sopir ditanggung)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1D4ED8),
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -315,7 +364,270 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
     );
   }
 
-  Widget _buildPickupLocationSection(BookingController booking) {
+  Widget _buildUnifiedLocationCard(BookingController booking) {
+    final isDriver = booking.withDriver;
+    final locations = isDriver ? _withDriverLocations : _selfDriveLocations;
+
+    // Cari deskripsi preset aktif secara aman tanpa resiko type cast error
+    Map<String, dynamic> matchingLoc;
+    final foundIndex = locations.indexWhere(
+      (loc) {
+        final name = (loc['name'] as String?) ?? '';
+        final shortName = (loc['shortName'] as String?) ?? name;
+        final pickup = booking.pickupLocation.toLowerCase();
+        return pickup.contains(shortName.toLowerCase()) ||
+            pickup.contains(name.toLowerCase()) ||
+            name.toLowerCase().contains(pickup);
+      },
+    );
+    if (foundIndex != -1) {
+      matchingLoc = locations[foundIndex];
+    } else {
+      matchingLoc = <String, dynamic>{
+        'name': booking.pickupLocation,
+        'shortName': 'Titik Peta',
+        'desc': 'Koordinat titik penjemputan terpilih di peta Merauke',
+        'coords': LatLng(booking.pickupLatitude ?? -8.4991, booking.pickupLongitude ?? 140.4011),
+      };
+    }
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Kartu
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 20, color: AppColors.primaryTeal),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isDriver
+                            ? 'Titik Penjemputan Sopir'
+                            : 'Titik Serah Terima Unit Kendaraan',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                    if (isDriver)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.tealLight,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Fleksibel',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryTeal,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isDriver
+                      ? 'Pilih lokasi populer atau ketuk titik bebas di peta untuk penjemputan.'
+                      : 'Pilih ambil di garasi pool MobilJuragan (gratis) atau diantar ke bandara/hotel.',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Horizontal Chips Selector (terisolasi dan terpotong rapi dengan padding insets)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            clipBehavior: Clip.hardEdge,
+            child: Row(
+              children: locations.map((loc) {
+                final name = (loc['name'] as String?) ?? 'Lokasi';
+                final shortName = (loc['shortName'] as String?) ??
+                    (name.startsWith('Diantar ke ') ? name.replaceFirst('Diantar ke ', '') : name);
+                final coords = (loc['coords'] as LatLng?) ?? const LatLng(-8.4991, 140.4011);
+                final isFree = loc['isFree'] == true;
+                final isCustom = loc['isCustom'] == true;
+                final pickup = booking.pickupLocation.toLowerCase();
+                final isSelected = pickup.contains(shortName.toLowerCase()) ||
+                    pickup.contains(name.toLowerCase()) ||
+                    name.toLowerCase().contains(pickup);
+
+                // Ikon sesuai kategori
+                IconData iconData = Icons.place_outlined;
+                if (isFree || name.toLowerCase().contains('pool')) {
+                  iconData = Icons.storefront_outlined;
+                } else if (name.toLowerCase().contains('bandara')) {
+                  iconData = Icons.flight_land;
+                } else if (name.toLowerCase().contains('hotel')) {
+                  iconData = Icons.hotel_outlined;
+                } else if (isCustom) {
+                  iconData = Icons.edit_location_alt_outlined;
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        booking.setPickupLocation(name, coords.latitude, coords.longitude);
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primaryTeal.withValues(alpha: 0.12)
+                              : AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primaryTeal : AppColors.borderSubtle,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              iconData,
+                              size: 14,
+                              color: isSelected ? AppColors.primaryTeal : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              shortName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? AppColors.primaryNavy : AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                            if (isFree) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.badgeGreenBg,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'GRATIS',
+                                  style: TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.badgeGreenText,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Baris Detail Lokasi Terpilih
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.borderSubtle.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.pin_drop, size: 16, color: AppColors.primaryTeal),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.pickupLocation,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          matchingLoc['desc'] as String? ?? 'Merauke, Papua Selatan',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Peta Terintegrasi Kompak (150px)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: MeraukeLocationMapPicker(
+              selectedLocationName: booking.pickupLocation,
+              selectedCoordinates: (booking.pickupLatitude != null && booking.pickupLongitude != null)
+                  ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
+                  : null,
+              isWithDriver: booking.withDriver,
+              mapHeight: 150,
+              showCardContainer: false,
+              onCustomCoordinateSelected: (customName, coords) {
+                booking.setPickupLocation(customName, coords.latitude, coords.longitude);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRentalPoliciesCard(BookingController booking) {
+    final isDriver = booking.withDriver;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -326,89 +638,17 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.location_on_outlined, size: 20, color: AppColors.primaryTeal),
-              SizedBox(width: 8),
-              Text(
-                'Titik Lokasi Serah Terima',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
+              Icon(
+                isDriver ? Icons.airline_seat_recline_normal : Icons.verified_user_outlined,
+                size: 18,
+                color: AppColors.primaryTeal,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.borderSubtle, width: 1),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _locationOptions.contains(booking.pickupLocation)
-                    ? booking.pickupLocation
-                    : _locationOptions.first,
-                isExpanded: true,
-                icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textPrimary),
+              const SizedBox(width: 8),
+              Text(
+                isDriver ? 'Ketentuan Layanan Sopir Tetap' : 'Ketentuan Sewa Lepas Kunci',
                 style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
-                items: _locationOptions.map((String location) {
-                  return DropdownMenuItem<String>(
-                    value: location,
-                    child: Text(location),
-                  );
-                }).toList(),
-                onChanged: (String? newLocation) {
-                  if (newLocation != null) {
-                    booking.setPickupLocation(newLocation);
-                  }
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Unit akan diantarkan tepat waktu ke lokasi yang Anda tentukan di wilayah Merauke.',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRentalPoliciesCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.shield_outlined, size: 18, color: AppColors.primaryTeal),
-              SizedBox(width: 8),
-              Text(
-                'Ketentuan Sewa Unit Merauke',
-                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -417,10 +657,18 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          _buildPolicyRow('1. Serah terima unit dilakukan sesuai jadwal dan lokasi pilihan.'),
-          _buildPolicyRow('2. Area operasional mencakup wilayah Kota Merauke dan sekitarnya.'),
-          _buildPolicyRow('3. Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
+          const SizedBox(height: 10),
+          if (!isDriver) ...[
+            _buildPolicyRow('1. Wajib menunjukkan fisik e-KTP dan SIM A asli saat serah terima unit.'),
+            _buildPolicyRow('2. Serah terima unit dilakukan di pool kantor atau diantar ke bandara/hotel.'),
+            _buildPolicyRow('3. Deposit jaminan sewa (refundable) dikonfirmasi admin pada tarif final.'),
+            _buildPolicyRow('4. Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
+          ] else ...[
+            _buildPolicyRow('1. Pengemudi adalah staf tetap MobilJuragan yang terikat SOP perusahaan.'),
+            _buildPolicyRow('2. Jam kerja operasional harian sopir adalah 12 jam per hari.'),
+            _buildPolicyRow('3. Bebas uang deposit jaminan armada dan tanpa syarat SIM A penyewa.'),
+            _buildPolicyRow('4. Koordinasi nomor WhatsApp sopir dilakukan langsung melalui Chat CS.'),
+          ],
         ],
       ),
     );
@@ -428,15 +676,32 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
 
   Widget _buildPolicyRow(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
-          fontFamily: 'Inter',
-        ),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(top: 6, right: 8),
+            decoration: const BoxDecoration(
+              color: AppColors.primaryTeal,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textSecondary,
+                height: 1.4,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -450,36 +715,69 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => OrderReviewScreen(
-                    vehicle: widget.vehicle,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci (Self-Drive)',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    booking.pickupLocation,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            SizedBox(
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => DateTimeScreen(
+                        vehicle: widget.vehicle,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  foregroundColor: AppColors.textWhite,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                ),
+                child: const Text(
+                  'Lanjut ke Jadwal Sewa',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Inter',
                   ),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              foregroundColor: AppColors.textWhite,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Lanjutkan ke Tinjau Pesanan',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Inter',
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

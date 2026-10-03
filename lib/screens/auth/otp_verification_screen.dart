@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
-import '../../services/notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 
 /// Layar Verifikasi OTP untuk Pendaftaran Akun Baru (Frame 12 & 12b style)
-/// Menggunakan simulasi notifikasi WhatsApp alami dan saran autofill tanpa tombol pintasan demo
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String email;
@@ -33,22 +31,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   bool _isLoading = false;
   bool _agreeTerms = true;
-  bool _showWhatsAppBanner = false;
   int _resendSeconds = 105; // 01:45 hitung mundur
   Timer? _resendTimer;
-  Timer? _bannerDismissTimer;
 
   @override
   void initState() {
     super.initState();
     _startCountdownTimer();
-    _triggerSimulatedOtpDelivery();
   }
 
   @override
   void dispose() {
     _resendTimer?.cancel();
-    _bannerDismissTimer?.cancel();
     for (final c in _otpControllers) {
       c.dispose();
     }
@@ -56,28 +50,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       f.dispose();
     }
     super.dispose();
-  }
-
-  void _triggerSimulatedOtpDelivery() {
-    // 1. Kirim notifikasi sistem native (muncul di status bar Android/iOS jika diizinkan)
-    NotificationService().showOtpNotification(otp: '123456');
-
-    // 2. Munculkan banner notifikasi WhatsApp mengambang di dalam aplikasi
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (!mounted) return;
-      setState(() {
-        _showWhatsAppBanner = true;
-      });
-
-      // Hilangkan otomatis setelah 6 detik
-      _bannerDismissTimer?.cancel();
-      _bannerDismissTimer = Timer(const Duration(seconds: 6), () {
-        if (!mounted) return;
-        setState(() {
-          _showWhatsAppBanner = false;
-        });
-      });
-    });
   }
 
   void _startCountdownTimer() {
@@ -110,11 +82,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (_resendSeconds > 0) return;
     _startCountdownTimer();
     context.read<AuthController>().sendOtp(widget.phoneNumber);
-    _triggerSimulatedOtpDelivery();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Kode OTP baru telah dikirimkan ke ${widget.phoneNumber} via WhatsApp.'),
+        content: Text('Kode OTP baru telah dikirimkan ke nomor ${widget.phoneNumber}.'),
         backgroundColor: AppColors.primaryTeal,
       ),
     );
@@ -175,22 +146,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     });
   }
 
-  void _fillAutofillOtp(String code) {
-    final auth = context.read<AuthController>();
-    auth.clearErrorState();
-
-    for (int i = 0; i < 6; i++) {
-      if (i < code.length) {
-        _otpControllers[i].text = code[i];
-      } else {
-        _otpControllers[i].clear();
-      }
-    }
-
-    _otpFocusNodes[5].requestFocus();
-    _handleVerifyOtp();
-  }
-
   void _resetOtpForm() {
     final auth = context.read<AuthController>();
     auth.clearErrorState();
@@ -201,131 +156,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       _isLoading = false;
     });
     _otpFocusNodes[0].requestFocus();
-  }
-
-  void _showSupportDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderMedium,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.headset_mic_rounded, color: AppColors.primaryNavy, size: 24),
-                  SizedBox(width: 10),
-                  Text(
-                    'Pusat Bantuan Aktivasi Akun',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Kendala saat menerima kode OTP verifikasi WhatsApp? Tim CS MobilJuragan Merauke siap membantu aktivasi akun pendaftaran Anda.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  height: 1.45,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.chat_outlined, color: Color(0xFF2563EB), size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'WhatsApp Resmi CS Merauke',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          Text(
-                            '+62 812-4800-9921',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryNavy,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Menghubungkan ke layanan CS WhatsApp Merauke (+62 812-4800-9921)...'),
-                        backgroundColor: Color(0xFF16A34A),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.send_rounded, size: 16),
-                  label: const Text(
-                    'Hubungi via WhatsApp',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Inter'),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF16A34A),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -364,124 +194,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. Hero Card
-                _buildHeroCard(),
-                const SizedBox(height: 16),
-
-                // 2. Form Card 6 Kotak OTP
-                _buildFormCard(auth, hasError),
-                const SizedBox(height: 16),
-
-                // 3. Tombol Aksi Utama
-                _buildSubmitButton(auth, hasError),
-                const SizedBox(height: 14),
-
-                // 4. Support Box CS Merauke
-                _buildSupportBox(),
-                const SizedBox(height: 24),
-
-                // 5. Grounding Footer Institusional
-                const Center(
-                  child: Text(
-                    'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-
-          // Simulasi Notifikasi WhatsApp Mengambang (Heads-up Notification Banner)
-          if (_showWhatsAppBanner)
-            Positioned(
-              top: 12,
-              left: 16,
-              right: 16,
-              child: _buildWhatsAppBanner(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Banner Notifikasi Push WhatsApp yang realistis
-  Widget _buildWhatsAppBanner() {
-    return Material(
-      elevation: 6,
-      borderRadius: BorderRadius.circular(14),
-      shadowColor: Colors.black26,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF334155)),
-        ),
-        child: Row(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                color: Color(0xFF25D366),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'WhatsApp • MobilJuragan Merauke',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _showWhatsAppBanner = false;
-                          });
-                        },
-                        child: const Icon(Icons.close_rounded, color: Colors.white54, size: 16),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Kode OTP pendaftaran akun Anda adalah 123456. Jangan berikan kode ini kepada siapa pun.',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: Color(0xFFCBD5E1),
-                      height: 1.35,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
+            // 1. Hero Card
+            _buildHeroCard(),
+            const SizedBox(height: 16),
+
+            // 2. Form Card 6 Kotak OTP
+            _buildFormCard(auth, hasError),
+            const SizedBox(height: 16),
+
+            // 3. Tombol Aksi Utama
+            _buildSubmitButton(auth, hasError),
+            const SizedBox(height: 24),
+
+            // 4. Grounding Footer Institusional
+            const Center(
+              child: Text(
+                'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -738,40 +479,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               );
             }),
           ),
-          const SizedBox(height: 10),
-
-          // Saran Autofill Native dari Pesan (Fitur Realistis Ponsel)
-          Center(
-            child: InkWell(
-              onTap: () => _fillAutofillOtp('123456'),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.tealLight,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.sms_outlined, size: 14, color: AppColors.primaryTeal),
-                    SizedBox(width: 6),
-                    Text(
-                      'Dari WhatsApp: 123456 (Sentuh untuk isi)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryTeal,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // Timer Hitung Mundur 01:45
           Center(
@@ -881,71 +589,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   fontFamily: 'Inter',
                 ),
               ),
-      ),
-    );
-  }
-
-  Widget _buildSupportBox() {
-    return InkWell(
-      onTap: _showSupportDialog,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDBEAFE),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.headset_mic_rounded,
-                color: AppColors.primaryNavy,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Butuh Bantuan Aktivasi?',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Hubungi CS Merauke: +62 812-4800-9921',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF2563EB),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 12,
-              color: Color(0xFF60A5FA),
-            ),
-          ],
-        ),
       ),
     );
   }

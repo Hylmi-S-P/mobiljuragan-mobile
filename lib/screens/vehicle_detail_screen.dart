@@ -5,7 +5,7 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/spec_card_item.dart';
-import 'date_time_screen.dart';
+import 'rental_options_screen.dart';
 
 /// Layar detail spesifikasi armada kendaraan
 class VehicleDetailScreen extends StatelessWidget {
@@ -258,7 +258,7 @@ class VehicleDetailScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: const Text(
-        'Pastikan tipe mobil dan plat nomor sesuai kebutuhan sebelum melanjutkan ke jadwal sewa.',
+        'Pastikan tipe mobil dan plat nomor sesuai kebutuhan sebelum menentukan opsi rental.',
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w400,
@@ -286,7 +286,7 @@ class VehicleDetailScreen extends StatelessWidget {
               context.read<BookingController>().selectVehicle(vehicle);
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => DateTimeScreen(vehicle: vehicle),
+                  builder: (context) => RentalOptionsScreen(vehicle: vehicle),
                 ),
               );
             },
@@ -299,7 +299,7 @@ class VehicleDetailScreen extends StatelessWidget {
               elevation: 0,
             ),
             child: const Text(
-              'Pilih Tanggal dan Waktu',
+              'Lanjut ke Opsi Rental',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

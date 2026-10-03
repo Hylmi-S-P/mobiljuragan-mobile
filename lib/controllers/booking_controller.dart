@@ -11,6 +11,8 @@ class BookingController extends ChangeNotifier {
   int _durationDays = 2;
   bool _withDriver = false;
   String _pickupLocation = 'Bandara Mopah Merauke';
+  double? _pickupLatitude = -8.5202;
+  double? _pickupLongitude = 140.4180;
   String _customerNote = '';
   bool _agreementChecked = true;
 
@@ -27,9 +29,10 @@ class BookingController extends ChangeNotifier {
   }
 
   void _initSampleData() {
+    _bookingHistory.clear();
     final samples = BookingModel.initialSampleBookings;
     _bookingHistory.addAll(samples);
-    // Pesanan aktif diatur 0 / null pada awal run simulasi
+    // Pesanan aktif dan riwayat pesanan diatur 0 / kosong pada awal aplikasi
     _activeBooking = null;
   }
 
@@ -40,6 +43,8 @@ class BookingController extends ChangeNotifier {
   int get durationDays => _durationDays;
   bool get withDriver => _withDriver;
   String get pickupLocation => _pickupLocation;
+  double? get pickupLatitude => _pickupLatitude;
+  double? get pickupLongitude => _pickupLongitude;
   String get customerNote => _customerNote;
   bool get agreementChecked => _agreementChecked;
 
@@ -115,8 +120,18 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setPickupLocation(String location) {
+  void setPickupLocation(String location, [double? lat, double? lng]) {
     _pickupLocation = location;
+    if (lat != null && lng != null) {
+      _pickupLatitude = lat;
+      _pickupLongitude = lng;
+    }
+    notifyListeners();
+  }
+
+  void setPickupCoordinates(double lat, double lng) {
+    _pickupLatitude = lat;
+    _pickupLongitude = lng;
     notifyListeners();
   }
 
@@ -136,6 +151,16 @@ class BookingController extends ChangeNotifier {
     final newOrderCode = 'MBJ-2026-${(43 + _bookingHistory.length).toString().padLeft(4, '0')}';
     final vehicle = _selectedVehicle ?? VehicleModel.sampleVehicles.first;
 
+    // Alokasi staf sopir internal jika memilih Dengan Sopir
+    final assignedDriver = _withDriver
+        ? const DriverAssignment(
+            driverName: 'Bung Yohanes Mahuze',
+            staffId: 'STF-DRV-014',
+            phoneNumber: '0812-4822-9901',
+            operationalRole: 'Staf Pengemudi Tetap MobilJuragan Merauke',
+          )
+        : null;
+
     final newBooking = BookingModel(
       id: newOrderCode,
       vehicle: vehicle,
@@ -144,6 +169,9 @@ class BookingController extends ChangeNotifier {
       durationDays: _durationDays,
       withDriver: _withDriver,
       pickupLocation: _pickupLocation,
+      pickupLatitude: _pickupLatitude,
+      pickupLongitude: _pickupLongitude,
+      assignedDriver: assignedDriver,
       note: _customerNote.isNotEmpty ? _customerNote : null,
       status: BookingStatus.menungguTarifFinal,
       createdAt: DateTime.now(),
@@ -179,18 +207,54 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Simulasi konfirmasi pembayaran via WhatsApp admin
-  /// Memindahkan status pesanan dari menungguPembayaran ke mobilSiapDigunakan (tahap selanjutnya)
-  void confirmPaymentAndAdvance(String bookingId) {
+  /// Memproses pemilihan metode pembayaran Tunai di Tempat (COD)
+  /// Status langsung beralih ke mobilSiapDigunakan dan E-Ticket terbit dengan tanda COD
+  void confirmCodPayment(String bookingId) {
     final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
       final updated = _bookingHistory[index].copyWith(
+        paymentMethodType: PaymentMethodType.tunaiDiTempat,
         status: BookingStatus.mobilSiapDigunakan,
       );
       _bookingHistory[index] = updated;
-      _activeBooking = updated;
+      if (_activeBooking?.id == bookingId) {
+        _activeBooking = updated;
+      }
       notifyListeners();
     }
+  }
+
+  /// Memproses pelunasan pembayaran online (QRIS / Virtual Account simulasi otomatis)
+  /// Status beralih ke mobilSiapDigunakan dengan bukti referensi transaksi dan E-Ticket resmi
+  void completeOnlinePayment({
+    required String bookingId,
+    required PaymentMethodType paymentMethod,
+    String? referenceCode,
+  }) {
+    final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
+    if (index != -1) {
+      final ref = referenceCode ??
+          'TRX-MBJ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      final updated = _bookingHistory[index].copyWith(
+        paymentMethodType: paymentMethod,
+        status: BookingStatus.mobilSiapDigunakan,
+        paidAt: DateTime.now(),
+        paymentReference: ref,
+      );
+      _bookingHistory[index] = updated;
+      if (_activeBooking?.id == bookingId) {
+        _activeBooking = updated;
+      }
+      notifyListeners();
+    }
+  }
+
+  /// Simulasi konfirmasi pembayaran via WhatsApp admin (kompatibilitas alur manual)
+  void confirmPaymentAndAdvance(String bookingId) {
+    completeOnlinePayment(
+      bookingId: bookingId,
+      paymentMethod: PaymentMethodType.qrisOtomatis,
+    );
   }
 
   /// Alias metode konfirmasi pemesanan untuk kompatibilitas alur terdahulu
@@ -218,12 +282,55 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Membatalkan pesanan aktif
-  void cancelActiveBooking() {
-    if (_activeBooking != null) {
-      updateActiveBookingStatus(BookingStatus.dibatalkan);
+  /// Membatalkan pesanan (baik pesanan aktif maupun pesanan spesifik berdasarkan ID)
+  /// Menerapkan aturan pengembalian dana 85% untuk pesanan online yang telah dibayar.
+  /// Untuk pesanan COD yang belum diserahkan uangnya, refund bernilai Rp 0 tanpa potongan penalti.
+  void cancelBooking({
+    required String bookingId,
+    required String reason,
+    String? bankName,
+    String? accountNumber,
+    String? accountHolderName,
+  }) {
+    final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
+    if (index == -1) return;
+
+    final target = _bookingHistory[index];
+    final bool isCod = target.paymentMethodType == PaymentMethodType.tunaiDiTempat;
+    final bool isPaidBooking = !isCod &&
+        (target.status == BookingStatus.pembayaranSelesai ||
+            target.status == BookingStatus.verifikasiKantor ||
+            target.status == BookingStatus.mobilSiapDigunakan);
+
+    final double refundRate = isPaidBooking ? 0.85 : 0.0;
+    final int refundAmount = isPaidBooking ? (target.totalCost * 0.85).round() : 0;
+
+    final updated = target.copyWith(
+      status: BookingStatus.dibatalkan,
+      cancellationReason: reason,
+      cancelledAt: DateTime.now(),
+      cancellationRefundRate: refundRate,
+      cancellationRefundAmount: refundAmount,
+      cancellationBank: isPaidBooking ? bankName : null,
+      cancellationAccountNumber: isPaidBooking ? accountNumber : null,
+      cancellationAccountName: isPaidBooking ? accountHolderName : null,
+    );
+
+    _bookingHistory[index] = updated;
+    if (_activeBooking?.id == bookingId) {
+      _activeBooking = updated;
     }
     notifyListeners();
+  }
+
+  /// Membatalkan pesanan aktif secara cepat
+  void cancelActiveBooking([String reason = 'Dibatalkan oleh pelanggan']) {
+    if (_activeBooking != null) {
+      cancelBooking(
+        bookingId: _activeBooking!.id,
+        reason: reason,
+      );
+    }
   }
 
   /// Mengatur ulang pesanan aktif agar bernilai 0 / tidak ada
@@ -232,7 +339,7 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mengatur ulang seluruh riwayat dan pesanan aktif ke kondisi awal simulasi (0 pesanan aktif)
+  /// Mengatur ulang seluruh riwayat dan pesanan aktif ke kondisi awal simulasi (0 pesanan aktif & 0 riwayat selesai)
   void resetToInitialState() {
     _bookingHistory.clear();
     _bookingHistory.addAll(BookingModel.initialSampleBookings);
@@ -249,6 +356,8 @@ class BookingController extends ChangeNotifier {
     _durationDays = 2;
     _withDriver = false;
     _pickupLocation = 'Bandara Mopah Merauke';
+    _pickupLatitude = -8.5202;
+    _pickupLongitude = 140.4180;
     _customerNote = '';
     _agreementChecked = true;
     notifyListeners();

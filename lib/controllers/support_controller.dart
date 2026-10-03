@@ -2,34 +2,140 @@ import 'package:flutter/foundation.dart';
 import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
 
-/// Controller untuk mengelola tiket bantuan, FAQ, dan percakapan chat bantuan
+/// Controller untuk mengelola tiket bantuan, FAQ, dan percakapan chat bantuan yang terisolasi per sesi
 class SupportController extends ChangeNotifier {
   final List<SupportTicketModel> _tickets = [];
-  final List<ChatMessageModel> _chatMessages = [];
-  bool _isAiHandoffToAdmin = false;
+
+  /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
+  final Map<String, List<ChatMessageModel>> _conversations = {};
+
+  /// Peta status eskalasi percakapan ke admin manusia per sesi
+  final Map<String, bool> _handoffStatus = {};
 
   SupportController() {
     _initData();
   }
 
+  /// Membuat key sesi percakapan unik agar riwayat obrolan tidak bocor antar transaksi/tiket
+  static String buildConversationKey({String? bookingId, String? ticketId}) {
+    if (bookingId != null && bookingId.isNotEmpty) {
+      return 'booking_$bookingId';
+    }
+    if (ticketId != null && ticketId.isNotEmpty) {
+      return 'ticket_$ticketId';
+    }
+    return 'general';
+  }
+
   void _initData() {
     _tickets.addAll(SupportTicketModel.sampleTickets);
 
-    _chatMessages.addAll([
+    // Percakapan Bantuan Umum (General Help Desk)
+    _conversations['general'] = [
       ChatMessageModel(
-        id: 'msg-01',
+        id: 'msg-gen-01',
         message: 'Halo! Saya asisten virtual MobilJuragan Merauke. Ada yang bisa kami bantu seputar sewa mobil hari ini?',
         timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
         isFromUser: false,
         senderName: 'Customer Service MobilJuragan',
         isAI: true,
+        conversationKey: 'general',
       ),
-    ]);
+    ];
+
+    // Percakapan Sampel untuk Tiket Keluhan TCK-2026-081
+    final sampleTicket = SupportTicketModel.sampleTickets.first;
+    final ticketKey = 'ticket_${sampleTicket.id}';
+    _conversations[ticketKey] = [
+      ChatMessageModel(
+        id: 'tck-sys-${sampleTicket.id}',
+        message: 'Tiket kendala #${sampleTicket.id} (${sampleTicket.title}) telah terdaftar dengan status Diproses.',
+        timestamp: sampleTicket.createdAt,
+        isFromUser: false,
+        senderName: 'Sistem',
+        isAI: false,
+        conversationKey: ticketKey,
+      ),
+      ChatMessageModel(
+        id: 'tck-usr-${sampleTicket.id}',
+        message: sampleTicket.description,
+        timestamp: sampleTicket.createdAt.add(const Duration(minutes: 1)),
+        isFromUser: true,
+        senderName: 'Anda',
+        conversationKey: ticketKey,
+      ),
+      ChatMessageModel(
+        id: 'tck-resp-${sampleTicket.id}',
+        message: 'Halo, laporan penyesuaian jadwal penjemputan Bandara Mopah Anda sudah kami teruskan ke tim driver lapangan. Driver kami akan standby di area parkir bandara sesuai waktu kedatangan baru Anda.',
+        timestamp: sampleTicket.createdAt.add(const Duration(minutes: 15)),
+        isFromUser: false,
+        senderName: 'Admin Operasional Merauke',
+        isAI: false,
+        conversationKey: ticketKey,
+      ),
+    ];
+    _handoffStatus[ticketKey] = true;
   }
 
   List<SupportTicketModel> get tickets => List.unmodifiable(_tickets);
-  List<ChatMessageModel> get chatMessages => List.unmodifiable(_chatMessages);
-  bool get isAiHandoffToAdmin => _isAiHandoffToAdmin;
+
+  /// Mengambil daftar pesan terisolasi sesuai sesi obrolan
+  List<ChatMessageModel> getMessages(String conversationKey) {
+    if (!_conversations.containsKey(conversationKey)) {
+      // Inisialisasi thread baru jika belum ada
+      if (conversationKey.startsWith('booking_')) {
+        final bookingId = conversationKey.replaceFirst('booking_', '');
+        _conversations[conversationKey] = [
+          ChatMessageModel(
+            id: 'init-booking-$bookingId',
+            message: 'Halo! Ini adalah ruang obrolan koordinasi resmi untuk pesanan #$bookingId. Tim CS dan staf operasional MobilJuragan siap melayani kebutuhan Anda.',
+            timestamp: DateTime.now(),
+            isFromUser: false,
+            senderName: 'Customer Service MobilJuragan',
+            isAI: true,
+            conversationKey: conversationKey,
+          ),
+        ];
+      } else if (conversationKey.startsWith('ticket_')) {
+        final ticketId = conversationKey.replaceFirst('ticket_', '');
+        _conversations[conversationKey] = [
+          ChatMessageModel(
+            id: 'init-ticket-$ticketId',
+            message: 'Halo! Ruang percakapan ini dikhususkan untuk penanganan tiket bantuan #$ticketId. Tim kami siap membantu menyelesaikan kendala Anda.',
+            timestamp: DateTime.now(),
+            isFromUser: false,
+            senderName: 'Customer Service MobilJuragan',
+            isAI: true,
+            conversationKey: conversationKey,
+          ),
+        ];
+      } else {
+        _conversations[conversationKey] = [
+          ChatMessageModel(
+            id: 'init-gen-${DateTime.now().millisecondsSinceEpoch}',
+            message: 'Halo! Saya asisten virtual MobilJuragan Merauke. Ada yang bisa kami bantu seputar sewa mobil hari ini?',
+            timestamp: DateTime.now(),
+            isFromUser: false,
+            senderName: 'Customer Service MobilJuragan',
+            isAI: true,
+            conversationKey: conversationKey,
+          ),
+        ];
+      }
+    }
+    return List.unmodifiable(_conversations[conversationKey]!);
+  }
+
+  /// Backward-compatibility getter untuk percakapan umum
+  List<ChatMessageModel> get chatMessages => getMessages('general');
+
+  /// Status apakah percakapan sesi dialihkan ke admin operasional
+  bool isAiHandoffToAdminFor(String conversationKey) {
+    return _handoffStatus[conversationKey] ?? false;
+  }
+
+  /// Backward-compatibility getter
+  bool get isAiHandoffToAdmin => isAiHandoffToAdminFor('general');
 
   /// Daftar Tanya Jawab (FAQ) umum seputar sewa mobil di Merauke
   static const List<Map<String, String>> faqList = [
@@ -55,7 +161,7 @@ class SupportController extends ChangeNotifier {
     },
   ];
 
-  /// Membuat tiket kendala baru
+  /// Membuat tiket kendala baru dan menyiapkan thread percakapan terisolasi
   void createTicket({
     required String title,
     required TicketCategory category,
@@ -73,12 +179,40 @@ class SupportController extends ChangeNotifier {
     );
 
     _tickets.insert(0, newTicket);
+
+    final ticketKey = 'ticket_${newTicket.id}';
+    final initialList = [
+      ChatMessageModel(
+        id: 'tck-sys-${newTicket.id}',
+        message: 'Tiket bantuan #${newTicket.id} (${newTicket.title}) telah terdaftar dengan status Menunggu. Tim operasional MobilJuragan akan segera merespons kendala Anda.',
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Sistem',
+        isAI: false,
+        conversationKey: ticketKey,
+      ),
+      ChatMessageModel(
+        id: 'tck-usr-${newTicket.id}',
+        message: attachmentName != null ? '$description\n\n[Lampiran Dokumen/Foto: $attachmentName]' : description,
+        timestamp: DateTime.now(),
+        isFromUser: true,
+        senderName: 'Anda',
+        conversationKey: ticketKey,
+      ),
+    ];
+    _conversations[ticketKey] = initialList;
+
     notifyListeners();
   }
 
-  /// Mengirim pesan dari pengguna ke chat bantuan
-  void sendUserMessage(String text) {
+  /// Mengirim pesan dari pengguna ke sesi obrolan yang sedang aktif
+  void sendUserMessage({
+    required String text,
+    String conversationKey = 'general',
+  }) {
     if (text.trim().isEmpty) return;
+
+    final list = _conversations.putIfAbsent(conversationKey, () => []);
 
     final userMsg = ChatMessageModel(
       id: 'msg-${DateTime.now().millisecondsSinceEpoch}',
@@ -86,22 +220,28 @@ class SupportController extends ChangeNotifier {
       timestamp: DateTime.now(),
       isFromUser: true,
       senderName: 'Anda',
+      conversationKey: conversationKey,
     );
-    _chatMessages.add(userMsg);
+    list.add(userMsg);
     notifyListeners();
 
-    // Simulasi respons otomatis AI atau staf operasional
+    final isHandedOff = isAiHandoffToAdminFor(conversationKey);
+
+    // Simulasi respons otomatis AI atau staf operasional untuk sesi tersebut
     Future.delayed(const Duration(milliseconds: 900), () {
-      if (!_isAiHandoffToAdmin) {
+      final currentList = _conversations.putIfAbsent(conversationKey, () => []);
+
+      if (!isHandedOff) {
         final reply = ChatMessageModel(
           id: 'msg-reply-${DateTime.now().millisecondsSinceEpoch}',
-          message: 'Pesan Anda telah kami terima. Jika Anda membutuhkan bantuan langsung dari tim lapangan Merauke, silakan tekan tombol "Panggil Admin" di atas.',
+          message: 'Pesan Anda telah kami terima. Jika Anda membutuhkan bantuan langsung dari tim operasional Merauke, silakan tekan tombol "Panggil Staf" di atas.',
           timestamp: DateTime.now(),
           isFromUser: false,
           senderName: 'Asisten AI MobilJuragan',
           isAI: true,
+          conversationKey: conversationKey,
         );
-        _chatMessages.add(reply);
+        currentList.add(reply);
       } else {
         final reply = ChatMessageModel(
           id: 'msg-admin-${DateTime.now().millisecondsSinceEpoch}',
@@ -110,16 +250,19 @@ class SupportController extends ChangeNotifier {
           isFromUser: false,
           senderName: 'Admin Operasional Merauke',
           isAI: false,
+          conversationKey: conversationKey,
         );
-        _chatMessages.add(reply);
+        currentList.add(reply);
       }
       notifyListeners();
     });
   }
 
-  /// Mengalihkan percakapan ke admin operasional manusia
-  void handoffToAdmin() {
-    _isAiHandoffToAdmin = true;
+  /// Mengalihkan percakapan sesi ke staf operasional manusia
+  void handoffToAdmin({String conversationKey = 'general'}) {
+    _handoffStatus[conversationKey] = true;
+    final list = _conversations.putIfAbsent(conversationKey, () => []);
+
     final systemNotice = ChatMessageModel(
       id: 'sys-${DateTime.now().millisecondsSinceEpoch}',
       message: 'Percakapan berhasil dialihkan ke staf admin operasional MobilJuragan Merauke.',
@@ -127,8 +270,9 @@ class SupportController extends ChangeNotifier {
       isFromUser: false,
       senderName: 'Sistem',
       isAI: false,
+      conversationKey: conversationKey,
     );
-    _chatMessages.add(systemNotice);
+    list.add(systemNotice);
     notifyListeners();
   }
 
@@ -147,21 +291,29 @@ class SupportController extends ChangeNotifier {
     return buffer.toString().split('').reversed.join();
   }
 
-  /// Mengirim pesan bot berisi instruksi tagihan resmi dan nomor rekening Bank BRI Merauke
+  /// Mengirim pesan bot berisi instruksi tagihan resmi ke thread pesanan terkait
   void sendPaymentInstructionMessage(BookingModel booking) {
+    final convKey = 'booking_${booking.id}';
     final invoiceMsgId = 'pay-${booking.id}';
-    final alreadySent = _chatMessages.any((m) => m.id == invoiceMsgId);
+
+    final list = _conversations.putIfAbsent(convKey, () => []);
+    final alreadySent = list.any((m) => m.id == invoiceMsgId);
     if (alreadySent) return;
+
+    final driverDetail = booking.withDriver && booking.assignedDriver != null
+        ? '• Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n• Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        : '';
 
     final invoiceText =
         'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
         '• Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
         '• Bank Transfer: Bank BRI Merauke\n'
         '• No. Rekening: 0321-01-002847-53-1\n'
-        '• Atas Nama: MobilJuragan Merauke\n\n'
+        '• Atas Nama: MobilJuragan Merauke\n'
+        '$driverDetail\n'
         'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
 
-    _chatMessages.add(
+    list.add(
       ChatMessageModel(
         id: invoiceMsgId,
         message: invoiceText,
@@ -169,17 +321,21 @@ class SupportController extends ChangeNotifier {
         isFromUser: false,
         senderName: 'Customer Service MobilJuragan',
         isAI: true,
+        conversationKey: convKey,
       ),
     );
     notifyListeners();
   }
 
-  /// Konfirmasi pembayaran langsung dari ruang chat CS
+  /// Konfirmasi pembayaran langsung dari ruang chat CS untuk pesanan terkait
   void confirmPaymentFromChat({
     required BookingModel booking,
     required VoidCallback onAdvance,
   }) {
     onAdvance();
+
+    final convKey = 'booking_${booking.id}';
+    final list = _conversations.putIfAbsent(convKey, () => []);
 
     final userConfirmMsg = ChatMessageModel(
       id: 'usr-pay-${DateTime.now().millisecondsSinceEpoch}',
@@ -187,21 +343,68 @@ class SupportController extends ChangeNotifier {
       timestamp: DateTime.now(),
       isFromUser: true,
       senderName: 'Anda',
+      conversationKey: convKey,
     );
-    _chatMessages.add(userConfirmMsg);
+    list.add(userConfirmMsg);
     notifyListeners();
 
     Future.delayed(const Duration(milliseconds: 700), () {
+      final currentList = _conversations.putIfAbsent(convKey, () => []);
+
+      final driverReadyText = booking.withDriver && booking.assignedDriver != null
+          ? '\n\nStaf pengemudi kami, ${booking.assignedDriver!.driverName} (WhatsApp: ${booking.assignedDriver!.phoneNumber}), siap menjemput Anda di ${booking.pickupLocation}. Sopir akan menghubungi nomor Anda sebelum waktu penjemputan.'
+          : '\n\nUnit ${booking.vehicle.name} siap diserahterimakan di ${booking.pickupLocation}.';
+
       final verifiedMsg = ChatMessageModel(
         id: 'bot-paid-${DateTime.now().millisecondsSinceEpoch}',
-        message: 'Pembayaran pesanan #${booking.id} sebesar Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi lunas oleh sistem dan staf operasional Merauke!\n\nUnit ${booking.vehicle.name} siap diserahterimakan di ${booking.pickupLocation}.',
+        message: 'Pembayaran pesanan #${booking.id} sebesar Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi lunas oleh sistem dan staf operasional Merauke!$driverReadyText',
         timestamp: DateTime.now(),
         isFromUser: false,
         senderName: 'Customer Service MobilJuragan',
         isAI: true,
+        conversationKey: convKey,
       );
-      _chatMessages.add(verifiedMsg);
+      currentList.add(verifiedMsg);
       notifyListeners();
     });
+  }
+
+  /// Mengirimkan pesan koordinasi penjemputan E-Ticket resmi ke thread pesanan terkait
+  void sendPickupCoordinationMessage(BookingModel booking) {
+    final convKey = 'booking_${booking.id}';
+    final ticketMsgId = 'ticket-coord-${booking.id}';
+
+    final list = _conversations.putIfAbsent(convKey, () => []);
+    final alreadySent = list.any((m) => m.id == ticketMsgId);
+    if (alreadySent) return;
+
+    final driverInfo = booking.withDriver && booking.assignedDriver != null
+        ? 'Staf pengemudi tetap: ${booking.assignedDriver!.driverName} (HP/WA: ${booking.assignedDriver!.phoneNumber}).'
+        : 'Pengambilan armada mandiri di ${booking.pickupLocation}. Tim staf kami siap menyambut serah terima kunci.';
+
+    final paymentStatusText = booking.isCodPayment
+        ? 'Metode: Bayar Tunai di Tempat (COD Rp ${_formatRupiah(booking.totalCost)} disiapkan saat serah terima unit).'
+        : 'Metode: Non-Tunai / QRIS (LUNAS Terverifikasi Otomatis).';
+
+    final text = 'Halo! E-Ticket resmi untuk reservasi #${booking.id} telah terbit.\n\n'
+        'Armada: ${booking.vehicle.name} (${booking.vehicle.plateNumber})\n'
+        'Jadwal: ${booking.startDate.day}/${booking.startDate.month}/${booking.startDate.year}, ${booking.startTime} (${booking.durationDays} Hari)\n'
+        'Titik Jemput: ${booking.pickupLocation}\n'
+        '$paymentStatusText\n'
+        '$driverInfo\n\n'
+        'Silakan sampaikan catatan titik temu spesifik atau koordinasi langsung penjemputan dengan kami di sini.';
+
+    list.add(
+      ChatMessageModel(
+        id: ticketMsgId,
+        message: text,
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Customer Service MobilJuragan',
+        isAI: true,
+        conversationKey: convKey,
+      ),
+    );
+    notifyListeners();
   }
 }

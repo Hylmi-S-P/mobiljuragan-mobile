@@ -68,38 +68,7 @@ class OrderEmptyState extends StatelessWidget {
               fontFamily: 'Inter',
             ),
           ),
-          const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderSubtle, width: 1),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _TrustPointItem(text: 'Armada prima siap antar di Bandara Mopah'),
-                SizedBox(height: 6),
-                _TrustPointItem(text: 'Pilihan lepas kunci atau dengan sopir resmi'),
-                SizedBox(height: 6),
-                _TrustPointItem(text: 'Tarif transparan dengan konfirmasi instan'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Mulai perjalanan pertama Anda bersama kami di Merauke.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryTeal,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -125,40 +94,6 @@ class OrderEmptyState extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TrustPointItem extends StatelessWidget {
-  final String text;
-
-  const _TrustPointItem({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '• ',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primaryTeal,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 11,
-              height: 1.4,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
