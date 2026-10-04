@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Peta OSM dan reverse geocoding butuh jaringan; tanpa ini build rilis
+         hanya memuat peta kosong karena manifest debug tidak ikut terpakai. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <application

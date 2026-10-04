@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -268,6 +269,35 @@ class MeraukeGeocodingService {
     final fallback = 'Merauke Kota (${coords.latitude.toStringAsFixed(3)}, ${coords.longitude.toStringAsFixed(3)})';
     _cache[cacheKey] = fallback;
     return fallback;
+  }
+
+  // Nominatim membatasi 1 permintaan per detik, jadi ketukan peta beruntun
+  // ditahan dulu dan hanya koordinat terakhir yang benar-benar dikirim.
+  static Timer? _debounceTimer;
+  static Completer<String?>? _pendingRequest;
+
+  /// Versi tertunda dari [resolveLocationName]. Ketukan yang tersusul ketukan
+  /// lebih baru selesai dengan `null` supaya pemanggilnya berhenti menunggu.
+  static Future<String?> resolveLocationNameDebounced(
+    LatLng coords, {
+    Duration delay = const Duration(milliseconds: 450),
+  }) {
+    _debounceTimer?.cancel();
+
+    final superseded = _pendingRequest;
+    if (superseded != null && !superseded.isCompleted) {
+      superseded.complete(null);
+    }
+
+    final completer = Completer<String?>();
+    _pendingRequest = completer;
+
+    _debounceTimer = Timer(delay, () async {
+      final resolvedName = await resolveLocationName(coords);
+      if (!completer.isCompleted) completer.complete(resolvedName);
+    });
+
+    return completer.future;
   }
 
   /// Panggilan HTTP ke OpenStreetMap Nominatim dengan batas waktu 2.5 detik

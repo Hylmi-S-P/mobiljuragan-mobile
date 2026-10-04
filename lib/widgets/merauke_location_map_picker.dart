@@ -324,8 +324,8 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                       'Memuat nama lokasi...',
                       point,
                     );
-                    final resolvedLocation = await MeraukeGeocodingService.resolveLocationName(point);
-                    if (mounted) {
+                    final resolvedLocation = await MeraukeGeocodingService.resolveLocationNameDebounced(point);
+                    if (mounted && resolvedLocation != null) {
                       widget.onCustomCoordinateSelected!(
                         resolvedLocation,
                         point,
@@ -584,8 +584,8 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                     'Memuat nama lokasi...',
                                     point,
                                   );
-                                  final resolvedLocation = await MeraukeGeocodingService.resolveLocationName(point);
-                                  if (mounted) {
+                                  final resolvedLocation = await MeraukeGeocodingService.resolveLocationNameDebounced(point);
+                                  if (mounted && resolvedLocation != null) {
                                     setDialogState(() {});
                                     widget.onCustomCoordinateSelected!(
                                       resolvedLocation,
