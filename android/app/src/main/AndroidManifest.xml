@@ -2,6 +2,10 @@
     <!-- Peta OSM dan reverse geocoding butuh jaringan; tanpa ini build rilis
          hanya memuat peta kosong karena manifest debug tidak ikut terpakai. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Tombol "lokasi saya" memakai GPS; koarse dipakai sebagai cadangan
+         kalau pengguna hanya mengizinkan perkiraan lokasi. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <application

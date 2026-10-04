@@ -11,11 +11,16 @@ class MeraukePoi {
   final String category;
   final LatLng coords;
 
+  /// Kata kunci tambahan yang tidak muncul di [name], [road], atau [category],
+  /// misalnya 'airport' untuk Bandara Mopah.
+  final List<String> aliases;
+
   const MeraukePoi({
     required this.name,
     required this.road,
     required this.category,
     required this.coords,
+    this.aliases = const [],
   });
 }
 
@@ -67,6 +72,7 @@ class MeraukeGeocodingService {
       road: 'Jl. Kamizaun Mopah Lama',
       category: 'Kampus',
       coords: LatLng(-8.5130, 140.4280),
+      aliases: ['unmus', 'universitas'],
     ),
 
     // Fasilitas Kesehatan
@@ -101,6 +107,7 @@ class MeraukeGeocodingService {
       road: 'Lobi Kedatangan Bandara Mopah',
       category: 'Bandara',
       coords: LatLng(-8.5202, 140.4180),
+      aliases: ['airport', 'mopah'],
     ),
     MeraukePoi(
       name: 'Swiss-Belhotel Merauke',
@@ -222,6 +229,52 @@ class MeraukeGeocodingService {
 
   // Cache memori agar koordinat yang sama tidak di-request berulang
   static final Map<String, String> _cache = {};
+
+  /// Batas kotak area layanan Merauke. Titik di luar ini ditolak supaya
+  /// pengguna tidak menandai lokasi di luar jangkauan armada.
+  static const double _meraukeNorth = -8.30;
+  static const double _meraukeSouth = -8.65;
+  static const double _meraukeWest = 140.25;
+  static const double _meraukeEast = 140.55;
+
+  static bool isInsideMerauke(LatLng coords) {
+    return coords.latitude <= _meraukeNorth &&
+        coords.latitude >= _meraukeSouth &&
+        coords.longitude >= _meraukeWest &&
+        coords.longitude <= _meraukeEast;
+  }
+
+  /// Mencari POI lokal berdasarkan kata kunci nama, jalan, kategori, atau alias.
+  /// Pencocokan dilakukan pada seluruh kata kunci yang diketik, sehingga
+  /// 'bandara mopah' dan 'bandara' sama-sama menemukan Bandara Mopah.
+  static List<MeraukePoi> searchPois(String query, {int limit = 6}) {
+    final normalized = query.toLowerCase().trim();
+    if (normalized.isEmpty) return const [];
+
+    final tokens = normalized.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+
+    final scored = <({MeraukePoi poi, int score})>[];
+    for (final poi in _localPois) {
+      final haystack = [
+        poi.name.toLowerCase(),
+        poi.road.toLowerCase(),
+        poi.category.toLowerCase(),
+        ...poi.aliases.map((a) => a.toLowerCase()),
+      ].join(' ');
+
+      // Semua kata kunci harus cocok, agar 'bandara merauke' tidak
+      // mengembalikan hasil yang hanya cocok separuh.
+      if (!tokens.every(haystack.contains)) continue;
+
+      // Nama yang diawali kata kunci dinaikkan peringkatnya supaya
+      // 'bandara' menaruh 'Bandara Mopah Merauke' di paling atas.
+      final score = poi.name.toLowerCase().startsWith(tokens.first) ? 2 : 1;
+      scored.add((poi: poi, score: score));
+    }
+
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    return scored.take(limit).map((e) => e.poi).toList();
+  }
 
   /// Mengubah koordinat LatLng menjadi nama lokasi manusiawi
   static Future<String> resolveLocationName(LatLng coords) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/merauke_geocoding_service.dart';
+import '../services/user_location_service.dart';
 import '../theme/app_colors.dart';
 
 /// Data preset landmark dan titik lokasi populer di Merauke
@@ -90,11 +91,34 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
   late final MapController _mapController;
   late LatLng _currentCenter;
 
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  List<MeraukePoi> _searchResults = const [];
+  bool _isSearching = false;
+  bool _isLocating = false;
+
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
     _currentCenter = widget.selectedCoordinates ?? _findMatchingCoordinates(widget.selectedLocationName);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text;
+    setState(() {
+      _searchResults = MeraukeGeocodingService.searchPois(query);
+      _isSearching = query.trim().isNotEmpty;
+    });
   }
 
   @override
@@ -129,6 +153,90 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
     } catch (_) {
       // Abaikan jika map controller belum siap
     }
+  }
+
+
+  /// Menerapkan satu POI hasil pencarian sebagai lokasi terpilih.
+  void _applyPoi(MeraukePoi poi) {
+    final label = '${poi.name}, ${poi.road}';
+    setState(() {
+      _currentCenter = poi.coords;
+      _searchResults = const [];
+      _isSearching = false;
+      _searchController.clear();
+      _searchFocus.unfocus();
+    });
+    _flyTo(poi.coords);
+    widget.onCustomCoordinateSelected?.call(label, poi.coords);
+  }
+
+  Future<void> _useCurrentLocation() async {
+    if (_isLocating) return;
+
+    setState(() => _isLocating = true);
+    final result = await UserLocationService.getCurrentLocation();
+    if (!mounted) return;
+    setState(() => _isLocating = false);
+
+    if (!result.isSuccess) {
+      _showLocationError(result.status);
+      return;
+    }
+
+    final coords = result.coords!;
+    setState(() {
+      _currentCenter = coords;
+      _searchResults = const [];
+      _isSearching = false;
+      _searchController.clear();
+    });
+    _flyTo(coords);
+
+    // Pin ditampilkan lebih dulu supaya tidak menunggu jaringan hanya
+    // untuk mendapatkan nama lokasinya.
+    widget.onCustomCoordinateSelected?.call('Memuat nama lokasi...', coords);
+    final resolvedName = await MeraukeGeocodingService.resolveLocationNameDebounced(coords);
+    if (mounted && resolvedName != null) {
+      widget.onCustomCoordinateSelected?.call(resolvedName, coords);
+    }
+  }
+
+  void _showLocationError(UserLocationStatus status) {
+    late final String message;
+    switch (status) {
+      case UserLocationStatus.serviceDisabled:
+        message = 'GPS perangkat sedang mati. Nyalakan lokasi lalu coba lagi.';
+      case UserLocationStatus.permissionDenied:
+        message = 'Izin lokasi dibutuhkan untuk menandai titik jemput Anda.';
+      case UserLocationStatus.permissionDeniedForever:
+        message = 'Izin lokasi ditolak permanen. Aktifkan lewat Setelan aplikasi.';
+      case UserLocationStatus.outsideServiceArea:
+        // Menyebut "luar area layanan" saja membuat pelanggan dari luar kota
+        // mengira aplikasinya tidak bisa dipakai. Padahal yang ditolak hanya
+        // pintasan GPS; titik jemput tetap bisa dicari atau diketuk di peta.
+        message = 'Lokasi GPS Anda di luar Merauke. Cari lokasi atau ketuk peta '
+            'untuk menentukan titik jemput.';
+      case UserLocationStatus.unavailable:
+        message = 'Lokasi Anda belum terbaca. Coba lagi atau ketuk peta untuk '
+            'menandai titik jemput.';
+      case UserLocationStatus.success:
+        return;
+    }
+
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
+        backgroundColor: AppColors.primaryNavy,
+        behavior: SnackBarBehavior.floating,
+        action: status == UserLocationStatus.permissionDeniedForever
+            ? SnackBarAction(
+                label: 'Setelan',
+                textColor: AppColors.primaryTeal,
+                onPressed: UserLocationService.openAppSettings,
+              )
+            : null,
+      ),
+    );
   }
 
   @override
@@ -218,9 +326,18 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
 
   Widget _buildInteractiveMap() {
     if (!widget.showCardContainer) {
-      return _buildMapCanvas(
-        height: widget.mapHeight,
-        borderRadius: BorderRadius.circular(10),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.isWithDriver) ...[
+            _buildSearchArea(),
+            const SizedBox(height: 8),
+          ],
+          _buildMapCanvas(
+            height: widget.mapHeight,
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ],
       );
     }
 
@@ -284,6 +401,11 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
               ],
             ),
           ),
+          if (widget.isWithDriver)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: _buildSearchArea(),
+            ),
           _buildMapCanvas(
             height: widget.mapHeight,
             borderRadius: const BorderRadius.only(
@@ -291,6 +413,130 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
               bottomRight: Radius.circular(14),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchArea() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchController,
+          focusNode: _searchFocus,
+          style: const TextStyle(fontSize: 12, fontFamily: 'Inter'),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Cari lokasi, misalnya "bandara"',
+            hintStyle: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+            prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+            suffixIcon: _isSearching
+                ? IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
+            filled: true,
+            fillColor: AppColors.surfaceLight,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.borderSubtle),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.borderSubtle),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.primaryTeal),
+            ),
+          ),
+        ),
+        if (_isSearching) _buildSearchResults(),
+      ],
+    );
+  }
+
+  Widget _buildSearchResults() {
+    if (_searchResults.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: const Text(
+          'Lokasi tidak ditemukan. Ketuk peta untuk menandai manual.',
+          style: TextStyle(
+            fontSize: 11,
+            color: AppColors.textSecondary,
+            fontFamily: 'Inter',
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < _searchResults.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: AppColors.borderSubtle),
+            InkWell(
+              onTap: () => _applyPoi(_searchResults[i]),
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                child: Row(
+                  children: [
+                    const Icon(Icons.place_outlined, size: 16, color: AppColors.primaryTeal),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _searchResults[i].name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                          Text(
+                            '${_searchResults[i].category} • ${_searchResults[i].road}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -410,13 +656,14 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                       _mapController.move(_mapController.camera.center, zoom - 1);
                     },
                   ),
-                  const SizedBox(height: 5),
-                  _buildMapActionButton(
-                    icon: Icons.my_location,
-                    onPressed: () {
-                      _flyTo(_currentCenter);
-                    },
-                  ),
+                  if (widget.isWithDriver) ...[
+                    const SizedBox(height: 5),
+                    _buildMapActionButton(
+                      icon: Icons.my_location,
+                      onPressed: _isLocating ? null : _useCurrentLocation,
+                      isLoading: _isLocating,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -739,7 +986,8 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
 
   Widget _buildMapActionButton({
     required IconData icon,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
+    bool isLoading = false,
   }) {
     return Container(
       width: 28,
@@ -756,7 +1004,16 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
         ],
       ),
       child: IconButton(
-        icon: Icon(icon, size: 15, color: AppColors.primaryNavy),
+        icon: isLoading
+            ? const SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryNavy,
+                ),
+              )
+            : Icon(icon, size: 15, color: AppColors.primaryNavy),
         padding: EdgeInsets.zero,
         onPressed: onPressed,
       ),
