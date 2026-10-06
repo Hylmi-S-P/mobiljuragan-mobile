@@ -14,6 +14,18 @@ class AppTheme {
         error: Color(0xFFEF4444),
       ),
       fontFamily: 'Inter',
+      // SnackBar bawaan memakai lebar tetap dan satu baris, sehingga pesan
+      // panjang meluber ke kanan saat ukuran teks sistem diperbesar. Dengan
+      // teks yang boleh membungkus dan margin aman, seluruh SnackBar di
+      // aplikasi ikut aman tanpa perlu diubah satu per satu.
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        insetPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+        contentTextStyle: TextStyle(
+          fontFamily: 'Inter',
+          color: AppColors.textWhite,
+        ),
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primaryNavy,
         foregroundColor: AppColors.textWhite,

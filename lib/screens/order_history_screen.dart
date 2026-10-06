@@ -101,7 +101,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }) {
     return Container(
       width: double.infinity,
-      height: 48,
+      // Tinggi mengikuti skala teks perangkat. Tinggi tetap 48 px membuat
+      // label terpotong saat ukuran teks sistem diperbesar.
+      height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
@@ -151,15 +153,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           borderRadius: BorderRadius.circular(9),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
-                fontFamily: 'Inter',
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
             if (count > 0) ...[
@@ -210,9 +216,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
             Text(
               'Pesanan Aktif (${activeBookings.length})',
               style: const TextStyle(
@@ -310,8 +319,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Kartu: Status Badge & Booking Ref
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
             children: [
               _buildStatusBadge(booking.status),
               Text(
@@ -478,9 +490,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           ],
 
           // Tarif & Aksi
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -189,9 +189,12 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               screenTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -210,12 +213,18 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   ),
                 ),
                 const SizedBox(width: 5),
-                Text(
-                  screenSubtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.tealLight,
-                    fontFamily: 'Inter',
+                // Flexible + ellipsis: subjudul menyusut agar tidak menabrak
+                // tombol "Panggil Staf" saat ukuran teks sistem diperbesar.
+                Flexible(
+                  child: Text(
+                    screenSubtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.tealLight,
+                      fontFamily: 'Inter',
+                    ),
                   ),
                 ),
               ],
@@ -343,8 +352,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
                   children: [
                     Text(
                       isWaiting
@@ -553,13 +565,19 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  msg.senderName,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
+                // Flexible: nama pengirim panjang menyusut dengan ellipsis
+                // saat ukuran teks sistem diperbesar.
+                Flexible(
+                  child: Text(
+                    msg.senderName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
                   ),
                 ),
               ],

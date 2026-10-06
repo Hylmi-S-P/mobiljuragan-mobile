@@ -561,7 +561,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   Widget _buildSubmitButton(AuthController auth, bool hasError) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: (50 * MediaQuery.textScalerOf(context).scale(1)).clamp(50, 100),
       child: ElevatedButton(
         onPressed: _isLoading
             ? null

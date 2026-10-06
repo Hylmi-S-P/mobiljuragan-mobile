@@ -375,8 +375,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: jumlah topik turun ke baris berikutnya saat ukuran teks
+          // sistem diperbesar, bukan meluber ke kanan.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               const Text(
                 'Pertanyaan Populer',
@@ -489,8 +494,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
           children: [
             const Text(
               'Tiket Bantuan Saya',

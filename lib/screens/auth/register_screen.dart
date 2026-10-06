@@ -742,7 +742,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleContinueToOtp,
         style: ElevatedButton.styleFrom(

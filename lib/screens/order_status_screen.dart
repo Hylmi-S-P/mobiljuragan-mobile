@@ -275,8 +275,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 6,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +351,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               children: [
                 Container(
                   width: 64,
-                  height: 50,
+                  height: (50 * MediaQuery.textScalerOf(context).scale(1)).clamp(50, 100),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceLight,
                     borderRadius: BorderRadius.circular(8),
@@ -437,11 +440,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Wrap: nominal harga turun ke baris berikutnya saat ukuran
+                // teks sistem diperbesar, bukan menimpa label di sebelahnya.
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           isCancelled
@@ -749,14 +758,20 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: badge "Karyawan Tetap" turun ke baris berikutnya saat ukuran
+          // teks sistem diperbesar, bukan menimpa judul kartu.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              const Row(
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.badge_outlined, size: 18, color: AppColors.primaryTeal),
-                  SizedBox(width: 8),
-                  Text(
+                  const Icon(Icons.badge_outlined, size: 18, color: AppColors.primaryTeal),
+                  const SizedBox(width: 8),
+                  const Text(
                     'Staf Pengemudi Bertugas',
                     style: TextStyle(
                       fontSize: 13,
@@ -790,7 +805,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             children: [
               Container(
                 width: 44,
-                height: 44,
+                height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
                 decoration: BoxDecoration(
                   color: AppColors.primaryNavy,
                   borderRadius: BorderRadius.circular(12),
@@ -860,10 +875,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: tautan "Buka Chat CS" turun ke baris berikutnya saat ukuran
+          // teks sistem diperbesar, bukan menimpa teks jam standby.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 6),
@@ -919,23 +940,35 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: badge turun ke baris berikutnya saat teks sistem diperbesar,
+          // sehingga judul panduan tetap terbaca utuh tanpa terpotong.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.key_rounded, size: 18, color: AppColors.primaryTeal),
-                  SizedBox(width: 8),
-                  Text(
-                    'Panduan Serah Terima Mandiri',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+              // Flexible: judul panduan boleh membungkus ke baris berikutnya
+              // saat ukuran teks sistem diperbesar, bukan meluber ke kanan.
+              const Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.key_rounded, size: 18, color: AppColors.primaryTeal),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Panduan Serah Terima Mandiri',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1141,13 +1174,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             children: [
               Icon(Icons.hourglass_top, size: 18, color: Color(0xFFB45309)),
               SizedBox(width: 8),
-              Text(
-                'Menunggu Rincian Tarif Final',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFFB45309),
-                  fontFamily: 'Inter',
+              // Expanded: judul membungkus ke baris berikutnya saat ukuran
+              // teks sistem diperbesar, bukan meluber ke kanan.
+              Expanded(
+                child: Text(
+                  'Menunggu Rincian Tarif Final',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB45309),
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ],
@@ -1274,10 +1311,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: badge countdown turun ke baris berikutnya saat ukuran teks
+          // sistem diperbesar, bukan meluber keluar kartu.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -1293,28 +1337,32 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Menunggu Pembayaran',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF92400E),
-                          fontFamily: 'Inter',
+                  // Flexible: kolom teks boleh menyusut dan membungkus saat
+                  // ukuran teks sistem diperbesar.
+                  const Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Menunggu Pembayaran',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                            fontFamily: 'Inter',
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Tarif resmi final telah diterbitkan',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
+                        SizedBox(height: 2),
+                        Text(
+                          'Tarif resmi final telah diterbitkan',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1346,8 +1394,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           const SizedBox(height: 12),
           const Divider(height: 1, color: AppColors.borderSubtle),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               const Text(
                 'Total Tagihan Pembayaran',
@@ -1426,8 +1477,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                 children: [
                   const Text(
                     'Pilih Metode Pembayaran',
@@ -1521,7 +1575,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
+                              runSpacing: 4,
                               children: [
                                 const Text(
                                   'Transfer & QRIS Otomatis',
@@ -1618,7 +1675,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
+                              runSpacing: 4,
                               children: [
                                 const Text(
                                   'Bayar Tunai di Tempat (COD)',
@@ -1726,36 +1786,42 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               color: AppColors.primaryNavy,
               borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.confirmation_num_outlined, size: 18, color: Color(0xFF38BDF8)),
                     const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'E-TICKET RESMI MOBILJURAGAN',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                            color: Colors.white70,
-                            fontFamily: 'Inter',
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'E-TICKET RESMI MOBILJURAGAN',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: Colors.white70,
+                              fontFamily: 'Inter',
+                            ),
                           ),
-                        ),
-                        Text(
-                          booking.id,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            fontFamily: 'Inter',
+                          Text(
+                            booking.id,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              fontFamily: 'Inter',
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1965,8 +2031,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 6,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2050,7 +2119,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
                     // Tab Switcher (QRIS vs Virtual Account)
                     Container(
-                      height: 42,
+                      height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F5F9),
@@ -2152,8 +2221,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                           ),
                           child: Column(
                             children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 6,
+                                runSpacing: 4,
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -2298,8 +2369,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'Inter'),
                             ),
                             const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 6,
                               children: [
                                 Text(
                                   vaNumber,
@@ -2345,7 +2419,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     // Tombol Aksi Verifikasi & Simulasi
                     SizedBox(
                       width: double.infinity,
-                      height: 46,
+                      height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
                       child: ElevatedButton(
                         onPressed: isVerifying
                             ? null
@@ -2407,7 +2481,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     // Tombol Simulasi Berhasil Instan (Khusus Demo PBL)
                     SizedBox(
                       width: double.infinity,
-                      height: 42,
+                      height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
                       child: OutlinedButton(
                         onPressed: () {
                           Navigator.pop(sheetContext);
@@ -2660,7 +2734,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             children: [
               Container(
                 width: 42,
-                height: 42,
+                height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
@@ -2677,8 +2751,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 6,
                       children: [
                         const Text(
                           'Reservasi Dibatalkan',
@@ -2735,11 +2812,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(
-                width: 125,
+              // Lebar label sebelumnya dipatok 125 px, sehingga label meluber
+              // saat ukuran teks sistem diperbesar. Kini label ikut fleksibel.
+              Expanded(
+                flex: 2,
                 child: Text(
                   'Alasan Pembatalan',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: AppColors.textSecondary,
@@ -2747,7 +2826,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
+                flex: 3,
                 child: Text(
                   booking.cancellationReason ?? 'Dibatalkan oleh pemesan',
                   style: const TextStyle(
@@ -2781,13 +2862,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     children: [
                       Icon(Icons.check_circle_outline_rounded, size: 16, color: AppColors.primaryNavy),
                       SizedBox(width: 6),
-                      Text(
-                        'Penyelesaian Finansial (COD)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
+                      Expanded(
+                        child: Text(
+                          'Penyelesaian Finansial (COD)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
                         ),
                       ),
                       Spacer(),
@@ -2843,8 +2926,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                     children: [
                       const Text(
                         'Total Telah Dibayar',
@@ -2857,8 +2943,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                     children: [
                       const Text(
                         'Potongan Operasional (15%)',
@@ -2873,8 +2962,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   const SizedBox(height: 6),
                   const Divider(height: 1, color: AppColors.borderSubtle),
                   const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                     children: [
                       const Text(
                         'Dana Dikembalikan',
@@ -3216,16 +3308,22 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 6,
                               children: [
                                 const Text('Total Pembayaran:', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'Inter')),
                                 Text('Rp ${_formatRupiah(booking.totalCost)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 6,
                               children: [
                                 const Text('Penalti Kompensasi (15%):', style: TextStyle(fontSize: 11, color: Color(0xFFDC2626), fontFamily: 'Inter')),
                                 Text('-Rp ${_formatRupiah(penaltyAmount)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFDC2626), fontFamily: 'Inter')),
@@ -3234,8 +3332,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                             const SizedBox(height: 6),
                             const Divider(height: 1, color: AppColors.borderSubtle),
                             const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 6,
                               children: [
                                 const Text('Estimasi Dana Dikembalikan:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF166534), fontFamily: 'Inter')),
                                 Text('Rp ${_formatRupiah(refundAmount)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF166534), fontFamily: 'Inter')),
@@ -3474,7 +3575,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         children: [
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
             child: ElevatedButton.icon(
               onPressed: () {
                 final controller = context.read<BookingController>();
@@ -3505,7 +3606,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
             child: OutlinedButton(
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
@@ -3537,7 +3638,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         if (isWaitingPayment) ...[
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
             child: ElevatedButton.icon(
               onPressed: () => _showPaymentMethodPickerSheet(context, booking),
               icon: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
@@ -3561,7 +3662,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         ] else if (isPaid) ...[
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
             child: ElevatedButton.icon(
               onPressed: () {
                 Navigator.of(context).push(
@@ -3601,7 +3702,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         ] else ...[
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
             child: OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).push(
@@ -3630,7 +3731,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         ],
         SizedBox(
           width: double.infinity,
-          height: 46,
+          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
           child: isWaitingPayment || isPaid
               ? OutlinedButton(
                   onPressed: () {

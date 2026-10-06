@@ -164,8 +164,11 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
             children: [
               Row(
                 children: [
@@ -394,10 +397,14 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 6,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 10,
@@ -420,6 +427,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             ],
           ),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 10,
@@ -581,27 +589,41 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Jam Sewa
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: tombol "Pilih Jam Lain" turun ke baris berikutnya saat ukuran
+          // teks sistem diperbesar, bukan terpotong di tepi kanan kartu.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Row(
+              // Wrap bersarang: judul dan badge jam boleh terpisah baris saat
+              // ukuran teks sistem ekstrem, bukan saling mendorong keluar.
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  const Icon(
-                    Icons.access_time_rounded,
-                    size: 16,
-                    color: AppColors.primaryTeal,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 16,
+                        color: AppColors.primaryTeal,
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Jam Sewa',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Jam Sewa',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
@@ -627,6 +649,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.tune_rounded,
@@ -1031,37 +1054,50 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        // Wrap: saat ukuran teks sangat besar, tombol turun ke barisnya sendiri
+        // sehingga label periode sewa tetap terbaca wajar.
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 10,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Periode Sewa',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: 120,
+                maxWidth: MediaQuery.sizeOf(context).width - 200,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Periode Sewa',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                ),
-                Text(
-                  '$_durationDays Hari ($formattedDate - $formattedReturn)',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryNavy,
-                    fontFamily: 'Inter',
+                  Text(
+                    '$_durationDays Hari ($formattedDate - $formattedReturn)',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: ElevatedButton(
+            SizedBox(
+              // Tinggi ikut skala teks sistem agar label tombol tidak terpotong.
+              height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
+              child: ElevatedButton(
                   onPressed: () {
                     final parsed = _parseTimeOfDay(_selectedTime);
                     if (!_isWithinOperationalHours(parsed)) {
@@ -1106,7 +1142,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     ),
                   ),
                 ),
-              ),
             ),
           ],
         ),

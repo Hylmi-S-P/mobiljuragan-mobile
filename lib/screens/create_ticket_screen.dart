@@ -497,13 +497,20 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                           )
                         : const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'Kirim Tiket & Buka Chat',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'Inter',
+                              // Flexible + ellipsis: label menyusut agar tidak
+                              // meluber saat ukuran teks sistem diperbesar.
+                              Flexible(
+                                child: Text(
+                                  'Kirim Tiket & Buka Chat',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'Inter',
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 8),

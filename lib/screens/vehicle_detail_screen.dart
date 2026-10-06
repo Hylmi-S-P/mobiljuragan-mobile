@@ -34,49 +34,26 @@ class VehicleDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            vehicle.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Plat Nomor: ${vehicle.plateNumber}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.badgeGreenBg,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.badgeGreenText.withValues(alpha: 0.3), width: 1),
+                      Text(
+                        vehicle.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
                         ),
-                        child: const Text(
-                          'Unit Siap Jalan',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.badgeGreenText,
-                            fontFamily: 'Inter',
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Plat Nomor: ${vehicle.plateNumber}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
                         ),
                       ),
                     ],
@@ -109,48 +86,21 @@ class VehicleDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                vehicle.detailImageUrl ?? vehicle.imageUrl,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Center(
-                    child: Icon(
-                      Icons.directions_car,
-                      color: AppColors.textSecondary,
-                      size: 64,
-                    ),
-                  );
-                },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.asset(
+          vehicle.detailImageUrl ?? vehicle.imageUrl,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(
+                Icons.directions_car,
+                color: AppColors.textSecondary,
+                size: 64,
               ),
-            ),
-          ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.badgeGreenBg,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.badgeGreenText.withValues(alpha: 0.3), width: 1),
-              ),
-              child: const Text(
-                'Tersedia',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.badgeGreenText,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -188,7 +138,7 @@ class VehicleDetailScreen extends StatelessWidget {
             Expanded(
               child: SpecCardItem(
                 label: 'Status Unit',
-                value: vehicle.condition,
+                value: 'Tersedia',
                 valueColor: AppColors.badgeGreenText,
               ),
             ),
@@ -210,8 +160,13 @@ class VehicleDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap, bukan Row: saat ukuran teks sistem diperbesar, nominal tarif
+          // turun ke baris berikutnya alih-alih bertabrakan dengan labelnya.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 2,
             children: [
               const Text(
                 'Tarif Sewa Terhitung (Sistem Resmi)',

@@ -45,7 +45,9 @@ class SpecCardItem extends StatelessWidget {
               color: valueColor ?? AppColors.textPrimary,
               fontFamily: 'Inter',
             ),
-            maxLines: 1,
+            // Dua baris: nilai panjang seperti "5 Penumpang (Double Cabin)"
+            // tetap terbaca utuh, tidak dipotong di tengah kata.
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],

@@ -294,8 +294,11 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           const Divider(height: 24, color: AppColors.borderSubtle),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
             children: [
               const Text(
                 'Nomor Induk Kependudukan (NIK)',
@@ -317,8 +320,13 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Wrap: alamat email turun ke baris berikutnya saat ukuran teks
+          // sistem diperbesar, bukan meluber keluar kartu.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               const Text(
                 'Alamat Email Terdaftar',
@@ -492,7 +500,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildLogoutButton(BuildContext context, AuthController auth) {
     return SizedBox(
       width: double.infinity,
-      height: 46,
+      height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
       child: OutlinedButton.icon(
         onPressed: () {
           _showLogoutConfirmationDialog(context, auth);
@@ -682,42 +690,48 @@ class ProfileScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.cardWhite,
+      // Konten boleh digulir: pada layar pendek atau ukuran teks besar,
+      // ketentuan panjang tidak lagi terpotong di luar layar.
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (modalCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ketentuan Sewa Unit Merauke',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                '1. Pelanggan wajib menunjukkan dokumen fisik asli KTP dan SIM A saat serah terima armada di kantor MobilJuragan Merauke.\n\n'
-                '2. Penggunaan kendaraan meliputi area Kota Merauke dan sekitarnya sesuai kesepakatan rute.\n\n'
-                '3. Bahan bakar dikembalikan sesuai posisi awal serah terima armada.',
-                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.textSecondary, fontFamily: 'Inter'),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(modalCtx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Saya Mengerti'),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Ketentuan Sewa Unit Merauke',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                const Text(
+                  '1. Pelanggan wajib menunjukkan dokumen fisik asli KTP dan SIM A saat serah terima armada di kantor MobilJuragan Merauke.\n\n'
+                  '2. Penggunaan kendaraan meliputi area Kota Merauke dan sekitarnya sesuai kesepakatan rute.\n\n'
+                  '3. Bahan bakar dikembalikan sesuai posisi awal serah terima armada.',
+                  style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.textSecondary, fontFamily: 'Inter'),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  // Tinggi ikut skala teks sistem agar label tidak terpotong.
+                  height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(modalCtx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryNavy,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Saya Mengerti'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

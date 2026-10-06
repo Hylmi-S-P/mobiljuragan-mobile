@@ -115,23 +115,31 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.directions_car_outlined, size: 18, color: AppColors.primaryTeal),
-                  SizedBox(width: 8),
-                  Text(
-                    'Armada Kendaraan',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+              const Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.directions_car_outlined, size: 18, color: AppColors.primaryTeal),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Armada Kendaraan',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               InkWell(
                 onTap: () {
@@ -237,23 +245,31 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.primaryTeal),
-                  SizedBox(width: 8),
-                  Text(
-                    'Jadwal Rental',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+              const Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.primaryTeal),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Jadwal Rental',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               InkWell(
                 onTap: () {
@@ -304,23 +320,33 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.commute_outlined, size: 18, color: AppColors.primaryTeal),
-                  SizedBox(width: 8),
-                  Text(
-                    'Moda & Lokasi Serah Terima',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+              // Flexible di dalam Row bersarang ini membuat judul panjang
+              // membungkus ke baris berikutnya alih-alih meluber ke kanan.
+              const Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.commute_outlined, size: 18, color: AppColors.primaryTeal),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Moda & Lokasi Serah Terima',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               InkWell(
                 onTap: () {
@@ -442,9 +468,12 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
               const Text(
                 'Rincian Biaya Sewa',
                 style: TextStyle(
@@ -488,8 +517,11 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             'Rp ${_formatRupiah(booking.serviceFee)}',
           ),
           const Divider(height: 20, color: AppColors.borderSubtle),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               const Text(
                 'Total Terhitung',
@@ -602,7 +634,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         top: false,
         child: SizedBox(
           width: double.infinity,
-          height: 48,
+          // Tinggi ikut skala teks sistem agar label tidak terpotong.
+          height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
           child: ElevatedButton(
             onPressed: isEnabled
                 ? () {
@@ -757,7 +790,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(modalCtx);
@@ -794,7 +827,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
-                height: 44,
+                height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(modalCtx);
@@ -830,19 +863,22 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TextButton(
-                    onPressed: () {
-                      auth.loginAsDefault();
-                      Navigator.pop(modalCtx);
-                      _processOrderSubmission(context, booking, vehicle);
-                    },
-                    child: const Text(
-                      'Pintasan Demo: Masuk Cepat sebagai Harun',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
+                  Flexible(
+                    child: TextButton(
+                      onPressed: () {
+                        auth.loginAsDefault();
+                        Navigator.pop(modalCtx);
+                        _processOrderSubmission(context, booking, vehicle);
+                      },
+                      child: const Text(
+                        'Pintasan Demo: Masuk Cepat sebagai Harun',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
                       ),
                     ),
                   ),
@@ -859,13 +895,18 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
-            color: AppColors.textSecondary,
-            fontFamily: 'Inter',
+        // Kedua sisi sama-sama fleksibel. Sebelumnya hanya nilai yang
+        // Expanded, sehingga label panjang mendorong isi baris melebihi
+        // lebar kartu saat ukuran teks sistem diperbesar.
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
           ),
         ),
         const SizedBox(width: 12),

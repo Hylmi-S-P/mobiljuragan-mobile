@@ -211,8 +211,13 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // Wrap: badge "Bebas Biaya Sopir" turun ke baris berikutnya
+                      // saat ukuran teks sistem diperbesar, bukan menimpa judul.
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           const Text(
                             'Lepas Kunci (Self-Drive)',
@@ -313,8 +318,13 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // Wrap: badge biaya sopir turun ke baris berikutnya saat
+                      // ukuran teks sistem diperbesar, bukan meluber ke kanan.
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           const Text(
                             'Dengan Sopir Lokal',
@@ -639,6 +649,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 isDriver ? Icons.airline_seat_recline_normal : Icons.verified_user_outlined,
@@ -646,13 +657,17 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 color: AppColors.primaryTeal,
               ),
               const SizedBox(width: 8),
-              Text(
-                isDriver ? 'Ketentuan Layanan Sopir Tetap' : 'Ketentuan Sewa Lepas Kunci',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+              // Expanded: judul ketentuan membungkus ke baris berikutnya saat
+              // ukuran teks sistem diperbesar, bukan meluber ke kanan.
+              Expanded(
+                child: Text(
+                  isDriver ? 'Ketentuan Layanan Sopir Tetap' : 'Ketentuan Sewa Lepas Kunci',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ],
@@ -715,15 +730,30 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        // Wrap: saat ukuran teks sangat besar, tombol turun ke barisnya sendiri
+        // dan label kiri tetap punya lebar layar penuh untuk membungkus wajar.
+        // Sebelumnya Row menahan keduanya sebaris sehingga label terhimpit
+        // sampai terpecah satu huruf per baris.
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 14,
+          runSpacing: 10,
           children: [
-            Expanded(
+            ConstrainedBox(
+              // Sisakan ruang untuk tombol bila masih muat sebaris.
+              constraints: BoxConstraints(
+                minWidth: 120,
+                maxWidth: MediaQuery.sizeOf(context).width - 200,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci (Self-Drive)',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -745,9 +775,9 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 14),
             SizedBox(
-              height: 46,
+              // Tinggi ikut skala teks sistem agar label tombol tidak terpotong.
+              height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(

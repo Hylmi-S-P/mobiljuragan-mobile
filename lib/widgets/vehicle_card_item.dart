@@ -62,9 +62,9 @@ class VehicleCardItem extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        vehicle.availabilityTag,
-                        style: const TextStyle(
+                      const Text(
+                        'Tersedia',
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primaryTeal,
