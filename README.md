@@ -80,7 +80,7 @@ mobiljuragan-mobile/
 - **Flutter SDK**: Versi $\ge$ 3.13 (disarankan Flutter 3.24+ atau terbaru)
 - **Dart SDK**: Versi $\ge$ 3.0
 - **Android Studio** / **VS Code** dengan ekstensi Flutter & Dart terpasang
-- **Backend API**: Layanan backend MobilJuragan berjalan di port 4000 (lihat repositori `mobiljuragan-backend`).
+- **Backend API**: Layanan backend MobilJuragan berjalan di port 4000 dengan basis data **MariaDB/MySQL** (lihat repositori `mobiljuragan-backend`). Seluruh kontrak REST API tetap konsisten dengan struktur data model Flutter.
 
 ---
 
