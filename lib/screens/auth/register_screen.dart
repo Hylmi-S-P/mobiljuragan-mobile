@@ -766,11 +766,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Text(
                     'Lanjut ke Verifikasi OTP',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTitle,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
+                    style: AppTypography.sectionTitle,
                   ),
                   SizedBox(width: 8),
                   Icon(Icons.arrow_forward_rounded, size: 16),

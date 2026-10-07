@@ -264,11 +264,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             ),
             child: Text(
               'Pilih ${selectedVehicle.name}',
-              style: const TextStyle(
-                fontSize: AppTypography.sizeTitle,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Inter',
-              ),
+              style: AppTypography.sectionTitle,
             ),
           ),
         ),

@@ -548,11 +548,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       children: [
                         Text(
                           'Cek Status',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Inter',
-                          ),
+                          style: AppTypography.bodyBold,
                         ),
                         SizedBox(width: 4),
                         Icon(Icons.chevron_right, size: 16),
@@ -585,11 +581,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                     child: const Text(
                       'Sewa Lagi',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBody,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Inter',
-                      ),
+                      style: AppTypography.bodyBold,
                     ),
                   ),
                 ),

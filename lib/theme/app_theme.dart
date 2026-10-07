@@ -65,11 +65,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          textStyle: const TextStyle(
-            fontSize: AppTypography.sizeBodyLarge,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Inter',
-          ),
+          textStyle: AppTypography.bodyLargeMedium,
         ),
       ),
     );

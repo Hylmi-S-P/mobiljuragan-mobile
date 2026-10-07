@@ -658,11 +658,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             ),
             child: const Text(
               'Kirim Pengajuan & Tunggu Tarif Final',
-              style: TextStyle(
-                fontSize: AppTypography.sizeTitle,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Inter',
-              ),
+              style: AppTypography.sectionTitle,
             ),
           ),
         ),
@@ -809,11 +805,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   icon: const Icon(Icons.lock_open_rounded, size: 18),
                   label: const Text(
                     'Masuk via WhatsApp & OTP',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
+                    style: AppTypography.cardTitle,
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryNavy,

@@ -584,11 +584,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               )
             : Text(
                 hasError ? 'Coba Lagi' : 'Verifikasi & Selesaikan Pendaftaran',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeTitle,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.sectionTitle,
               ),
       ),
     );

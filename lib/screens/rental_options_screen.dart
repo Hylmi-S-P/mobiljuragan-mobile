@@ -800,11 +800,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 ),
                 child: const Text(
                   'Lanjut ke Jadwal Sewa',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBodyLarge,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Inter',
-                  ),
+                  style: AppTypography.cardTitle,
                 ),
               ),
             ),

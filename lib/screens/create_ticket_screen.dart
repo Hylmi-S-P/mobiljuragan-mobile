@@ -507,11 +507,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                   'Kirim Tiket & Buka Chat',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeTitle,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'Inter',
-                                  ),
+                                  style: AppTypography.sectionTitle,
                                 ),
                               ),
                               SizedBox(width: 8),

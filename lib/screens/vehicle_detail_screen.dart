@@ -256,11 +256,7 @@ class VehicleDetailScreen extends StatelessWidget {
             ),
             child: const Text(
               'Lanjut ke Opsi Rental',
-              style: TextStyle(
-                fontSize: AppTypography.sizeTitle,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Inter',
-              ),
+              style: AppTypography.sectionTitle,
             ),
           ),
         ),

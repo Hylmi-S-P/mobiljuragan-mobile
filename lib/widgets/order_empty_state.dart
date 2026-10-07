@@ -85,11 +85,7 @@ class OrderEmptyState extends StatelessWidget {
               ),
               child: Text(
                 ctaText,
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeTitle,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.sectionTitle,
               ),
             ),
           ),

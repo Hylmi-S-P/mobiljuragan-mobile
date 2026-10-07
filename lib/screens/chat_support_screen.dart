@@ -436,7 +436,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               ),
               child: const Text(
                 'Sudah Bayar',
-                style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                style: AppTypography.captionBold,
               ),
             ),
           ],

@@ -148,11 +148,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                   icon: const Icon(Icons.add, size: 20),
                   label: const Text(
                     'Buat Tiket Bantuan Baru',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTitle,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
+                    style: AppTypography.sectionTitle,
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryNavy,

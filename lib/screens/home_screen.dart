@@ -618,11 +618,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Pesan Mobil Sekarang',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: AppTypography.sizeTitle,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.sectionTitle,
               ),
             ),
             SizedBox(width: 8),

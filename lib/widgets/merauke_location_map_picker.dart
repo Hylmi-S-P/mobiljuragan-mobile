@@ -965,11 +965,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             ),
                             child: const Text(
                               'Gunakan Titik Ini',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Inter',
-                              ),
+                              style: AppTypography.captionBold,
                             ),
                           ),
                         ],

@@ -2319,7 +2319,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       // Konten Tab Virtual Account
                       const Text(
                         'Pilih Bank Tujuan Transfer',
-                        style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                        style: AppTypography.bodyBold,
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -2453,7 +2453,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         content: Text(
                                           'Pembayaran Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi otomatis!',
-                                          style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600),
+                                          style: AppTypography.bodyStrong,
                                         ),
                                       ),
                                     );
@@ -2481,7 +2481,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               )
                             : const Text(
                                 'Cek Status Pembayaran (Otomatis)',
-                                style: TextStyle(fontSize: AppTypography.sizeBodyLarge, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                                style: AppTypography.cardTitle,
                               ),
                       ),
                     ),
@@ -2508,7 +2508,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               content: const Text(
                                 'Simulasi pembayaran berhasil! E-Ticket resmi telah terbit.',
-                                style: TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600),
+                                style: AppTypography.bodyStrong,
                               ),
                             ),
                           );
@@ -2520,7 +2520,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         ),
                         child: const Text(
                           'Simulasikan Pembayaran Berhasil (Demo Sandbox)',
-                          style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                          style: AppTypography.bodyBold,
                         ),
                       ),
                     ),
@@ -2642,7 +2642,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
               const Text(
                 'Ketentuan Serah Terima COD:',
-                style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                style: AppTypography.bodyBold,
               ),
               const SizedBox(height: 8),
               _buildCodRuleItem(Icons.badge_outlined, 'Wajib menunjukkan fisik KTP elektronik asli sesuai nama pemesan.'),
@@ -2663,7 +2663,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text('Batal / Ubah', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                      child: const Text('Batal / Ubah', style: AppTypography.bodyStrong),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -2680,7 +2680,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             content: Text(
                               'Pesanan #${booking.id} dikonfirmasi COD. E-Ticket resmi telah terbit!',
-                              style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600),
+                              style: AppTypography.bodyStrong,
                             ),
                           ),
                         );
@@ -2692,7 +2692,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
                       ),
-                      child: const Text('Konfirmasi COD', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, fontFamily: 'Inter')),
+                      child: const Text('Konfirmasi COD', style: AppTypography.bodyBold),
                     ),
                   ),
                 ],
@@ -3122,7 +3122,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             ),
             child: const Text(
               'Chat CS',
-              style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+              style: AppTypography.captionBold,
             ),
           ),
         ],
@@ -3324,7 +3324,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                 runSpacing: 6,
                               children: [
                                 const Text('Total Pembayaran:', style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter')),
-                                Text('Rp ${_formatRupiah(booking.totalCost)}', style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, fontFamily: 'Inter')),
+                                Text('Rp ${_formatRupiah(booking.totalCost)}', style: AppTypography.captionStrong),
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -3494,7 +3494,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                             ),
                             child: const Text(
                               'Tetap Lanjutkan',
-                              style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+                              style: AppTypography.bodyStrong,
                             ),
                           ),
                         ),
@@ -3542,7 +3542,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                         : (isCod
                                             ? 'Reservasi COD ${booking.id} berhasil dibatalkan tanpa penalti.'
                                             : 'Pesanan ${booking.id} berhasil dibatalkan.'),
-                                    style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600),
+                                    style: AppTypography.bodyStrong,
                                   ),
                                 ),
                               );
@@ -3556,7 +3556,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                             ),
                             child: Text(
                               isPaid ? 'Konfirmasi Refund' : 'Ya, Batalkan',
-                              style: const TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                              style: AppTypography.bodyBold,
                             ),
                           ),
                         ),
@@ -3598,11 +3598,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               icon: const Icon(Icons.refresh, size: 18, color: Colors.white),
               label: const Text(
                 'Pesan Ulang Mobil Ini',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.cardTitle,
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryNavy,
@@ -3630,11 +3626,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ),
               child: const Text(
                 'Kembali ke Beranda',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.bodyLargeStrong,
               ),
             ),
           ),
@@ -3653,11 +3645,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               icon: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
               label: Text(
                 'Bayar Sekarang • Rp ${_formatRupiah(booking.totalCost)}',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.cardTitle,
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryNavy,
@@ -3683,11 +3671,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               icon: const Icon(Icons.support_agent_rounded, size: 19, color: Colors.white),
               label: const Text(
                 'Koordinasi Penjemputan via Chat CS',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.cardTitle,
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryTeal,
@@ -3756,11 +3740,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   ),
                   child: const Text(
                     'Kembali ke Beranda',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Inter',
-                    ),
+                    style: AppTypography.bodyLargeStrong,
                   ),
                 )
               : ElevatedButton(
@@ -3778,11 +3758,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   ),
                   child: const Text(
                     'Kembali ke Beranda',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
+                    style: AppTypography.cardTitle,
                   ),
                 ),
         ),

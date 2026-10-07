@@ -173,11 +173,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: const Text(
                       'Masuk Akun',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBodyLarge,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Inter',
-                      ),
+                      style: AppTypography.cardTitle,
                     ),
                   ),
                 ),
@@ -531,7 +527,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Text(
           'Konfirmasi Keluar',
-          style: TextStyle(fontSize: AppTypography.sizeHeading, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+          style: AppTypography.pageTitle,
         ),
         content: const Text(
           'Apakah Anda yakin ingin keluar dari akun MobilJuragan di perangkat ini?',
@@ -707,7 +703,7 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 const Text(
                   'Ketentuan Sewa Unit Merauke',
-                  style: TextStyle(fontSize: AppTypography.sizeHeading, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                  style: AppTypography.pageTitle,
                 ),
                 const SizedBox(height: 12),
                 const Text(

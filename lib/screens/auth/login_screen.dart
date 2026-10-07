@@ -556,11 +556,7 @@ class _LoginScreenState extends State<LoginScreen> {
               )
             : Text(
                 hasError ? 'Coba Lagi' : 'Masuk Sekarang',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeTitle,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
+                style: AppTypography.sectionTitle,
               ),
       ),
     );

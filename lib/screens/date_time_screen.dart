@@ -1136,11 +1136,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   ),
                   child: const Text(
                     'Lanjut ke Tinjau Pesanan',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
+                    style: AppTypography.cardTitle,
                   ),
                 ),
             ),

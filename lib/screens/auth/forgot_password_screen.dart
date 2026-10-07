@@ -128,11 +128,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Password Diperbarui',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeHeading,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Inter',
-                  ),
+                  style: AppTypography.pageTitle,
                 ),
               ],
             ),
@@ -348,11 +344,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     )
                   : const Text(
                       'Kirim Kode OTP Pemulihan',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeTitle,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Inter',
-                      ),
+                      style: AppTypography.sectionTitle,
                     ),
             ),
           ),
@@ -620,11 +612,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     )
                   : const Text(
                       'Simpan Password Baru & Masuk',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeTitle,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Inter',
-                      ),
+                      style: AppTypography.sectionTitle,
                     ),
             ),
           ),
