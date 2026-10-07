@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
 import 'create_ticket_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Halaman Pusat Bantuan Pelanggan dan Layanan Operasional Merauke (Frame 09)
 class HelpCenterScreen extends StatefulWidget {
@@ -97,7 +98,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               const Text(
                 'Pusat Bantuan',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: AppTypography.sizeDisplay,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -107,7 +108,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               const Text(
                 'Cari solusi cepat atau hubungi layanan bantuan rental.',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppTypography.sizeBodyLarge,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
                 ),
@@ -148,7 +149,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                   label: const Text(
                     'Buat Tiket Bantuan Baru',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.sizeTitle,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Inter',
                     ),
@@ -188,11 +189,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       child: TextField(
         controller: _searchController,
         onChanged: (_) => setState(() {}),
-        style: const TextStyle(fontSize: 13, fontFamily: 'Inter'),
+        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
         decoration: InputDecoration(
           hintText: 'Cari topik bantuan atau kata kunci...',
           hintStyle: const TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
           ),
@@ -226,7 +227,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               label: Text(
                 cat,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -338,7 +339,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               label,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -351,7 +352,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 9,
+                fontSize: AppTypography.sizeMicro,
                 color: AppColors.textSecondary,
                 fontFamily: 'Inter',
               ),
@@ -386,7 +387,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               const Text(
                 'Pertanyaan Populer',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -395,7 +396,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               Text(
                 '${faqs.length} Topik',
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
@@ -411,7 +412,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               child: Text(
                 'Topik bantuan tidak ditemukan. Coba kata kunci lain atau hubungi CS langsung.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: AppTypography.sizeBody, color: AppColors.textSecondary),
               ),
             ),
             const SizedBox(height: 10),
@@ -443,7 +444,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                               child: Text(
                                 faq['question']!,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: AppTypography.sizeBody,
                                   fontWeight: isExpanded ? FontWeight.w700 : FontWeight.w500,
                                   color: isExpanded ? AppColors.primaryNavy : AppColors.textPrimary,
                                   fontFamily: 'Inter',
@@ -468,7 +469,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                             child: Text(
                               faq['answer']!,
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 height: 1.45,
                                 color: AppColors.textPrimary,
                                 fontFamily: 'Inter',
@@ -503,7 +504,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             const Text(
               'Tiket Bantuan Saya',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: AppTypography.sizeTitle,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -518,7 +519,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               child: const Text(
                 'Lihat Chat ›',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
@@ -564,7 +565,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                       child: Text(
                         ticket.status,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: AppTypography.sizeTiny,
                           fontWeight: FontWeight.w700,
                           color: ticket.status == 'Selesai'
                               ? const Color(0xFF15803D)
@@ -583,7 +584,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: AppTypography.sizeBody,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -593,7 +594,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           Text(
                             'ID: ${ticket.id} • ${ticket.categoryLabel}',
                             style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: AppTypography.sizeTiny,
                               color: AppColors.textSecondary,
                               fontFamily: 'Inter',
                             ),

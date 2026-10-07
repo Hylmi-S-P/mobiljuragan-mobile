@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/vehicle_card_item.dart';
 import 'vehicle_detail_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar pemilihan armada kendaraan
 class VehicleSelectionScreen extends StatefulWidget {
@@ -65,7 +66,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                   const Text(
                     'Katalog Armada Tersedia',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: AppTypography.sizeHeading,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                       fontFamily: 'Inter',
@@ -75,7 +76,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                   const Text(
                     'Bandingkan tipe, kapasitas, dan plat nomor kendaraan.',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sizeBody,
                       fontWeight: FontWeight.w400,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
@@ -150,7 +151,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                 child: Text(
                   category,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -180,7 +181,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           Text(
             'Tidak ada armada kategori "${controller.selectedCategory}"',
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -211,7 +212,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           Text(
             '$count armada siap jalan (${controller.totalFleetCount} unit terdaftar di Merauke)',
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.primaryTeal,
               fontFamily: 'Inter',
@@ -221,7 +222,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           const Text(
             'Gunakan filter di atas untuk melihat pilihan kategori armada lainnya',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               fontWeight: FontWeight.w400,
               color: AppColors.primaryTeal,
               fontFamily: 'Inter',
@@ -264,7 +265,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             child: Text(
               'Pilih ${selectedVehicle.name}',
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: AppTypography.sizeTitle,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',
               ),

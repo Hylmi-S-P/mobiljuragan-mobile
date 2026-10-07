@@ -9,6 +9,7 @@ import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'help_center_screen.dart';
 import 'order_status_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar Profil Pengguna (Frame 13)
 /// Menampilkan data akun pelanggan Merauke, statistik pesanan, pengaturan akun, dan alur login/logout
@@ -63,7 +64,7 @@ class ProfileScreen extends StatelessWidget {
               child: Text(
                 'MobilJuragan Mobile • Versi 1.0.0 (Merauke Edition)',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
                 ),
@@ -105,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
           const Text(
             'Anda Belum Masuk Akun',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: AppTypography.sizeHeading,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -116,7 +117,7 @@ class ProfileScreen extends StatelessWidget {
             'Masuk atau daftar untuk melihat identitas sewa terverifikasi, memantau status mobil di Merauke, dan mengakses riwayat pemesanan.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               height: 1.45,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -143,7 +144,7 @@ class ProfileScreen extends StatelessWidget {
                     child: const Text(
                       'Daftar Baru',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.sizeBodyLarge,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primaryNavy,
                         fontFamily: 'Inter',
@@ -173,7 +174,7 @@ class ProfileScreen extends StatelessWidget {
                     child: const Text(
                       'Masuk Akun',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.sizeBodyLarge,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Inter',
                       ),
@@ -223,7 +224,7 @@ class ProfileScreen extends StatelessWidget {
                   child: Text(
                     initials.isNotEmpty ? initials : 'MJ',
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: AppTypography.sizeDisplay,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       fontFamily: 'Inter',
@@ -242,7 +243,7 @@ class ProfileScreen extends StatelessWidget {
                           child: Text(
                             name,
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: AppTypography.sizeHeading,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -260,7 +261,7 @@ class ProfileScreen extends StatelessWidget {
                           child: const Text(
                             'TERVERIFIKASI',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: AppTypography.sizeMicro,
                               fontWeight: FontWeight.w700,
                               color: AppColors.badgeGreenText,
                               fontFamily: 'Inter',
@@ -273,7 +274,7 @@ class ProfileScreen extends StatelessWidget {
                     Text(
                       city,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: AppTypography.sizeBody,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
@@ -282,7 +283,7 @@ class ProfileScreen extends StatelessWidget {
                     Text(
                       phone,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: AppTypography.sizeBody,
                         fontWeight: FontWeight.w600,
                         color: AppColors.primaryTeal,
                         fontFamily: 'Inter',
@@ -303,7 +304,7 @@ class ProfileScreen extends StatelessWidget {
               const Text(
                 'Nomor Induk Kependudukan (NIK)',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
                 ),
@@ -311,7 +312,7 @@ class ProfileScreen extends StatelessWidget {
               Text(
                 maskedNik,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -331,7 +332,7 @@ class ProfileScreen extends StatelessWidget {
               const Text(
                 'Alamat Email Terdaftar',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
                 ),
@@ -339,7 +340,7 @@ class ProfileScreen extends StatelessWidget {
               Text(
                 email,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -387,7 +388,7 @@ class ProfileScreen extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: AppTypography.sizeMetric,
               fontWeight: FontWeight.w800,
               color: textColor,
               fontFamily: 'Inter',
@@ -397,7 +398,7 @@ class ProfileScreen extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -487,7 +488,7 @@ class ProfileScreen extends StatelessWidget {
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: AppTypography.sizeBodyLarge,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
           fontFamily: 'Inter',
@@ -509,7 +510,7 @@ class ProfileScreen extends StatelessWidget {
         label: const Text(
           'Keluar dari Akun',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppTypography.sizeBodyLarge,
             fontWeight: FontWeight.w700,
             color: Color(0xFFDC2626),
             fontFamily: 'Inter',
@@ -530,11 +531,11 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Text(
           'Konfirmasi Keluar',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+          style: TextStyle(fontSize: AppTypography.sizeHeading, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
         ),
         content: const Text(
           'Apakah Anda yakin ingin keluar dari akun MobilJuragan di perangkat ini?',
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontFamily: 'Inter'),
+          style: TextStyle(fontSize: AppTypography.sizeBodyLarge, color: AppColors.textSecondary, fontFamily: 'Inter'),
         ),
         actions: [
           TextButton(
@@ -603,7 +604,7 @@ class ProfileScreen extends StatelessWidget {
               const Text(
                 'Perbarui Data Profil',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: AppTypography.sizeAmount,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -613,7 +614,7 @@ class ProfileScreen extends StatelessWidget {
               const Text(
                 'Perubahan nama dan kontak akan digunakan pada tanda terima sewa resmi.',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
                 ),
@@ -706,14 +707,14 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 const Text(
                   'Ketentuan Sewa Unit Merauke',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                  style: TextStyle(fontSize: AppTypography.sizeHeading, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
                 ),
                 const SizedBox(height: 12),
                 const Text(
                   '1. Pelanggan wajib menunjukkan dokumen fisik asli KTP dan SIM A saat serah terima armada di kantor MobilJuragan Merauke.\n\n'
                   '2. Penggunaan kendaraan meliputi area Kota Merauke dan sekitarnya sesuai kesepakatan rute.\n\n'
                   '3. Bahan bakar dikembalikan sesuai posisi awal serah terima armada.',
-                  style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.textSecondary, fontFamily: 'Inter'),
+                  style: TextStyle(fontSize: AppTypography.sizeBody, height: 1.5, color: AppColors.textSecondary, fontFamily: 'Inter'),
                 ),
                 const SizedBox(height: 18),
                 SizedBox(

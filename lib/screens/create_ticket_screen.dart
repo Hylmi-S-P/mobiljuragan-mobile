@@ -5,6 +5,7 @@ import '../controllers/support_controller.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
 import 'chat_support_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Formulir pembuatan tiket kendala dan pengaduan layanan sewa (Frame 10)
 class CreateTicketScreen extends StatefulWidget {
@@ -122,7 +123,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
             Text(
               'Buat Tiket Bantuan',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: AppTypography.sizeHeading,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textWhite,
                 fontFamily: 'Inter',
@@ -131,7 +132,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
             Text(
               'Layanan Operasional Merauke',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 color: AppColors.tealLight,
                 fontFamily: 'Inter',
               ),
@@ -168,7 +169,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Text(
                         'Formulir Kendala Layanan',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: AppTypography.sizeAmount,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -178,7 +179,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Text(
                         'Sampaikan pertanyaan atau masalah selama masa sewa unit di Merauke.',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
                         ),
@@ -191,7 +192,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Text(
                         'Judul Tiket',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -200,11 +201,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _titleController,
-                        style: const TextStyle(fontSize: 13, fontFamily: 'Inter'),
+                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
                         decoration: InputDecoration(
                           hintText: 'Contoh: Mobil belum tiba di Bandara Mopah',
                           hintStyle: const TextStyle(
-                            fontSize: 12,
+                            fontSize: AppTypography.sizeBody,
                             color: AppColors.textSecondary,
                             fontFamily: 'Inter',
                           ),
@@ -237,7 +238,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Text(
                         'Jenis Bantuan',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -253,7 +254,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                             label: Text(
                               _getCategoryShortLabel(cat),
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                 color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
                                 fontFamily: 'Inter',
@@ -285,7 +286,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Text(
                         'Nomor Booking Terkait (Opsional)',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -294,11 +295,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _bookingIdController,
-                        style: const TextStyle(fontSize: 13, fontFamily: 'Inter'),
+                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
                         decoration: InputDecoration(
                           hintText: 'Contoh: MBJ-2026-0042',
                           hintStyle: const TextStyle(
-                            fontSize: 12,
+                            fontSize: AppTypography.sizeBody,
                             color: AppColors.textSecondary,
                             fontFamily: 'Inter',
                           ),
@@ -325,7 +326,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const Text(
                         'Detail Kendala atau Pertanyaan',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -335,11 +336,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       TextFormField(
                         controller: _descriptionController,
                         maxLines: 4,
-                        style: const TextStyle(fontSize: 13, fontFamily: 'Inter'),
+                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
                         decoration: InputDecoration(
                           hintText: 'Tuliskan rincian situasi di lapangan, kendala unit, atau waktu penjemputan...',
                           hintStyle: const TextStyle(
-                            fontSize: 12,
+                            fontSize: AppTypography.sizeBody,
                             color: AppColors.textSecondary,
                             fontFamily: 'Inter',
                           ),
@@ -394,7 +395,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                 child: Text(
                                   _attachedFileName ?? 'Lampirkan Foto Kondisi Kendala (Opsional)',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: AppTypography.sizeBody,
                                     fontWeight: _attachedFileName != null ? FontWeight.w600 : FontWeight.w400,
                                     color: _attachedFileName != null ? AppColors.primaryTeal : AppColors.textSecondary,
                                     fontFamily: 'Inter',
@@ -444,7 +445,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                   Text(
                                     'Dukungan Cepat Layanan Bantuan',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: AppTypography.sizeBody,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF15803D),
                                       fontFamily: 'Inter',
@@ -454,7 +455,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                   Text(
                                     'Tiket bantuan terhubung dengan sistem layanan respons cepat. Jika membutuhkan penanganan fisik di lapangan, sistem otomatis mengalihkan ke staf operasional Merauke.',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: AppTypography.sizeCaption,
                                       height: 1.35,
                                       fontWeight: FontWeight.w400,
                                       color: Color(0xFF166534),
@@ -507,7 +508,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: AppTypography.sizeTitle,
                                     fontWeight: FontWeight.w700,
                                     fontFamily: 'Inter',
                                   ),
@@ -524,7 +525,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                   child: Text(
                     'Tiket terhubung langsung ke layanan bantuan & staf operasional Merauke.',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),

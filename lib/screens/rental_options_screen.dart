@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/merauke_location_map_picker.dart';
 import 'date_time_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar pemilihan opsi rental (Langkah 2 dari 5)
 /// Memungkinkan pemilihan moda Lepas Kunci vs Dengan Sopir dan titik penjemputan/serah terima dengan peta interaktif
@@ -133,7 +134,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         Text(
           'Pilih Layanan Pengemudi & Lokasi',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: AppTypography.sizeHeading,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
             fontFamily: 'Inter',
@@ -143,7 +144,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         Text(
           'Tentukan moda sewa dan titik lokasi penjemputan atau serah terima unit di Merauke.',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
@@ -222,7 +223,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                           const Text(
                             'Lepas Kunci (Self-Drive)',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppTypography.sizeTitle,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -237,7 +238,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                             child: const Text(
                               'Bebas Biaya Sopir',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: AppTypography.sizeTiny,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primaryTeal,
                                 fontFamily: 'Inter',
@@ -250,7 +251,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                       const Text(
                         'Kemudi mandiri 24 jam penuh per hari. Fleksibilitas tinggi untuk mobilitas pribadi, pekerjaan, atau keluarga.',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -329,7 +330,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                           const Text(
                             'Dengan Sopir Lokal',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppTypography.sizeTitle,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -344,7 +345,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                             child: Text(
                               '+Rp ${_formatRupiah(BookingController.driverCostPerDay)} / hari',
                               style: const TextStyle(
-                                fontSize: 10,
+                                fontSize: AppTypography.sizeTiny,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF1D4ED8),
                                 fontFamily: 'Inter',
@@ -357,7 +358,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                       const Text(
                         'Didampingi staf pengemudi tetap MobilJuragan yang ramah dan hafal seluruh kondisi rute Merauke. Durasi layanan 12 jam/hari.',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -427,7 +428,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                             ? 'Titik Penjemputan Sopir'
                             : 'Titik Serah Terima Unit Kendaraan',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -444,7 +445,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                         child: const Text(
                           'Fleksibel',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: AppTypography.sizeTiny,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primaryTeal,
                             fontFamily: 'Inter',
@@ -459,7 +460,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                       ? 'Pilih lokasi populer atau ketuk titik bebas di peta untuk penjemputan.'
                       : 'Pilih ambil di garasi pool MobilJuragan (gratis) atau diantar ke bandara/hotel.',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
                     color: AppColors.textSecondary,
                     fontFamily: 'Inter',
@@ -533,7 +534,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                             Text(
                               shortName,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                 color: isSelected ? AppColors.primaryNavy : AppColors.textPrimary,
                                 fontFamily: 'Inter',
@@ -550,7 +551,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                                 child: const Text(
                                   'GRATIS',
                                   style: TextStyle(
-                                    fontSize: 8.5,
+                                    fontSize: AppTypography.sizeMicro,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.badgeGreenText,
                                     fontFamily: 'Inter',
@@ -590,7 +591,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                         Text(
                           booking.pickupLocation,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: AppTypography.sizeCaption,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                             fontFamily: 'Inter',
@@ -600,7 +601,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                         Text(
                           matchingLoc['desc'] as String? ?? 'Merauke, Papua Selatan',
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: AppTypography.sizeTiny,
                             color: AppColors.textSecondary,
                             fontFamily: 'Inter',
                           ),
@@ -663,7 +664,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 child: Text(
                   isDriver ? 'Ketentuan Layanan Sopir Tetap' : 'Ketentuan Sewa Lepas Kunci',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -708,7 +709,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -755,7 +756,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -767,7 +768,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
@@ -800,7 +801,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 child: const Text(
                   'Lanjut ke Jadwal Sewa',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppTypography.sizeBodyLarge,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Inter',
                   ),

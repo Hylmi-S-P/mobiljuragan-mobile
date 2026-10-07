@@ -7,6 +7,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/order_empty_state.dart';
 import 'date_time_screen.dart';
 import 'order_status_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar Riwayat Pesanan (Frame 08)
 /// Menampilkan daftar pesanan berjalan dan riwayat selesai dengan segmented tab switcher
@@ -75,7 +76,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         Text(
           'Lacak Status Armada & Transaksi',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: AppTypography.sizeTitle,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
             fontFamily: 'Inter',
@@ -85,7 +86,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         Text(
           'Pantau proses verifikasi, penyiapan armada, dan kepulangan unit di Merauke.',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
           ),
@@ -161,7 +162,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? Colors.white : AppColors.textSecondary,
                   fontFamily: 'Inter',
@@ -181,7 +182,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 child: Text(
                   count.toString(),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w700,
                     color: isSelected ? Colors.white : AppColors.primaryNavy,
                     fontFamily: 'Inter',
@@ -225,7 +226,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             Text(
               'Pesanan Aktif (${activeBookings.length})',
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: AppTypography.sizeBodyLarge,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -234,7 +235,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             const Text(
               'Pembaruan real-time',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 color: AppColors.primaryTeal,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'Inter',
@@ -272,7 +273,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         Text(
           'Riwayat Sewa Sebelumnya (${completedBookings.length})',
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: AppTypography.sizeBodyLarge,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
             fontFamily: 'Inter',
@@ -329,7 +330,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               Text(
                 booking.id,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
@@ -371,7 +372,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     Text(
                       vehicle.name,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.sizeBodyLarge,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                         fontFamily: 'Inter',
@@ -381,7 +382,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     Text(
                       'Plat: ${vehicle.plateNumber} • ${booking.modeLabel}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
@@ -410,7 +411,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       child: Text(
                         '$startStr, ${booking.startTime} (${booking.durationDays} Hari) - Kembali: $endStr',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w500,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -428,7 +429,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       child: Text(
                         booking.pickupLocation,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
                         ),
@@ -461,7 +462,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         child: Text(
                           'Alasan: ${booking.cancellationReason ?? "Dibatalkan oleh pelanggan"}',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: AppTypography.sizeCaption,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF475569),
                             fontFamily: 'Inter',
@@ -476,7 +477,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     Text(
                       'Pengembalian Dana: Rp ${_formatRupiah(booking.cancellationRefundAmount!)}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF166534),
                         fontFamily: 'Inter',
@@ -502,7 +503,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   Text(
                     booking.isFinalTariffConfirmed ? 'Tarif Resmi Final' : 'Estimasi Total Biaya',
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: AppTypography.sizeTiny,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
@@ -511,7 +512,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   Text(
                     'Rp ${_formatRupiah(booking.totalCost)}',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.sizeTitle,
                       fontWeight: FontWeight.w800,
                       color: booking.isFinalTariffConfirmed
                           ? AppColors.primaryNavy
@@ -548,7 +549,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         Text(
                           'Cek Status',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: AppTypography.sizeBody,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'Inter',
                           ),
@@ -585,7 +586,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     child: const Text(
                       'Sewa Lagi',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppTypography.sizeBody,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Inter',
                       ),
@@ -677,7 +678,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: AppTypography.sizeTiny,
               fontWeight: FontWeight.w700,
               color: text,
               fontFamily: 'Inter',

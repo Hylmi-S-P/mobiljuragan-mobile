@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Kartu spesifikasi kendaraan untuk grid 2x2 di layar Detail Kendaraan
 class SpecCardItem extends StatelessWidget {
@@ -30,7 +31,7 @@ class SpecCardItem extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               fontWeight: FontWeight.w400,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -40,7 +41,7 @@ class SpecCardItem extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w700,
               color: valueColor ?? AppColors.textPrimary,
               fontFamily: 'Inter',

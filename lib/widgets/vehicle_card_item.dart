@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Kartu pilihan kendaraan di katalog dengan state seleksi aktif teal
 class VehicleCardItem extends StatelessWidget {
@@ -45,7 +46,7 @@ class VehicleCardItem extends StatelessWidget {
                       Text(
                         vehicle.name,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -55,7 +56,7 @@ class VehicleCardItem extends StatelessWidget {
                       Text(
                         'Plat ${vehicle.plateNumber} • ${vehicle.seatCapacity}',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -65,7 +66,7 @@ class VehicleCardItem extends StatelessWidget {
                       const Text(
                         'Tersedia',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primaryTeal,
                           fontFamily: 'Inter',
@@ -75,7 +76,7 @@ class VehicleCardItem extends StatelessWidget {
                       Text(
                         'Rp ${_formatRupiah(vehicle.pricePerDay)} / hari',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primaryNavy,
                           fontFamily: 'Inter',

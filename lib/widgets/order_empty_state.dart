@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Komponen Empty State untuk Riwayat Pesanan (Frame 08b)
 /// Ditampilkan saat pengguna belum memiliki pesanan aktif maupun riwayat selesai
@@ -51,7 +52,7 @@ class OrderEmptyState extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: AppTypography.sizeHeading,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -62,7 +63,7 @@ class OrderEmptyState extends StatelessWidget {
             description,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               height: 1.5,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -85,7 +86,7 @@ class OrderEmptyState extends StatelessWidget {
               child: Text(
                 ctaText,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Inter',
                 ),

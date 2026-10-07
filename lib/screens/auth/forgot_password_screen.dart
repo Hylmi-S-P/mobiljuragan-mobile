@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../theme/app_typography.dart';
 
 /// Layar Pemulihan / Lupa Password
 /// Mendukung pengiriman kode OTP pemulihan dan pembuatan password baru
@@ -128,7 +129,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Text(
                   'Password Diperbarui',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: AppTypography.sizeHeading,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Inter',
                   ),
@@ -138,7 +139,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             content: const Text(
               'Password akun Anda berhasil diganti. Silakan masuk kembali dengan password baru Anda.',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppTypography.sizeBodyLarge,
                 color: AppColors.textSecondary,
                 height: 1.4,
                 fontFamily: 'Inter',
@@ -234,7 +235,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Text(
                   _isOtpSent ? 'Buat Password Baru' : 'Pemulihan Akses Akun',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: AppTypography.sizeTitle,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -246,7 +247,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ? 'Masukkan kode OTP 6 digit yang dikirimkan dan tentukan password baru yang aman.'
                       : 'Masukkan email atau nomor WhatsApp yang terdaftar untuk menerima kode verifikasi OTP pemulihan.',
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppTypography.sizeCaption,
                     color: AppColors.textSecondary,
                     height: 1.35,
                     fontFamily: 'Inter',
@@ -274,7 +275,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const Text(
             'Email atau Nomor WhatsApp Terdaftar',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -284,7 +285,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           TextFormField(
             controller: _identifierController,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -293,7 +294,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               hintText: 'nama@domain.com atau 812-xxxx-xxxx',
               hintStyle: const TextStyle(
                 color: AppColors.textMuted,
-                fontSize: 12.5,
+                fontSize: AppTypography.sizeBody,
                 fontFamily: 'Inter',
               ),
               prefixIcon: const Icon(Icons.account_circle_outlined, color: AppColors.primaryTeal, size: 20),
@@ -318,7 +319,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const Text(
             'Kami akan mengirimkan kode 6 digit OTP untuk memverifikasi kepemilikan akun rental Anda di Merauke.',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               color: AppColors.textSecondary,
               height: 1.35,
               fontFamily: 'Inter',
@@ -348,7 +349,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   : const Text(
                       'Kirim Kode OTP Pemulihan',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: AppTypography.sizeTitle,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Inter',
                       ),
@@ -383,7 +384,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Text(
                 'Akun: ${_identifierController.text.trim()}',
                 style: const TextStyle(
-                  fontSize: 11.5,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
@@ -398,7 +399,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: const Text(
                   'Ganti Akun',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
@@ -413,7 +414,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const Text(
             'Kode OTP 6 Digit',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -425,7 +426,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             keyboardType: TextInputType.number,
             maxLength: 6,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: AppTypography.sizeHeading,
               fontWeight: FontWeight.w800,
               letterSpacing: 4,
               color: AppColors.primaryNavy,
@@ -464,7 +465,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const Text(
             'Password Baru',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -477,7 +478,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             obscureText: !_isPasswordVisible,
             onChanged: (_) => setState(() {}),
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -539,7 +540,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const Text(
             'Konfirmasi Password Baru',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -550,7 +551,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             controller: _confirmPasswordController,
             obscureText: !_isConfirmPasswordVisible,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -620,7 +621,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   : const Text(
                       'Simpan Password Baru & Masuk',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: AppTypography.sizeTitle,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Inter',
                       ),
@@ -664,7 +665,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Text(
                 'Syarat Keamanan Password:',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w700,
                   color: isAllMet ? const Color(0xFF166534) : AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -697,7 +698,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     child: Text(
                       'Password baru kuat dan siap disimpan.',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: AppTypography.sizeTiny,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF166534),
                         fontFamily: 'Inter',
@@ -734,7 +735,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: isMet ? FontWeight.w700 : FontWeight.w500,
                 color: isMet ? const Color(0xFF166534) : AppColors.textSecondary,
                 fontFamily: 'Inter',
@@ -755,7 +756,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         label: const Text(
           'Kembali ke Halaman Masuk',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w700,
             color: AppColors.primaryTeal,
             fontFamily: 'Inter',

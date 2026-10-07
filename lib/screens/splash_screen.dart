@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'main_navigation_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Halaman SplashScreen modern peningkatan dari Frame Loading (1346:167)
 /// Menampilkan emblem branding MobilJuragan dengan animasi halus
@@ -117,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
                         const Text(
                           'MJ',
                           style: TextStyle(
-                            fontSize: 34,
+                            fontSize: AppTypography.sizeBrand,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
                             color: Colors.white,
@@ -133,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen>
                 const Text(
                   'MobilJuragan',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: AppTypography.sizeBrandName,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.5,
                     color: Colors.white,
@@ -146,7 +147,7 @@ class _SplashScreenState extends State<SplashScreen>
                   'Rental Mobil Terpercaya Merauke, Papua Selatan',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppTypography.sizeBodyLarge,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 0.2,
                     color: Colors.white.withValues(alpha: 0.72),

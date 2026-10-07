@@ -11,6 +11,7 @@ import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
 import 'rental_options_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
 /// Menampilkan 3 kartu ringkasan pesanan dengan tombol Ubah dan rincian tarif resmi
@@ -83,7 +84,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         Text(
           'Periksa Rincian Pengajuan Sewa',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: AppTypography.sizeHeading,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
             fontFamily: 'Inter',
@@ -93,7 +94,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         Text(
           'Pastikan pilihan armada, durasi tanggal, dan moda rental telah sesuai.',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
@@ -131,7 +132,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                       child: Text(
                         'Armada Kendaraan',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -152,7 +153,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   child: Text(
                     'Ubah',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sizeBody,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
@@ -192,7 +193,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     Text(
                       vehicle.name,
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: AppTypography.sizeTitle,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                         fontFamily: 'Inter',
@@ -202,7 +203,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     Text(
                       'Plat: ${vehicle.plateNumber}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
@@ -211,7 +212,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     Text(
                       '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.bodyType}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w500,
                         color: AppColors.primaryNavy,
                         fontFamily: 'Inter',
@@ -261,7 +262,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                       child: Text(
                         'Jadwal Rental',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -282,7 +283,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   child: Text(
                     'Ubah',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sizeBody,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
@@ -338,7 +339,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                       child: Text(
                         'Moda & Lokasi Serah Terima',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -363,7 +364,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   child: Text(
                     'Ubah',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sizeBody,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
@@ -430,7 +431,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                       ? 'Layanan Sopir Karyawan Tetap & Bebas Deposit'
                       : 'Verifikasi Fisik Dokumen di Kantor / Lapangan',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
                     color: isDriver ? const Color(0xFF166534) : const Color(0xFF1D4ED8),
                     fontFamily: 'Inter',
@@ -442,7 +443,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                       ? 'Armada dikemudikan langsung oleh staf pengemudi resmi MobilJuragan. Bebas uang deposit jaminan sewa dan tidak memerlukan SIM A dari penyewa.'
                       : 'Sesuai ketentuan resmi MobilJuragan Merauke, verifikasi fisik KTP asli dan SIM A dilakukan langsung oleh staf lapangan saat serah terima unit kendaraan.',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
                     color: isDriver ? const Color(0xFF14532D) : const Color(0xFF1E40AF),
                     fontFamily: 'Inter',
@@ -477,7 +478,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               const Text(
                 'Rincian Biaya Sewa',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppTypography.sizeBodyLarge,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -492,7 +493,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 child: const Text(
                   'Menunggu Detail Harga',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w700,
                     color: AppColors.badgeAmberText,
                     fontFamily: 'Inter',
@@ -526,7 +527,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               const Text(
                 'Total Terhitung',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -535,7 +536,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               Text(
                 'Rp ${_formatRupiah(booking.totalCalculatedCost)}',
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: AppTypography.sizeHeading,
                   fontWeight: FontWeight.w800,
                   color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
@@ -562,7 +563,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                         ? 'Rincian biaya final resmi (termasuk konfirmasi rute luar kota jika ada, durasi jam operasional 12 jam/hari, atau diskon promo pengguna baru) akan dikonfirmasi langsung oleh admin dari dashboard.'
                         : 'Rincian biaya final resmi (termasuk biaya layanan jam operasional kantor, deposit jaminan refundable, atau diskon promo pengguna baru) akan dikonfirmasi langsung oleh admin dari dashboard.',
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w400,
                       height: 1.4,
                       color: Color(0xFF92400E),
@@ -603,7 +604,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               child: Text(
                 'Saya menyetujui syarat & ketentuan rental MobilJuragan serta bersedia menunjukkan dokumen fisik asli saat serah terima unit di Merauke.',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w400,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
@@ -658,7 +659,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             child: const Text(
               'Kirim Pengajuan & Tunggu Tarif Final',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: AppTypography.sizeTitle,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',
               ),
@@ -749,7 +750,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                         Text(
                           'Masuk atau Buat Akun',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: AppTypography.sizeAmount,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                             fontFamily: 'Inter',
@@ -759,7 +760,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                         Text(
                           'Diperlukan sebelum konfirmasi pengajuan sewa',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: AppTypography.sizeCaption,
                             color: AppColors.textSecondary,
                             fontFamily: 'Inter',
                           ),
@@ -780,7 +781,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 child: const Text(
                   'Sesuai ketentuan rental mobil di Merauke, pemesanan armada harus terhubung ke identitas penyewa agar admin dapat mengonfirmasi ketersediaan unit dan mengirimkan notifikasi tarif resmi.',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     height: 1.45,
                     color: AppColors.textSecondary,
                     fontFamily: 'Inter',
@@ -809,7 +810,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   label: const Text(
                     'Masuk via WhatsApp & OTP',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Inter',
                     ),
@@ -851,7 +852,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   child: const Text(
                     'Daftar Akun Baru',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
@@ -874,7 +875,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                         'Pintasan Demo: Masuk Cepat sebagai Harun',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -902,7 +903,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w400,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -915,7 +916,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             value,
             textAlign: TextAlign.end,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',

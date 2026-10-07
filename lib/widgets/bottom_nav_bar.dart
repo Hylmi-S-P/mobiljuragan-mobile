@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Bottom Navigation Bar 4-Tab dengan active indicator teal
 class CustomBottomNavBar extends StatelessWidget {
@@ -86,7 +87,7 @@ class CustomBottomNavBar extends StatelessWidget {
               label,
               style: TextStyle(
                 color: itemColor,
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 fontFamily: 'Inter',
               ),

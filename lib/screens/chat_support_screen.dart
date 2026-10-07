@@ -5,6 +5,7 @@ import '../controllers/support_controller.dart';
 import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Layanan Live Chat Bantuan Pelanggan terisolasi per sesi pesanan/tiket (AI Assistant, Handoff Staf Operasional & Pembayaran)
 class ChatSupportScreen extends StatefulWidget {
@@ -196,7 +197,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: AppTypography.sizeAmount,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textWhite,
                 fontFamily: 'Inter',
@@ -221,7 +222,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       color: AppColors.tealLight,
                       fontFamily: 'Inter',
                     ),
@@ -243,7 +244,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 'Panggil Staf',
                 style: TextStyle(
                   color: AppColors.primaryTeal,
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -264,7 +265,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   Text(
                     'Staf Aktif',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryTeal,
                     ),
@@ -363,7 +364,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                           ? 'Tagihan: Rp ${_formatRupiah(booking.totalCost)}'
                           : 'Pembayaran Lunas Diverifikasi',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppTypography.sizeBody,
                         fontWeight: FontWeight.w700,
                         color: isWaiting ? const Color(0xFF92400E) : const Color(0xFF166534),
                         fontFamily: 'Inter',
@@ -378,7 +379,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                       child: Text(
                         isWaiting ? 'MENUNGGU TRANSFER' : 'SIAP PAKAI',
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: AppTypography.sizeMicro,
                           fontWeight: FontWeight.w700,
                           color: isWaiting ? const Color(0xFFB91C1C) : const Color(0xFF15803D),
                           fontFamily: 'Inter',
@@ -393,7 +394,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                       ? 'BRI Merauke: 0321-01-002847-53-1 (a.n MobilJuragan)'
                       : 'Kunci siap diserahterimakan di ${booking.pickupLocation}.',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: AppTypography.sizeTiny,
                     color: isWaiting ? const Color(0xFFB45309) : const Color(0xFF15803D),
                     fontFamily: 'Inter',
                   ),
@@ -419,7 +420,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     content: Text(
                       'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
                     ),
                   ),
                 );
@@ -435,7 +436,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               ),
               child: const Text(
                 'Sudah Bayar',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+                style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700, fontFamily: 'Inter'),
               ),
             ),
           ],
@@ -465,7 +466,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             child: Text(
               ticket.id,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -482,7 +483,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -491,7 +492,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 Text(
                   'Kategori: ${ticket.categoryLabel} • Status: ${ticket.status}',
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: AppTypography.sizeTiny,
                     color: AppColors.textSecondary,
                     fontFamily: 'Inter',
                   ),
@@ -525,7 +526,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               child: Text(
                 msg.message,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF1E40AF),
                   fontFamily: 'Inter',
@@ -573,7 +574,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
@@ -621,7 +622,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 Text(
                   msg.message,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppTypography.sizeBodyLarge,
                     height: 1.4,
                     color: isUser ? AppColors.textWhite : AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -633,7 +634,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   child: Text(
                     timeString,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: AppTypography.sizeMicro,
                       color: isUser
                           ? AppColors.textWhite.withValues(alpha: 0.7)
                           : AppColors.textSecondary,
@@ -675,7 +676,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             label: Text(
               suggestion,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -696,7 +697,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     content: Text(
                       'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
                     ),
                   ),
                 );
@@ -747,7 +748,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     decoration: const InputDecoration(
                       hintText: 'Ketik pesan bantuan atau konfirmasi...',
                       hintStyle: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.sizeBodyLarge,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
@@ -777,7 +778,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             'Pesan terhubung langsung dengan staf operasional MobilJuragan Merauke.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: AppTypography.sizeTiny,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
             ),

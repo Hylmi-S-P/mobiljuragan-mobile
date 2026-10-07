@@ -12,6 +12,7 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import 'order_review_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar pemilihan jadwal tanggal dan durasi sewa
 class DateTimeScreen extends StatefulWidget {
@@ -117,7 +118,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         Text(
           'Tentukan Jadwal Rental',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: AppTypography.sizeHeading,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
             fontFamily: 'Inter',
@@ -127,7 +128,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         Text(
           'Pilih tanggal mulai sewa dan durasi pemakaian.',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
@@ -193,7 +194,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   Text(
                     '$monthName $formattedYear',
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.sizeTitle,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                       fontFamily: 'Inter',
@@ -222,7 +223,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               const Text(
                 'Bulan terpilih',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
@@ -240,7 +241,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   child: Text(
                     day,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
@@ -361,7 +362,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   child: Text(
                     day.toString().padLeft(2, '0'),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: AppTypography.sizeBody,
                       fontWeight: (isStartDate || isEndDate)
                           ? FontWeight.w700
                           : isInRange
@@ -418,7 +419,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               Text(
                 'Mulai: $startFormatted',
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -441,7 +442,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               Text(
                 'Selesai: $returnFormatted',
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primaryNavy,
                   fontFamily: 'Inter',
@@ -458,7 +459,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             child: Text(
               '$_durationDays Hari',
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: AppTypography.sizeTiny,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primaryTeal,
                 fontFamily: 'Inter',
@@ -616,7 +617,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       const Text(
                         'Jam Sewa',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -634,7 +635,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     child: const Text(
                       '06.00 - 22.00 WIT',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: AppTypography.sizeTiny,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
@@ -660,7 +661,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       Text(
                         'Pilih Jam Lain',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primaryTeal,
                           fontFamily: 'Inter',
@@ -707,7 +708,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                           child: Text(
                             time,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: AppTypography.sizeBody,
                               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                               color: isSelected ? Colors.white : AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -738,7 +739,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                         Text(
                           'Jam Lain...',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: AppTypography.sizeBody,
                             fontWeight: FontWeight.w600,
                             color: AppColors.primaryTeal,
                             fontFamily: 'Inter',
@@ -755,7 +756,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           Text(
             'Jam sewa terpilih: $_selectedTime (Sesi $_timeDescription)',
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -778,7 +779,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   child: Text(
                     'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Untuk kebutuhan penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: AppTypography.sizeTiny,
                       fontWeight: FontWeight.w400,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
@@ -814,7 +815,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                           Text(
                             'Durasi Sewa',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: AppTypography.sizeBodyLarge,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -823,7 +824,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                           Text(
                             'Sewa harian hingga 30 hari',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: AppTypography.sizeTiny,
                               fontWeight: FontWeight.w400,
                               color: AppColors.textSecondary,
                               fontFamily: 'Inter',
@@ -869,7 +870,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     child: Text(
                       '$_durationDays Hari',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: AppTypography.sizeTitle,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primaryNavy,
                         fontFamily: 'Inter',
@@ -938,7 +939,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       child: Text(
                         label,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: isSelected ? Colors.white : AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -977,7 +978,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       Text(
                         'Kembali: $formattedReturnDate pukul $_selectedTime',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF166534),
                           fontFamily: 'Inter',
@@ -986,7 +987,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       Text(
                         'Durasi total $_durationDays hari sewa (${_durationDays * 24} jam penuh)',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: AppTypography.sizeTiny,
                           fontWeight: FontWeight.w500,
                           color: Color(0xFF15803D),
                           fontFamily: 'Inter',
@@ -1026,7 +1027,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   ? 'Layanan supir aktif 12 jam per hari (mulai pukul $_selectedTime). Supir standby setiap hari sesuai jadwal di Merauke.'
                   : 'Hitungan sewa berlaku 24 jam penuh per hari sejak serah terima kunci unit di Merauke.',
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -1074,7 +1075,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   const Text(
                     'Periode Sewa',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w400,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
@@ -1085,7 +1086,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -1136,7 +1137,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   child: const Text(
                     'Lanjut ke Tinjau Pesanan',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Inter',
                     ),
@@ -1282,7 +1283,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                             Text(
                               'Atur Jam Sewa',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: AppTypography.sizeAmount,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
                                 fontFamily: 'Inter',
@@ -1294,7 +1295,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 fontWeight: FontWeight.w400,
                                 color: AppColors.textSecondary,
                                 fontFamily: 'Inter',
@@ -1345,7 +1346,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                           Text(
                             '$hourStr : $minuteStr',
                             style: TextStyle(
-                              fontSize: 32,
+                              fontSize: AppTypography.sizeClock,
                               fontWeight: FontWeight.w800,
                               color: isValid ? AppColors.primaryNavy : const Color(0xFF64748B),
                               letterSpacing: 2,
@@ -1365,7 +1366,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                                 child: Text(
                                   isValid ? 'WIT' : 'TUTUP',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: AppTypography.sizeTiny,
                                     fontWeight: FontWeight.w700,
                                     color: isValid ? Colors.white : const Color(0xFF475569),
                                     fontFamily: 'Inter',
@@ -1376,7 +1377,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                               Text(
                                 isValid ? 'Sesi $sessionDesc' : 'Di luar jam operasional',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: AppTypography.sizeCaption,
                                   fontWeight: FontWeight.w600,
                                   color: isValid ? AppColors.primaryTeal : const Color(0xFF64748B),
                                   fontFamily: 'Inter',
@@ -1409,7 +1410,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                               child: Text(
                                 'Waktu operasional tersedia pukul 06.00 s.d. 22.00 WIT. Untuk penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
                                 style: TextStyle(
-                                  fontSize: 10.5,
+                                  fontSize: AppTypography.sizeTiny,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF92400E),
                                   fontFamily: 'Inter',
@@ -1435,7 +1436,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                                 child: Text(
                                   time.hour < 6 ? 'Atur 06.00' : 'Atur 22.00',
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: AppTypography.sizeCaption,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                     fontFamily: 'Inter',
@@ -1468,7 +1469,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                   primaryColor: AppColors.primaryTeal,
                   textTheme: CupertinoTextThemeData(
                     dateTimePickerTextStyle: TextStyle(
-                      fontSize: 22,
+                      fontSize: AppTypography.sizePicker,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -1505,7 +1506,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                   const Text(
                     'Jam Populer: ',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
@@ -1535,7 +1536,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                           child: Text(
                             preset['label'] as String,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: AppTypography.sizeCaption,
                               fontWeight: FontWeight.w600,
                               color: AppColors.primaryNavy,
                               fontFamily: 'Inter',
@@ -1560,7 +1561,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                     const Text(
                       'Bulatkan Menit: ',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w500,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
@@ -1585,7 +1586,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                             child: Text(
                               ':${quickMin.toString().padLeft(2, '0')}',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 fontWeight: isCurrentMin ? FontWeight.w700 : FontWeight.w500,
                                 color: isCurrentMin ? AppColors.primaryTeal : AppColors.textPrimary,
                                 fontFamily: 'Inter',
@@ -1623,7 +1624,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                           child: const Text(
                             'Batal',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: AppTypography.sizeBodyLarge,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textSecondary,
                               fontFamily: 'Inter',
@@ -1672,7 +1673,7 @@ class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
                                     ? 'Atur ke Jam Buka (06.00)'
                                     : 'Atur ke Jam Tutup (22.00)'),
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: AppTypography.sizeBodyLarge,
                               fontWeight: FontWeight.w700,
                               color: isValid ? Colors.white : AppColors.primaryNavy,
                               fontFamily: 'Inter',

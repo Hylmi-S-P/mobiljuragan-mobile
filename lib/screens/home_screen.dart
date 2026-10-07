@@ -9,6 +9,7 @@ import 'order_status_screen.dart';
 import 'profile_screen.dart';
 import 'vehicle_detail_screen.dart';
 import 'vehicle_selection_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Halaman utama aplikasi pelanggan MobilJuragan
 class HomeScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   'Tarif transparan • Konfirmasi instan via admin operasional',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
                     color: AppColors.textSecondary,
                     fontFamily: 'Inter',
@@ -82,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Text(
                 'MobilJuragan',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
@@ -94,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: AppTypography.sizeHeading,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -124,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 initials,
                 style: TextStyle(
                   color: isLoggedIn ? AppColors.textWhite : AppColors.textSecondary,
-                  fontSize: 14,
+                  fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Inter',
                 ),
@@ -174,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Text(
                     'TERPOPULER DI MERAUKE',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: AppTypography.sizeTiny,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
@@ -190,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     vehicle.plateNumber,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: AppTypography.sizeTiny,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textWhite,
                       fontFamily: 'Inter',
@@ -203,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               vehicle.name,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: AppTypography.sizeHeading,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -213,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               '${vehicle.bodyType} • ${vehicle.seatCapacity} • ${vehicle.transmission}',
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textSecondary,
                 fontFamily: 'Inter',
@@ -286,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -316,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text(
               'Status Reservasi',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: AppTypography.sizeTitle,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 fontFamily: 'Inter',
@@ -337,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 hasActive ? 'Detail Status ›' : 'Pesan Baru ›',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
@@ -422,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? (vehicle?.name ?? 'Sewa Aktif Berjalan')
                             : 'Belum ada sewa aktif',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -434,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? 'Kode: ${activeOrder.id} • ${activeOrder.durationDays} Hari (${activeOrder.modeLabel})'
                             : 'Pilih armada siap pakai di Merauke',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -445,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           _getReservationSubtitleHint(activeOrder),
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: AppTypography.sizeTiny,
                             fontWeight: FontWeight.w500,
                             color: activeOrder.status == BookingStatus.mobilSiapDigunakan
                                 ? const Color(0xFF15803D)
@@ -530,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 10,
+          fontSize: AppTypography.sizeTiny,
           fontWeight: FontWeight.w700,
           color: text,
           fontFamily: 'Inter',
@@ -558,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Armada Bersih, Terawat & Sopir Ramah',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -568,7 +569,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Gratis antar-jemput Bandara Mopah & Hotel Kota',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
                     color: AppColors.textSecondary,
                     fontFamily: 'Inter',
@@ -608,13 +609,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Pesan Mobil Sekarang',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Inter',
+            // Flexible: label menyusut dengan ellipsis agar tidak meluber
+            // saat ukuran teks sistem diperbesar.
+            Flexible(
+              child: Text(
+                'Pesan Mobil Sekarang',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: AppTypography.sizeTitle,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
             SizedBox(width: 8),

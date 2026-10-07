@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// App Bar khusus bertema Navy dengan tombol kembali dan teks langkah stepper
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -64,7 +65,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textWhite,
-                        fontSize: 16,
+                        fontSize: AppTypography.sizeHeading,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Inter',
                       ),
@@ -77,7 +78,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.textWhite.withValues(alpha: 0.75),
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w400,
                           fontFamily: 'Inter',
                         ),

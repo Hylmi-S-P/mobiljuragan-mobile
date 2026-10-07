@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../theme/app_typography.dart';
 
 /// Layar Verifikasi OTP untuk Pendaftaran Akun Baru (Frame 12 & 12b style)
 class OtpVerificationScreen extends StatefulWidget {
@@ -185,7 +186,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             child: Text(
               hasError ? 'State: Error' : 'Tahap OTP',
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: AppTypography.sizeTiny,
                 fontWeight: FontWeight.w700,
                 color: hasError ? const Color(0xFFB91C1C) : AppColors.badgeAmberText,
                 fontFamily: 'Inter',
@@ -216,7 +217,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               child: Text(
                 'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   color: AppColors.textMuted,
                   fontFamily: 'Inter',
                 ),
@@ -264,7 +265,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 const Text(
                   'Verifikasi Akun Baru',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppTypography.sizeTitle,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -274,7 +275,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 Text(
                   'Masukkan 6 digit kode OTP yang telah dikirimkan ke nomor ${widget.phoneNumber} untuk mengaktifkan akun rental Anda.',
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppTypography.sizeCaption,
                     color: AppColors.textSecondary,
                     height: 1.35,
                     fontFamily: 'Inter',
@@ -312,7 +313,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   const Text(
                     'Nomor WhatsApp Terdaftar',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: AppTypography.sizeCaption,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
@@ -321,7 +322,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   Text(
                     widget.phoneNumber,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -334,7 +335,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 child: const Text(
                   'Ubah Data',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
@@ -354,7 +355,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               const Text(
                 'Kode Verifikasi OTP (6 Digit)',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -364,7 +365,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 const Text(
                   'Kode Tidak Cocok',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFFDC2626),
                     fontFamily: 'Inter',
@@ -395,7 +396,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     child: Text(
                       'Kode OTP tidak sesuai atau kedaluwarsa. Silakan periksa kembali pesan WhatsApp Anda.',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFFB91C1C),
                         height: 1.35,
@@ -426,7 +427,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     textAlign: TextAlign.center,
                     maxLength: 1,
                     style: TextStyle(
-                      fontSize: 19,
+                      fontSize: AppTypography.sizeMetric,
                       fontWeight: FontWeight.w800,
                       color: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -496,7 +497,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       Text(
                         'Kirim ulang kode dalam $_formattedTimer',
                         style: const TextStyle(
-                          fontSize: 11.5,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primaryTeal,
                           fontFamily: 'Inter',
@@ -510,7 +511,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     label: const Text(
                       'Kirim Ulang Kode OTP Sekarang',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primaryTeal,
                         fontFamily: 'Inter',
@@ -544,7 +545,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 child: Text(
                   'Saya menyetujui Ketentuan Layanan dan Kebijakan Privasi MobilJuragan.',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     color: AppColors.textSecondary,
                     height: 1.35,
                     fontFamily: 'Inter',
@@ -584,7 +585,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             : Text(
                 hasError ? 'Coba Lagi' : 'Verifikasi & Selesaikan Pendaftaran',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Inter',
                 ),

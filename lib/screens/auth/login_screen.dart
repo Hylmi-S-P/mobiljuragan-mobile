@@ -6,6 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
+import '../../theme/app_typography.dart';
 
 /// Layar Masuk / Login Standar Aplikasi Mobile
 /// Pengguna hanya perlu memasukkan Email atau Nomor HP dan Password
@@ -113,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Pusat Bantuan CS Merauke',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: AppTypography.sizeHeading,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -125,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Text(
                 'Mengalami kendala saat login atau lupa data akun Anda? Layanan pelanggan CV. Mobil Juragan Merauke siap membantu pada jam operasional (06.00 - 22.00 WIT).',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppTypography.sizeBodyLarge,
                   color: AppColors.textSecondary,
                   height: 1.45,
                   fontFamily: 'Inter',
@@ -150,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Text(
                             'WhatsApp Resmi CS',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: AppTypography.sizeCaption,
                               color: AppColors.textSecondary,
                               fontFamily: 'Inter',
                             ),
@@ -158,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Text(
                             '+62 812-4800-9921',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: AppTypography.sizeTitle,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primaryNavy,
                               fontFamily: 'Inter',
@@ -287,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   'Portal Layanan Rental Pelanggan',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppTypography.sizeTitle,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -297,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   'Masuk menggunakan Email atau Nomor HP terdaftar untuk mengelola sewa dan memantau status pesanan.',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppTypography.sizeCaption,
                     color: AppColors.textSecondary,
                     height: 1.35,
                     fontFamily: 'Inter',
@@ -348,7 +349,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       auth.errorMessage ?? 'Email/No HP atau password salah. Cek kembali data Anda.',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFFB91C1C),
                         height: 1.35,
@@ -365,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const Text(
             'Email atau Nomor WhatsApp',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -375,7 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _identifierController,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -384,7 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
               hintText: 'nama@domain.com atau 812-xxxx-xxxx',
               hintStyle: const TextStyle(
                 color: AppColors.textMuted,
-                fontSize: 12.5,
+                fontSize: AppTypography.sizeBody,
                 fontFamily: 'Inter',
               ),
               prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primaryTeal, size: 20),
@@ -417,7 +418,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const Text(
             'Password Akun',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -428,7 +429,7 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -437,7 +438,7 @@ class _LoginScreenState extends State<LoginScreen> {
               hintText: 'Masukkan password Anda',
               hintStyle: const TextStyle(
                 color: AppColors.textMuted,
-                fontSize: 12.5,
+                fontSize: AppTypography.sizeBody,
                 fontFamily: 'Inter',
               ),
               prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.primaryTeal, size: 20),
@@ -500,7 +501,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text(
                     'Ingat Saya',
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: AppTypography.sizeCaption,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
@@ -518,7 +519,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text(
                   'Lupa Password?',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
@@ -556,7 +557,7 @@ class _LoginScreenState extends State<LoginScreen> {
             : Text(
                 hasError ? 'Coba Lagi' : 'Masuk Sekarang',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'Inter',
                 ),
@@ -600,7 +601,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Butuh Bantuan Masuk?',
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: AppTypography.sizeBody,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
@@ -610,7 +611,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Hubungi CS Merauke: +62 812-4800-9921',
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF2563EB),
                       fontFamily: 'Inter',
@@ -640,7 +641,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Text(
                 'Belum memiliki akun rental?',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   color: AppColors.textSecondary,
                   fontFamily: 'Inter',
                 ),
@@ -656,7 +657,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text(
                   'Daftar Sekarang',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
@@ -671,7 +672,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Text(
             'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               color: AppColors.textMuted,
               fontFamily: 'Inter',
             ),

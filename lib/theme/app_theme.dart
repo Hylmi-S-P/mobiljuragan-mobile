@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_typography.dart';
 
 /// Konfigurasi ThemeData global untuk aplikasi MobilJuragan
 class AppTheme {
@@ -50,7 +51,7 @@ class AppTheme {
           ),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           textStyle: const TextStyle(
-            fontSize: 14,
+            fontSize: AppTypography.sizeTitle,
             fontWeight: FontWeight.w600,
             fontFamily: 'Inter',
           ),
@@ -65,7 +66,7 @@ class AppTheme {
           ),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           textStyle: const TextStyle(
-            fontSize: 13,
+            fontSize: AppTypography.sizeBodyLarge,
             fontWeight: FontWeight.w500,
             fontFamily: 'Inter',
           ),

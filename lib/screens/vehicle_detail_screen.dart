@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/spec_card_item.dart';
 import 'rental_options_screen.dart';
+import '../theme/app_typography.dart';
 
 /// Layar detail spesifikasi armada kendaraan
 class VehicleDetailScreen extends StatelessWidget {
@@ -40,7 +41,7 @@ class VehicleDetailScreen extends StatelessWidget {
                       Text(
                         vehicle.name,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: AppTypography.sizeHeading,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -50,7 +51,7 @@ class VehicleDetailScreen extends StatelessWidget {
                       Text(
                         'Plat Nomor: ${vehicle.plateNumber}',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -171,7 +172,7 @@ class VehicleDetailScreen extends StatelessWidget {
               const Text(
                 'Tarif Sewa Terhitung (Sistem Resmi)',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1D4ED8),
                   fontFamily: 'Inter',
@@ -180,7 +181,7 @@ class VehicleDetailScreen extends StatelessWidget {
               Text(
                 'Rp ${vehicle.pricePerDay ~/ 1000}.000 / hari',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1D4ED8),
                   fontFamily: 'Inter',
@@ -192,7 +193,7 @@ class VehicleDetailScreen extends StatelessWidget {
           const Text(
             'Tarif resmi terhubung langsung dengan sistem reservasi MobilJuragan Merauke.',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: AppTypography.sizeCaption,
               fontWeight: FontWeight.w400,
               color: Color(0xFF3B82F6),
               fontFamily: 'Inter',
@@ -215,7 +216,7 @@ class VehicleDetailScreen extends StatelessWidget {
       child: const Text(
         'Pastikan tipe mobil dan plat nomor sesuai kebutuhan sebelum menentukan opsi rental.',
         style: TextStyle(
-          fontSize: 11,
+          fontSize: AppTypography.sizeCaption,
           fontWeight: FontWeight.w400,
           color: AppColors.textSecondary,
           fontFamily: 'Inter',
@@ -256,7 +257,7 @@ class VehicleDetailScreen extends StatelessWidget {
             child: const Text(
               'Lanjut ke Opsi Rental',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: AppTypography.sizeTitle,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',
               ),

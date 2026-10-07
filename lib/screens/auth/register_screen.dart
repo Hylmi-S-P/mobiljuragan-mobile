@@ -4,6 +4,7 @@ import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'otp_verification_screen.dart';
+import '../../theme/app_typography.dart';
 
 /// Layar Registrasi Akun Pengguna Baru
 /// Mengumpulkan data diri lengkap beserta kata sandi yang memenuhi kriteria keamanan
@@ -193,7 +194,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Registrasi Pelanggan Baru',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppTypography.sizeTitle,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
@@ -203,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'Lengkapi data resmi untuk reservasi unit rental di Merauke. Kode OTP 6 digit akan dikirimkan pada tahap berikutnya.',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppTypography.sizeCaption,
                     color: AppColors.textSecondary,
                     height: 1.4,
                     fontFamily: 'Inter',
@@ -231,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const Text(
             'Informasi Identitas Diri',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w700,
               color: AppColors.primaryNavy,
               fontFamily: 'Inter',
@@ -245,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -269,7 +270,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -294,7 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -319,7 +320,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             keyboardType: TextInputType.number,
             maxLength: 16,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -342,7 +343,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           TextFormField(
             controller: _cityController,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -377,7 +378,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const Text(
             'Keamanan & Password Akun',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w700,
               color: AppColors.primaryNavy,
               fontFamily: 'Inter',
@@ -393,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             obscureText: !_isPasswordVisible,
             onChanged: (_) => setState(() {}),
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -456,7 +457,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _confirmPasswordController,
             obscureText: !_isConfirmPasswordVisible,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
               fontFamily: 'Inter',
@@ -537,7 +538,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Text(
                 'Syarat Keamanan Password:',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w700,
                   color: isAllMet ? const Color(0xFF166534) : AppColors.textPrimary,
                   fontFamily: 'Inter',
@@ -570,7 +571,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Text(
                       'Password kuat dan memenuhi seluruh kriteria keamanan.',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: AppTypography.sizeTiny,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF166534),
                         fontFamily: 'Inter',
@@ -607,7 +608,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppTypography.sizeCaption,
                 fontWeight: isMet ? FontWeight.w700 : FontWeight.w500,
                 color: isMet ? const Color(0xFF166534) : AppColors.textSecondary,
                 fontFamily: 'Inter',
@@ -626,7 +627,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
             fontFamily: 'Inter',
@@ -637,7 +638,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const Text(
             '*',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               fontWeight: FontWeight.w700,
               color: Color(0xFFDC2626),
               fontFamily: 'Inter',
@@ -657,7 +658,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       hintText: hint,
       prefixText: prefixText,
       prefixStyle: const TextStyle(
-        fontSize: 13,
+        fontSize: AppTypography.sizeBodyLarge,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
         fontFamily: 'Inter',
@@ -665,7 +666,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       prefixIcon: Icon(icon, size: 18, color: AppColors.primaryTeal),
       hintStyle: const TextStyle(
         color: AppColors.textMuted,
-        fontSize: 12,
+        fontSize: AppTypography.sizeBody,
         fontFamily: 'Inter',
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -725,7 +726,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Text(
                 'Saya menyatakan data yang saya isi adalah benar dan bersedia menunjukkan KTP fisik asli saat serah terima unit di Merauke.',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w400,
                   color: AppColors.textSecondary,
                   height: 1.4,
@@ -766,7 +767,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Text(
                     'Lanjut ke Verifikasi OTP',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: AppTypography.sizeTitle,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Inter',
                     ),
@@ -787,7 +788,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const Text(
             'Sudah memiliki akun?',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
             ),
@@ -799,7 +800,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: const Text(
               'Masuk di sini',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: AppTypography.sizeBody,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primaryTeal,
                 fontFamily: 'Inter',

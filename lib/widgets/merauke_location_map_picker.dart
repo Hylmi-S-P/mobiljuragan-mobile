@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/merauke_geocoding_service.dart';
 import '../services/user_location_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Data preset landmark dan titik lokasi populer di Merauke
 class MeraukeLocationPreset {
@@ -225,7 +226,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
 
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
+        content: Text(message, style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody)),
         backgroundColor: AppColors.primaryNavy,
         behavior: SnackBarBehavior.floating,
         action: status == UserLocationStatus.permissionDeniedForever
@@ -307,7 +308,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: AppTypography.sizeTiny,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                           fontFamily: 'Inter',
@@ -377,7 +378,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             ? 'Peta Titik Penjemputan Sopir'
                             : 'Peta Titik Serah Terima Unit',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -389,7 +390,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             ? 'Sopir akan menjemput tepat di titik pin lokasi terpilih.'
                             : 'Kunci dan armada diserahterimakan di titik lokasi ini.',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
                           fontFamily: 'Inter',
@@ -425,12 +426,12 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
         TextField(
           controller: _searchController,
           focusNode: _searchFocus,
-          style: const TextStyle(fontSize: 12, fontFamily: 'Inter'),
+          style: const TextStyle(fontSize: AppTypography.sizeBody, fontFamily: 'Inter'),
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Cari lokasi, misalnya "bandara"',
             hintStyle: const TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.sizeBody,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
             ),
@@ -476,7 +477,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
         child: const Text(
           'Lokasi tidak ditemukan. Ketuk peta untuk menandai manual.',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: AppTypography.sizeCaption,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
           ),
@@ -513,7 +514,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: AppTypography.sizeBody,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary,
                               fontFamily: 'Inter',
@@ -524,7 +525,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: AppTypography.sizeTiny,
                               color: AppColors.textSecondary,
                               fontFamily: 'Inter',
                             ),
@@ -614,7 +615,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 9,
+                                fontSize: AppTypography.sizeMicro,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                                 fontFamily: 'Inter',
@@ -700,7 +701,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                           Text(
                             'Perbesar',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: AppTypography.sizeTiny,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primaryNavy,
                               fontFamily: 'Inter',
@@ -733,7 +734,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                       Text(
                         'Ketuk peta untuk ubah pin',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: AppTypography.sizeMicro,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
@@ -786,7 +787,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                       ? 'Peta Titik Penjemputan Sopir'
                                       : 'Peta Titik Serah Terima Unit',
                                   style: const TextStyle(
-                                    fontSize: 13,
+                                    fontSize: AppTypography.sizeBodyLarge,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                     fontFamily: 'Inter',
@@ -795,7 +796,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                 const Text(
                                   'Geser atau ketuk peta Merauke dengan leluasa',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: AppTypography.sizeTiny,
                                     color: Colors.white70,
                                     fontFamily: 'Inter',
                                   ),
@@ -875,7 +876,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              fontSize: 9,
+                                              fontSize: AppTypography.sizeMicro,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.white,
                                               fontFamily: 'Inter',
@@ -914,7 +915,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                     Text(
                                       'Ketuk lokasi mana saja untuk geser pin',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: AppTypography.sizeCaption,
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.textPrimary,
                                         fontFamily: 'Inter',
@@ -943,7 +944,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
                                 fontFamily: 'Inter',
@@ -965,7 +966,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             child: const Text(
                               'Gunakan Titik Ini',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: AppTypography.sizeCaption,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'Inter',
                               ),
