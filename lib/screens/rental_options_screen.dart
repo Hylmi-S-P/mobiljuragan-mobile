@@ -724,6 +724,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
 
   Widget _buildStickyCTA(BuildContext context, BookingController booking) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
         color: AppColors.cardWhite,
@@ -731,29 +732,16 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       ),
       child: SafeArea(
         top: false,
-        // Wrap: saat ukuran teks sangat besar, tombol turun ke barisnya sendiri
-        // dan label kiri tetap punya lebar layar penuh untuk membungkus wajar.
-        // Sebelumnya Row menahan keduanya sebaris sehingga label terhimpit
-        // sampai terpecah satu huruf per baris.
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 14,
-          runSpacing: 10,
+        child: Row(
           children: [
-            ConstrainedBox(
-              // Sisakan ruang untuk tombol bila masih muat sebaris.
-              constraints: BoxConstraints(
-                minWidth: 120,
-                maxWidth: MediaQuery.sizeOf(context).width - 200,
-              ),
+            Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci (Self-Drive)',
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
@@ -776,8 +764,8 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 12),
             SizedBox(
-              // Tinggi ikut skala teks sistem agar label tombol tidak terpotong.
               height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
               child: ElevatedButton(
                 onPressed: () {
@@ -796,7 +784,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
                 child: const Text(
                   'Lanjut ke Jadwal Sewa',

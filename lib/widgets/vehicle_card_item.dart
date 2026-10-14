@@ -45,6 +45,8 @@ class VehicleCardItem extends StatelessWidget {
                     children: [
                       Text(
                         vehicle.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
@@ -55,6 +57,8 @@ class VehicleCardItem extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Plat ${vehicle.plateNumber} • ${vehicle.seatCapacity}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w400,

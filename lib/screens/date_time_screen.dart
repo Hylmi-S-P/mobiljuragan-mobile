@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart'
         CupertinoTheme,
         CupertinoThemeData;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../models/vehicle_model.dart';
@@ -34,6 +35,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   String _selectedTime = '09.00 WIT';
   String _timeDescription = 'Pagi hari';
   int _durationDays = 2;
+  bool _isSelectingEndDate = false; // Siklus 2 ketukan: false = pilih mulai, true = pilih selesai
 
   final List<String> _monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -165,11 +167,12 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
+          // Header Bulan & Navigasi Kalender
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Row(
                 children: [
@@ -220,12 +223,12 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   ),
                 ],
               ),
-              const Text(
-                'Bulan terpilih',
+              Text(
+                _isSelectingEndDate ? 'Ketuk tanggal selesai' : 'Bulan terpilih',
                 style: TextStyle(
                   fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primaryTeal,
+                  color: _isSelectingEndDate ? AppColors.primaryNavy : AppColors.primaryTeal,
                   fontFamily: 'Inter',
                 ),
               ),
@@ -305,12 +308,30 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
         return InkWell(
           onTap: () {
+            HapticFeedback.selectionClick();
             setState(() {
-              _selectedDate = DateTime(
-                _displayedMonth.year,
-                _displayedMonth.month,
-                day,
-              );
+              if (!_isSelectingEndDate) {
+                // Ketukan 1: Memilih tanggal mulai sewa
+                _selectedDate = currentDayOnly;
+                _durationDays = 1;
+                _isSelectingEndDate = true;
+              } else {
+                // Ketukan 2: Memilih tanggal selesai sewa
+                if (currentDayOnly.isAfter(_selectedDate)) {
+                  final diff = currentDayOnly.difference(_selectedDate).inDays;
+                  _durationDays = diff.clamp(1, 30);
+                  _isSelectingEndDate = false;
+                } else if (currentDayOnly.isBefore(_selectedDate)) {
+                  // Jika memilih tanggal sebelum tanggal mulai, jadikan tanggal mulai baru
+                  _selectedDate = currentDayOnly;
+                  _durationDays = 1;
+                  _isSelectingEndDate = true;
+                } else {
+                  // Mengetuk tanggal yang sama persis: durasi 1 hari
+                  _durationDays = 1;
+                  _isSelectingEndDate = false;
+                }
+              }
             });
           },
           borderRadius: BorderRadius.circular(18),
@@ -398,73 +419,97 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 6,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 6,
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryTeal,
-                  shape: BoxShape.circle,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryTeal,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Mulai: $startFormatted',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Mulai: $startFormatted',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryNavy,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Selesai: $returnFormatted',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.tealLight,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$_durationDays Hari',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryTeal,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryNavy,
-                  shape: BoxShape.circle,
-                ),
-              ),
+              const Icon(Icons.touch_app_outlined, size: 14, color: AppColors.primaryTeal),
               const SizedBox(width: 6),
-              Text(
-                'Selesai: $returnFormatted',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryNavy,
-                  fontFamily: 'Inter',
+              Expanded(
+                child: Text(
+                  _isSelectingEndDate
+                      ? 'Ketukan 2/2: Ketuk tanggal selesai untuk mengatur durasi sewa'
+                      : 'Ketukan 1/2: Ketuk tanggal di kalender untuk tanggal mulai sewa',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.tealLight,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              '$_durationDays Hari',
-              style: const TextStyle(
-                fontSize: AppTypography.sizeTiny,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryTeal,
-                fontFamily: 'Inter',
-              ),
-            ),
           ),
         ],
       ),
@@ -842,7 +887,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   InkWell(
                     onTap: _durationDays > 1
                         ? () {
-                            setState(() => _durationDays--);
+                            setState(() {
+                              _durationDays--;
+                              _isSelectingEndDate = false;
+                            });
                           }
                         : null,
                     borderRadius: BorderRadius.circular(6),
@@ -880,7 +928,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   InkWell(
                     onTap: _durationDays < 30
                         ? () {
-                            setState(() => _durationDays++);
+                            setState(() {
+                              _durationDays++;
+                              _isSelectingEndDate = false;
+                            });
                           }
                         : null,
                     borderRadius: BorderRadius.circular(6),
@@ -923,6 +974,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     onTap: () {
                       setState(() {
                         _durationDays = days;
+                        _isSelectingEndDate = false;
                       });
                     },
                     borderRadius: BorderRadius.circular(8),
@@ -1048,6 +1100,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         '${returnDate.day} ${_monthNames[returnDate.month - 1].substring(0, 3)}';
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: const BoxDecoration(
         color: AppColors.cardWhite,
@@ -1055,19 +1108,9 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       ),
       child: SafeArea(
         top: false,
-        // Wrap: saat ukuran teks sangat besar, tombol turun ke barisnya sendiri
-        // sehingga label periode sewa tetap terbaca wajar.
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 16,
-          runSpacing: 10,
+        child: Row(
           children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: 120,
-                maxWidth: MediaQuery.sizeOf(context).width - 200,
-              ),
+            Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1081,9 +1124,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       fontFamily: 'Inter',
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     '$_durationDays Hari ($formattedDate - $formattedReturn)',
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
@@ -1095,50 +1139,50 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 12),
             SizedBox(
-              // Tinggi ikut skala teks sistem agar label tombol tidak terpotong.
               height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
               child: ElevatedButton(
-                  onPressed: () {
-                    final parsed = _parseTimeOfDay(_selectedTime);
-                    if (!_isWithinOperationalHours(parsed)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT). Hubungi Chat CS Merauke jika butuh penjemputan khusus.',
-                          ),
-                          backgroundColor: Color(0xFFDC2626),
+                onPressed: () {
+                  final parsed = _parseTimeOfDay(_selectedTime);
+                  if (!_isWithinOperationalHours(parsed)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT). Hubungi Chat CS Merauke jika butuh penjemputan khusus.',
                         ),
-                      );
-                      return;
-                    }
-                    context.read<BookingController>().setSchedule(
-                          date: _selectedDate,
-                          time: _selectedTime,
-                          durationDays: _durationDays,
-                        );
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => OrderReviewScreen(
-                          vehicle: widget.vehicle,
-                        ),
+                        backgroundColor: Color(0xFFDC2626),
                       ),
                     );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    foregroundColor: AppColors.textWhite,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    return;
+                  }
+                  context.read<BookingController>().setSchedule(
+                        date: _selectedDate,
+                        time: _selectedTime,
+                        durationDays: _durationDays,
+                      );
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => OrderReviewScreen(
+                        vehicle: widget.vehicle,
+                      ),
                     ),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  foregroundColor: AppColors.textWhite,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text(
-                    'Lanjut ke Tinjau Pesanan',
-                    style: AppTypography.cardTitle,
-                  ),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
+                child: const Text(
+                  'Lanjut ke Tinjau Pesanan',
+                  style: AppTypography.cardTitle,
+                ),
+              ),
             ),
           ],
         ),

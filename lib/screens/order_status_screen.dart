@@ -270,42 +270,47 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   Widget _buildStatusHeaderCard(BookingModel booking) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 6,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Kode Reservasi',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Kode Reservasi',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                booking.id,
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeHeading,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+                const SizedBox(height: 2),
+                Text(
+                  booking.id,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeHeading,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
@@ -327,11 +332,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-
   Widget _buildVehicleSummaryCard(BookingModel booking) {
     final isCancelled = booking.status == BookingStatus.dibatalkan;
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),

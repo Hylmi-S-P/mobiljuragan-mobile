@@ -149,11 +149,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       borderRadius: BorderRadius.circular(9),
       child: Container(
         alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryNavy : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
               child: Text(

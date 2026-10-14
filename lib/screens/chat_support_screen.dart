@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
@@ -26,6 +27,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
+  Timer? _keyboardScrollTimer;
 
   /// Menghasilkan key unik sesi percakapan agar tidak tercampur antar transaksi/tiket
   String get conversationKey {
@@ -41,6 +43,22 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _keyboardScrollTimer?.cancel();
+        // Beri jeda 350ms agar animasi keyboard bawaan OS selesai sepenuhnya
+        // sebelum scroll, menghindari konflik animasi dan getaran layar (jitter)
+        _keyboardScrollTimer = Timer(const Duration(milliseconds: 350), () {
+          if (mounted && _scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutQuad,
+            );
+          }
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Inisialisasi otomatis hanya jika chat dibuka dari pesanan sewa mobil spesifik
       if (widget.booking != null) {
@@ -64,6 +82,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   @override
   void dispose() {
+    _keyboardScrollTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -107,6 +126,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.78;
     final support = context.watch<SupportController>();
     final bookingCtrl = context.watch<BookingController>();
 
@@ -275,36 +295,39 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
-            if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
+      resizeToAvoidBottomInset: true,
+      body: Column(
+        children: [
+          // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
+          if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
 
-            // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
-            if (currentBooking != null)
-              _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
+          // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
+          if (currentBooking != null)
+            _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
 
-            // Daftar Pesan Chat terisolasi per sesi
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  final msg = messages[index];
-                  return _buildMessageItem(msg, support);
-                },
-              ),
+          // Daftar Pesan Chat terisolasi per sesi
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final msg = messages[index];
+                return _buildMessageItem(msg, support, maxBubbleWidth);
+              },
             ),
+          ),
 
-            // Chips Saran Pertanyaan Cepat
-            _buildQuickSuggestionsBar(suggestions, support, currentBooking, bookingCtrl),
-
-            // Komposer Pesan
-            _buildComposerBar(support),
-          ],
-        ),
+          // Panel Bawah Terpadu (Saran Cepat + Input Pesan)
+          _buildUnifiedBottomArea(
+            suggestions: suggestions,
+            support: support,
+            booking: currentBooking,
+            bookingCtrl: bookingCtrl,
+          ),
+        ],
       ),
     );
   }
@@ -505,7 +528,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
-  Widget _buildMessageItem(ChatMessageModel msg, SupportController controller) {
+  Widget _buildMessageItem(ChatMessageModel msg, SupportController controller, double maxBubbleWidth) {
     final isUser = msg.isFromUser;
     final isSystemNotice = msg.senderName == 'Sistem';
 
@@ -589,7 +612,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           // Bubble Chat
           Container(
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.78,
+              maxWidth: maxBubbleWidth,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -657,77 +680,75 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     BookingController bookingCtrl,
   ) {
     return Container(
-      height: 38,
-      margin: const EdgeInsets.only(bottom: 6),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 42,
+      padding: const EdgeInsets.only(top: 8),
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        itemCount: suggestions.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final suggestion = suggestions[index];
-          return ActionChip(
-            backgroundColor: AppColors.cardWhite,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppColors.borderSubtle),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-            label: Text(
-              suggestion,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            onPressed: () {
-              if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
-                controller.confirmPaymentFromChat(
-                  booking: booking,
-                  onAdvance: () {
-                    bookingCtrl.confirmPaymentAndAdvance(booking.id);
-                  },
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF15803D),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    content: Text(
-                      'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
-                    ),
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: suggestions.map((suggestion) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ActionChip(
+                backgroundColor: const Color(0xFFF1F5F9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: AppColors.borderSubtle),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                label: Text(
+                  suggestion,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
                   ),
-                );
-              } else if (suggestion == 'Panggil Staf Lapangan' ||
-                  suggestion == 'Panggil Staf Admin') {
-                controller.handoffToAdmin(conversationKey: conversationKey);
-              } else {
-                controller.sendUserMessage(
-                  text: suggestion,
-                  conversationKey: conversationKey,
-                );
-              }
-              _scrollToBottom();
-            },
-          );
-        },
+                ),
+                onPressed: () {
+                  if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
+                    controller.confirmPaymentFromChat(
+                      booking: booking,
+                      onAdvance: () {
+                        bookingCtrl.confirmPaymentAndAdvance(booking.id);
+                      },
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF15803D),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        content: Text(
+                          'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
+                          style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
+                        ),
+                      ),
+                    );
+                  } else if (suggestion == 'Panggil Staf Lapangan' ||
+                      suggestion == 'Panggil Staf Admin') {
+                    controller.handoffToAdmin(conversationKey: conversationKey);
+                  } else {
+                    controller.sendUserMessage(
+                      text: suggestion,
+                      conversationKey: conversationKey,
+                    );
+                  }
+                  _scrollToBottom();
+                },
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
   Widget _buildComposerBar(SupportController controller) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        border: Border(
-          top: BorderSide(color: AppColors.borderSubtle, width: 1),
-        ),
-      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -784,6 +805,36 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Panel Bawah Terpadu: Menggabungkan saran pesan cepat dan kolom input
+  /// dalam satu container atomic dengan ClampingScrollPhysics dan SafeArea
+  /// agar terangkat secara mulus tanpa jitter saat keyboard muncul.
+  Widget _buildUnifiedBottomArea({
+    required List<String> suggestions,
+    required SupportController support,
+    required BookingModel? booking,
+    required BookingController bookingCtrl,
+  }) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.cardWhite,
+        border: Border(
+          top: BorderSide(color: AppColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (suggestions.isNotEmpty)
+              _buildQuickSuggestionsBar(suggestions, support, booking, bookingCtrl),
+            _buildComposerBar(support),
+          ],
+        ),
       ),
     );
   }
