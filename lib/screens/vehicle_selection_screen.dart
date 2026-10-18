@@ -9,7 +9,7 @@ import '../widgets/vehicle_card_item.dart';
 import 'vehicle_detail_screen.dart';
 import '../theme/app_typography.dart';
 
-/// Layar pemilihan armada kendaraan
+/// Layar pemilihan armada kendaraan dengan filter kategori persisten & fitur favorit reaktif
 class VehicleSelectionScreen extends StatefulWidget {
   final bool showBottomNav;
 
@@ -58,58 +58,81 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
       body: Column(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Katalog Armada Tersedia',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeHeading,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+            child: RefreshIndicator(
+              color: AppColors.primaryTeal,
+              onRefresh: () => vehicleController.refreshCatalog(force: true),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Katalog Armada Tersedia',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeHeading,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        if (vehicleController.isSyncing)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primaryTeal,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Bandingkan tipe, kapasitas, dan plat nomor kendaraan.',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBody,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Bandingkan tipe, kapasitas, dan plat nomor kendaraan.',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBody,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildCategoryFilterBar(vehicleController),
-                  const SizedBox(height: 16),
-                  if (filteredVehicles.isEmpty)
-                    _buildEmptyState(vehicleController)
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filteredVehicles.length,
-                      itemBuilder: (context, index) {
-                        final vehicle = filteredVehicles[index];
-                        return VehicleCardItem(
-                          vehicle: vehicle,
-                          isSelected: vehicle.id == _selectedVehicleId,
-                          onTap: () {
-                            setState(() {
-                              _selectedVehicleId = vehicle.id;
-                            });
-                            context.read<BookingController>().selectVehicle(vehicle);
-                          },
-                        );
-                      },
-                    ),
-                  const SizedBox(height: 8),
-                  _buildNoticeCard(vehicleController, filteredVehicles.length),
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 16),
+                    _buildCategoryFilterBar(vehicleController),
+                    const SizedBox(height: 16),
+                    if (filteredVehicles.isEmpty)
+                      _buildEmptyState(vehicleController)
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredVehicles.length,
+                        itemBuilder: (context, index) {
+                          final vehicle = filteredVehicles[index];
+                          return VehicleCardItem(
+                            vehicle: vehicle,
+                            isSelected: vehicle.id == _selectedVehicleId,
+                            onTap: () {
+                              setState(() {
+                                _selectedVehicleId = vehicle.id;
+                              });
+                              context.read<BookingController>().selectVehicle(vehicle);
+                            },
+                            onToggleFavorite: () {
+                              vehicleController.toggleFavorite(vehicle.id);
+                            },
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 8),
+                    _buildNoticeCard(vehicleController, filteredVehicles.length),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
@@ -123,7 +146,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     const categories = VehicleController.availableCategories;
 
     return SizedBox(
-      height: 38,
+      height: 42,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
@@ -131,6 +154,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
         itemBuilder: (context, index) {
           final category = categories[index];
           final bool isSelected = controller.selectedCategory == category;
+          final bool isFav = category == 'Favorit';
 
           return InkWell(
             onTap: () {
@@ -138,7 +162,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             },
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primaryTeal : AppColors.cardWhite,
                 borderRadius: BorderRadius.circular(8),
@@ -147,16 +171,46 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                   width: 1,
                 ),
               ),
-              child: Center(
-                child: Text(
-                  category,
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
-                    fontFamily: 'Inter',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isFav) ...[
+                    Icon(
+                      isSelected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                      size: 16,
+                      color: isSelected ? AppColors.textWhite : const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    category,
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBody,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                ),
+                  if (isFav && controller.favoriteCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${controller.favoriteCount}',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeMicro,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : const Color(0xFFB45309),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           );
@@ -166,6 +220,8 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
   }
 
   Widget _buildEmptyState(VehicleController controller) {
+    final isFavoriteFilter = controller.selectedCategory == 'Favorit';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -176,10 +232,16 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.car_rental, size: 48, color: AppColors.textSecondary),
+          Icon(
+            isFavoriteFilter ? Icons.bookmark_border_rounded : Icons.car_rental,
+            size: 48,
+            color: isFavoriteFilter ? const Color(0xFFD97706) : AppColors.textSecondary,
+          ),
           const SizedBox(height: 12),
           Text(
-            'Tidak ada armada kategori "${controller.selectedCategory}"',
+            isFavoriteFilter
+                ? 'Belum Ada Armada Favorit'
+                : 'Tidak ada armada kategori "${controller.selectedCategory}"',
             style: const TextStyle(
               fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
@@ -187,7 +249,19 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               fontFamily: 'Inter',
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          Text(
+            isFavoriteFilter
+                ? 'Ketuk ikon bookmark pada armada di katalog untuk menyimpannya sebagai kendaraan favorit Anda.'
+                : 'Silakan pilih kategori lain atau periksa kata kunci pencarian Anda.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 12),
           TextButton(
             onPressed: () => controller.setCategory('Semua'),
             child: const Text('Tampilkan Semua Armada'),
@@ -236,37 +310,77 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
   Widget _buildStickyCTA(VehicleModel selectedVehicle) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
-        top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              context.read<BookingController>().selectVehicle(selectedVehicle);
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => VehicleDetailScreen(vehicle: selectedVehicle),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => VehicleDetailScreen(vehicle: selectedVehicle),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.borderSubtle, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Detail Mobil',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              foregroundColor: AppColors.textWhite,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 0,
             ),
-            child: Text(
-              'Pilih ${selectedVehicle.name}',
-              style: AppTypography.sectionTitle,
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    context.read<BookingController>().selectVehicle(selectedVehicle);
+                    Navigator.of(context).pushNamed('/rental-options');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Pilih Armada',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

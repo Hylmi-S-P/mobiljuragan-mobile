@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart' show Value;
+import '../data/local/database/app_database.dart';
 import 'vehicle_model.dart';
 
 /// Status siklus tahapan pesanan rental (Sesuai alur Figma Frame 07 + Tahap Menunggu Pembayaran)
@@ -117,6 +119,61 @@ class BookingModel {
     this.paidAt,
     this.paymentReference,
   }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
+
+  /// Konversi dari entitas tabel Drift (Booking) ke domain BookingModel
+  factory BookingModel.fromDrift(Booking entry, VehicleModel vehicle) {
+    BookingStatus parseStatus(String statusStr) {
+      for (final s in BookingStatus.values) {
+        if (s.name == statusStr) return s;
+      }
+      return BookingStatus.permintaanDiterima;
+    }
+
+    return BookingModel(
+      id: entry.id,
+      vehicle: vehicle,
+      startDate: DateTime.fromMillisecondsSinceEpoch(entry.startDate),
+      startTime: entry.startTime,
+      durationDays: entry.durationDays,
+      withDriver: entry.withDriver,
+      pickupLocation: entry.pickupLocation,
+      pickupLatitude: entry.pickupLatitude,
+      pickupLongitude: entry.pickupLongitude,
+      note: entry.customerNote,
+      status: parseStatus(entry.status),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(entry.createdAt),
+      dailyRate: entry.dailyRate,
+      serviceFee: entry.serviceFee,
+      paymentBank: entry.paymentBank,
+      paymentAccountNumber: entry.paymentAccountNumber,
+      isFinalTariffConfirmed: entry.isFinalTariffConfirmed,
+    );
+  }
+
+  /// Konversi ke Drift BookingsCompanion
+  BookingsCompanion toCompanion({int? lastFetchedMillis}) {
+    final nowMillis = lastFetchedMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+    return BookingsCompanion(
+      id: Value(id),
+      vehicleId: Value(vehicle.id),
+      startDate: Value(startDate.millisecondsSinceEpoch),
+      startTime: Value(startTime),
+      durationDays: Value(durationDays),
+      withDriver: Value(withDriver),
+      pickupLocation: Value(pickupLocation),
+      pickupLatitude: Value(pickupLatitude),
+      pickupLongitude: Value(pickupLongitude),
+      customerNote: Value(note),
+      status: Value(status.name),
+      dailyRate: Value(dailyRate),
+      serviceFee: Value(serviceFee),
+      paymentBank: Value(paymentBank),
+      paymentAccountNumber: Value(paymentAccountNumber),
+      isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
+      createdAt: Value(createdAt.millisecondsSinceEpoch),
+      lastFetched: Value(nowMillis),
+    );
+  }
 
   /// Tanggal selesai masa sewa
   DateTime get endDate => startDate.add(Duration(days: durationDays));

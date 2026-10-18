@@ -40,9 +40,26 @@ dependencies:
   latlong2: 0.9.1
   geolocator: ^14.1.1
 
+  # Local Storage & Offline-First Persistence
+  drift: ^2.24.2
+  drift_flutter: ^0.3.1
+
+  # Settings & Small Preferences (Non-sensitive data)
+  shared_preferences: ^2.5.6
+
+  # Secrets & Token Security (Hardware Keystore/Keychain)
+  flutter_secure_storage: ^11.2.0
+
+  # REST API Client
+  http: ^1.6.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Drift Code Generator & Builder
+  drift_dev: ^2.35.1
+  build_runner: ^2.16.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

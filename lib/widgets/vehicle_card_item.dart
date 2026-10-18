@@ -3,17 +3,19 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
-/// Kartu pilihan kendaraan di katalog dengan state seleksi aktif teal
+/// Kartu pilihan kendaraan di katalog dengan state seleksi aktif dan tombol favorit interaktif
 class VehicleCardItem extends StatelessWidget {
   final VehicleModel vehicle;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onToggleFavorite;
 
   const VehicleCardItem({
     super.key,
     required this.vehicle,
     required this.isSelected,
     required this.onTap,
+    this.onToggleFavorite,
   });
 
   @override
@@ -43,18 +45,50 @@ class VehicleCardItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        vehicle.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              vehicle.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeBodyLarge,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                          // Tombol Bookmark / Favorit Interaktif (Target sentuh minimal 44px)
+                          if (onToggleFavorite != null)
+                            Semantics(
+                              button: true,
+                              label: vehicle.isFavorite
+                                  ? 'Hapus ${vehicle.name} dari favorit'
+                                  : 'Tambahkan ${vehicle.name} ke favorit',
+                              child: InkWell(
+                                onTap: onToggleFavorite,
+                                borderRadius: BorderRadius.circular(22),
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    vehicle.isFavorite
+                                        ? Icons.bookmark_rounded
+                                        : Icons.bookmark_outline_rounded,
+                                    color: vehicle.isFavorite
+                                        ? const Color(0xFFD97706) // Amber hangat
+                                        : AppColors.textSecondary,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         'Plat ${vehicle.plateNumber} • ${vehicle.seatCapacity}',
                         maxLines: 1,
@@ -67,16 +101,27 @@ class VehicleCardItem extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Tersedia',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryTeal,
-                          fontFamily: 'Inter',
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.badgeGreenBg,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Tersedia',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeMicro,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.badgeGreenText,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         'Rp ${_formatRupiah(vehicle.pricePerDay)} / hari',
                         style: const TextStyle(
@@ -89,13 +134,13 @@ class VehicleCardItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 // Thumbnail Gambar Mobil
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    width: 110,
-                    height: 76,
+                    width: 106,
+                    height: 74,
                     color: AppColors.surfaceLight,
                     child: Image.asset(
                       vehicle.imageUrl,

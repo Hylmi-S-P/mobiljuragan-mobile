@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
+import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
 import '../models/vehicle_model.dart';
 
 /// Controller terpusat untuk mengelola seluruh siklus pemesanan kendaraan pelanggan
 class BookingController extends ChangeNotifier {
+  final BookingRepository? _repository;
+
   // Data formulir wizard pemesanan
   VehicleModel? _selectedVehicle = VehicleModel.sampleVehicles.first;
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
@@ -24,7 +27,7 @@ class BookingController extends ChangeNotifier {
   BookingModel? _activeBooking;
   final List<BookingModel> _bookingHistory = [];
 
-  BookingController() {
+  BookingController({BookingRepository? repository}) : _repository = repository {
     _initSampleData();
   }
 
@@ -183,6 +186,7 @@ class BookingController extends ChangeNotifier {
 
     _bookingHistory.insert(0, newBooking);
     _activeBooking = newBooking;
+    _repository?.saveBooking(newBooking);
     notifyListeners();
     return newBooking;
   }

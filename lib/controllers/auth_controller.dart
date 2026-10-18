@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import '../data/local/secure/secure_storage_service.dart';
+import '../data/repositories/auth_repository.dart';
 import '../models/user_model.dart';
 
 /// Helper validator untuk aturan keamanan password
@@ -18,13 +20,18 @@ class PasswordRules {
 }
 
 /// Controller untuk mengelola autentikasi, status login, dan profil pengguna
+/// dengan keamanan token berbasis FlutterSecureStorage (Hardware Keystore).
 class AuthController extends ChangeNotifier {
+  final AuthRepository? _repository;
+  final SecureStorageService? _secureStorage;
+
   UserModel? _currentUser = UserModel.defaultUser;
   bool _isLoggedIn = true;
   String _phoneNumber = '+62 812-4800-2910';
   String _inputOtp = '';
   bool _hasLoginError = false;
   String? _errorMessage;
+  bool _hasSecureToken = false;
 
   // Kredensial default untuk demo aplikasi
   String _currentPassword = 'Merauke#2026';
@@ -43,8 +50,13 @@ class AuthController extends ChangeNotifier {
   };
 
   // Data sementara saat pendaftaran sebelum verifikasi OTP
-
   Map<String, String>? _pendingRegistration;
+
+  AuthController({
+    AuthRepository? repository,
+    SecureStorageService? secureStorage,
+  })  : _repository = repository,
+        _secureStorage = secureStorage;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
@@ -54,6 +66,46 @@ class AuthController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get currentPassword => _currentPassword;
   Map<String, String>? get pendingRegistration => _pendingRegistration;
+  bool get hasSecureToken => _hasSecureToken;
+
+  /// Memulihkan sesi login yang tersimpan di Hardware Keystore / Secure Storage saat aplikasi boot
+  Future<void> initSession() async {
+    final storage = _secureStorage;
+    final repo = _repository;
+
+    if (storage != null) {
+      final hasToken = await storage.hasValidToken();
+      _hasSecureToken = hasToken;
+
+      if (hasToken && repo != null) {
+        final restoredUser = await repo.restoreSession();
+        if (restoredUser != null) {
+          _currentUser = restoredUser;
+          _isLoggedIn = true;
+          notifyListeners();
+          return;
+        }
+      }
+    }
+
+    // Default demo session: pastikan token demo tersimpan di secure storage jika belum ada
+    final user = _currentUser;
+    if (_isLoggedIn && user != null && storage != null) {
+      final hasToken = await storage.hasValidToken();
+      if (!hasToken) {
+        await storage.saveAuthTokens(
+          accessToken: 'demo_jwt_token_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        await storage.saveUserIdentity(
+          userId: user.id,
+          nik: user.idCardNumber,
+          phoneNumber: user.phoneNumber,
+        );
+        _hasSecureToken = true;
+      }
+    }
+    notifyListeners();
+  }
 
   void setPhoneNumber(String phone) {
     _phoneNumber = phone;
@@ -71,7 +123,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Login menggunakan Email / Nomor HP dan Password (standar app pada umumnya)
+  /// Login menggunakan Email / Nomor HP dan Password
   bool loginWithPassword({
     required String identifier,
     required String password,
@@ -79,7 +131,6 @@ class AuthController extends ChangeNotifier {
     final cleanId = identifier.trim().toLowerCase();
     final cleanPhone = cleanId.replaceAll(RegExp(r'[\s\-]'), '');
 
-    // Cek kecocokan kredensial
     bool isMatch = false;
 
     if (_userPasswords.containsKey(cleanId) && _userPasswords[cleanId] == password) {
@@ -98,6 +149,10 @@ class AuthController extends ChangeNotifier {
       _hasLoginError = false;
       _errorMessage = null;
       _currentUser = _usersDb[cleanId] ?? _usersDb[cleanPhone] ?? UserModel.defaultUser;
+
+      // Simpan token ke FlutterSecureStorage secara aman
+      _saveSecureTokenAsync(_currentUser!);
+
       notifyListeners();
       return true;
     } else {
@@ -105,6 +160,22 @@ class AuthController extends ChangeNotifier {
       _errorMessage = 'Email/No HP atau password salah. Silakan periksa kembali.';
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> _saveSecureTokenAsync(UserModel user) async {
+    final storage = _secureStorage;
+    if (storage != null) {
+      await storage.saveAuthTokens(
+        accessToken: 'secure_session_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      await storage.saveUserIdentity(
+        userId: user.id,
+        nik: user.idCardNumber,
+        phoneNumber: user.phoneNumber,
+      );
+      _hasSecureToken = true;
+      notifyListeners();
     }
   }
 
@@ -170,8 +241,10 @@ class AuthController extends ChangeNotifier {
         _usersDb[cleanPhone] = newUser;
 
         _pendingRegistration = null;
+        _saveSecureTokenAsync(newUser);
       } else {
         _currentUser = UserModel.defaultUser;
+        _saveSecureTokenAsync(_currentUser!);
       }
 
       _isLoggedIn = true;
@@ -235,6 +308,7 @@ class AuthController extends ChangeNotifier {
       _hasLoginError = false;
       _errorMessage = null;
       _currentUser ??= UserModel.defaultUser;
+      _saveSecureTokenAsync(_currentUser!);
       notifyListeners();
       return true;
     } else {
@@ -243,20 +317,6 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-  }
-
-  /// Memicu tampilan State Error secara manual untuk demonstrasi
-  void triggerErrorState([String? message]) {
-    _hasLoginError = true;
-    _errorMessage = message ?? 'Kode OTP tidak sesuai atau kedaluwarsa.';
-    notifyListeners();
-  }
-
-  /// Membersihkan State Error
-  void clearErrorState() {
-    _hasLoginError = false;
-    _errorMessage = null;
-    notifyListeners();
   }
 
   /// Pendaftaran akun pengguna baru langsung
@@ -282,12 +342,18 @@ class AuthController extends ChangeNotifier {
     );
     _isLoggedIn = true;
     _hasLoginError = false;
+    _saveSecureTokenAsync(_currentUser!);
     notifyListeners();
   }
 
-  /// Keluar dari sesi login
-  void logout() {
+  /// Keluar dari sesi login (Menghapus token dari Hardware Keystore)
+  Future<void> logout() async {
     _isLoggedIn = false;
+    _hasSecureToken = false;
+    final storage = _secureStorage;
+    if (storage != null) {
+      await storage.clearAuth();
+    }
     notifyListeners();
   }
 
@@ -297,6 +363,19 @@ class AuthController extends ChangeNotifier {
     _currentPassword = 'Merauke#2026';
     _isLoggedIn = true;
     _hasLoginError = false;
+    _saveSecureTokenAsync(_currentUser!);
+    notifyListeners();
+  }
+
+  void triggerErrorState([String? message]) {
+    _hasLoginError = true;
+    _errorMessage = message ?? 'Kode OTP tidak sesuai atau kedaluwarsa.';
+    notifyListeners();
+  }
+
+  void clearErrorState() {
+    _hasLoginError = false;
+    _errorMessage = null;
     notifyListeners();
   }
 }

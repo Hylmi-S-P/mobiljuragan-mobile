@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
+import '../controllers/vehicle_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -20,6 +21,8 @@ class VehicleDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bookingController = context.watch<BookingController>();
+    final vehicleController = context.watch<VehicleController>();
+    final currentVehicle = vehicleController.getById(vehicle.id) ?? vehicle;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -35,26 +38,66 @@ class VehicleDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        vehicle.name,
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeHeading,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              currentVehicle.name,
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeHeading,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Plat Nomor: ${currentVehicle.plateNumber} • ${currentVehicle.category}',
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeBody,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Plat Nomor: ${vehicle.plateNumber}',
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
+                      Semantics(
+                        button: true,
+                        label: currentVehicle.isFavorite ? 'Hapus favorit' : 'Tambah favorit',
+                        child: InkWell(
+                          onTap: () => vehicleController.toggleFavorite(currentVehicle.id),
+                          borderRadius: BorderRadius.circular(22),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: currentVehicle.isFavorite
+                                  ? const Color(0xFFFEF3C7)
+                                  : AppColors.cardWhite,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: currentVehicle.isFavorite
+                                    ? const Color(0xFFF59E0B)
+                                    : AppColors.borderSubtle,
+                              ),
+                            ),
+                            child: Icon(
+                              currentVehicle.isFavorite
+                                  ? Icons.bookmark_rounded
+                                  : Icons.bookmark_outline_rounded,
+                              color: currentVehicle.isFavorite
+                                  ? const Color(0xFFD97706)
+                                  : AppColors.textSecondary,
+                              size: 22,
+                            ),
+                          ),
                         ),
                       ),
                     ],

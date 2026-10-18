@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
+import '../controllers/vehicle_controller.dart';
 import '../models/booking_model.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
@@ -26,7 +27,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final featuredVehicle = VehicleModel.sampleVehicles.first;
+    final vehicleController = context.watch<VehicleController>();
+    final featuredVehicle = vehicleController.vehicles.isNotEmpty
+        ? vehicleController.vehicles.first
+        : VehicleModel.sampleVehicles.first;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
