@@ -6,6 +6,7 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/vehicle_card_item.dart';
+import 'rental_options_screen.dart';
 import 'vehicle_detail_screen.dart';
 import '../theme/app_typography.dart';
 
@@ -359,7 +360,11 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     context.read<BookingController>().selectVehicle(selectedVehicle);
-                    Navigator.of(context).pushNamed('/rental-options');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RentalOptionsScreen(vehicle: selectedVehicle),
+                      ),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryNavy,
