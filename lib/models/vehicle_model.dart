@@ -97,9 +97,12 @@ class VehicleModel {
     final trans = json['transmission']?.toString() ?? 'Manual';
     final rawPlate = json['licensePlate']?.toString() ?? 'PA-MKQ';
 
-    // Estimasi harga default berbasis model armada Merauke
+    // Harga sewa harian dinamis dari API backend, dengan fallback estimasi resmi Merauke
+    final apiPrice = json['pricePerDay'] ?? json['dailyPrice'];
     int rate = 400000;
-    if (rawName.toUpperCase().contains('FORTUNER')) {
+    if (apiPrice != null) {
+      rate = (apiPrice is num) ? apiPrice.toInt() : (int.tryParse(apiPrice.toString()) ?? 400000);
+    } else if (rawName.toUpperCase().contains('FORTUNER')) {
       rate = 900000;
     } else if (rawName.toUpperCase().contains('HILUX')) {
       rate = 850000;
