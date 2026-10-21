@@ -6,7 +6,6 @@ import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/vehicle_card_item.dart';
-import 'rental_options_screen.dart';
 import 'vehicle_detail_screen.dart';
 import '../theme/app_typography.dart';
 
@@ -54,7 +53,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
         title: 'Pilih Kendaraan',
-        stepSubtitle: 'Langkah 1 dari 4',
       ),
       body: Column(
         children: [
@@ -322,70 +320,36 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
         ],
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => VehicleDetailScreen(vehicle: selectedVehicle),
-                      ),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.borderSubtle, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'Detail Mobil',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              context.read<BookingController>().selectVehicle(selectedVehicle);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => VehicleDetailScreen(vehicle: selectedVehicle),
                 ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Pilih Armada',
+              style: TextStyle(
+                fontSize: AppTypography.sizeBodyLarge,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Inter',
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    context.read<BookingController>().selectVehicle(selectedVehicle);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => RentalOptionsScreen(vehicle: selectedVehicle),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Pilih Armada',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

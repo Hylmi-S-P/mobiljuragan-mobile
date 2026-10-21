@@ -3,16 +3,20 @@ import '../../models/booking_model.dart';
 import '../../models/vehicle_model.dart';
 import '../local/database/daos/booking_dao.dart';
 
-/// Repository untuk penyimpanan dan sinkronisasi data pemesanan rental mobil
+/// Repository untuk penyimpanan dan sinkronisasi data pemesanan rental mobil (Offline-First Drift SQLite)
 class BookingRepository {
   final BookingDao _bookingDao;
 
   BookingRepository(this._bookingDao);
 
+  Map<String, VehicleModel> get _defaultVehicleMap => {
+        for (final v in VehicleModel.sampleVehicles) v.id: v,
+      };
+
   /// Inisialisasi data pemesanan awal jika database masih kosong
-  Future<void> ensureSeeded(List<VehicleModel> availableVehicles) async {
+  Future<void> ensureSeeded([List<VehicleModel>? availableVehicles]) async {
     final count = await _bookingDao.countBookings();
-    if (count == 0 && availableVehicles.isNotEmpty) {
+    if (count == 0) {
       final samples = BookingModel.initialSampleBookings;
       if (samples.isNotEmpty) {
         final companions = samples.map((b) => b.toCompanion()).toList();
@@ -21,32 +25,56 @@ class BookingRepository {
     }
   }
 
+  /// Mengambil seluruh riwayat pemesanan secara sinkron dari SQLite lokal
+  Future<List<BookingModel>> getAllBookings([Map<String, VehicleModel>? vehicleMap]) async {
+    final map = vehicleMap ?? _defaultVehicleMap;
+    final driftList = await _bookingDao.getAllBookings();
+    return driftList.map((entry) {
+      final vehicle = map[entry.vehicleId] ??
+          VehicleModel.sampleVehicles.firstWhere(
+            (v) => v.id == entry.vehicleId,
+            orElse: () => VehicleModel.sampleVehicles.first,
+          );
+      return BookingModel.fromDrift(entry, vehicle);
+    }).toList();
+  }
+
   /// Stream reaktif seluruh pesanan pelanggan
-  Stream<List<BookingModel>> watchAllBookings(Map<String, VehicleModel> vehicleMap) {
+  Stream<List<BookingModel>> watchAllBookings([Map<String, VehicleModel>? vehicleMap]) {
+    final map = vehicleMap ?? _defaultVehicleMap;
     return _bookingDao.watchAllBookings().map((driftList) {
       return driftList.map((entry) {
-        final vehicle = vehicleMap[entry.vehicleId] ?? VehicleModel.sampleVehicles.first;
+        final vehicle = map[entry.vehicleId] ??
+            VehicleModel.sampleVehicles.firstWhere(
+              (v) => v.id == entry.vehicleId,
+              orElse: () => VehicleModel.sampleVehicles.first,
+            );
         return BookingModel.fromDrift(entry, vehicle);
       }).toList();
     });
   }
 
   /// Stream reaktif pesanan yang sedang aktif
-  Stream<List<BookingModel>> watchActiveBookings(Map<String, VehicleModel> vehicleMap) {
+  Stream<List<BookingModel>> watchActiveBookings([Map<String, VehicleModel>? vehicleMap]) {
+    final map = vehicleMap ?? _defaultVehicleMap;
     return _bookingDao.watchActiveBookings().map((driftList) {
       return driftList.map((entry) {
-        final vehicle = vehicleMap[entry.vehicleId] ?? VehicleModel.sampleVehicles.first;
+        final vehicle = map[entry.vehicleId] ??
+            VehicleModel.sampleVehicles.firstWhere(
+              (v) => v.id == entry.vehicleId,
+              orElse: () => VehicleModel.sampleVehicles.first,
+            );
         return BookingModel.fromDrift(entry, vehicle);
       }).toList();
     });
   }
 
-  /// Menyimpan pesanan baru ke dalam SQLite lokal
+  /// Menyimpan pesanan baru atau pembaruan status ke dalam SQLite lokal
   Future<void> saveBooking(BookingModel booking) async {
     await _bookingDao.insertOrUpdateBooking(booking.toCompanion());
   }
 
-  /// Memperbarui status pesanan
+  /// Memperbarui status pesanan secara spesifik
   Future<void> updateBookingStatus(String id, BookingStatus newStatus) async {
     await _bookingDao.updateBookingStatus(id, newStatus.name);
   }
