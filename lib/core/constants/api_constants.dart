@@ -3,15 +3,19 @@ import 'package:flutter/foundation.dart';
 /// Konfigurasi endpoint REST API backend MobilJuragan
 class ApiConstants {
   /// Base URL API backend.
-  /// Android Emulator: 10.0.2.2:4000
-  /// Web / Desktop / iOS Simulator: 127.0.0.1:4000 atau IP LAN
+  /// Mendukung `--dart-define=API_BASE_URL=...`, port forwarding `adb reverse tcp:4000 tcp:4000` (127.0.0.1),
+  /// atau IP LAN/Emulator.
   static String get baseUrl {
+    const customUrl = String.fromEnvironment('API_BASE_URL');
+    if (customUrl.isNotEmpty) {
+      return customUrl;
+    }
     if (kIsWeb) {
       return 'http://localhost:4000/api/v1';
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://10.0.2.2:4000/api/v1';
+        return 'http://127.0.0.1:4000/api/v1';
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
