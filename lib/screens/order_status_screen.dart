@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../controllers/booking_controller.dart';
+import '../core/network/api_client.dart';
+import '../core/network/payment_api_service.dart';
 import '../models/booking_model.dart';
+import '../models/payment_model.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -1996,543 +2001,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
   void _showOnlinePaymentSheet(BuildContext context, BookingModel booking) {
-    int selectedTab = 0; // 0: QRIS, 1: Virtual Account
-    String selectedBank = 'Bank BRI';
-    bool isVerifying = false;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final vaNumber = selectedBank == 'Bank BRI'
-                ? '8801 2026 0043 18'
-                : selectedBank == 'Bank BNI'
-                    ? '9880 2026 0043 18'
-                    : selectedBank == 'Bank Mandiri'
-                        ? '8950 2026 0043 18'
-                        : '1230 2026 0043 18';
-
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.borderSubtle,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 6,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Pembayaran Otomatis',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeHeading,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Reservasi #${booking.id}',
-                              style: const TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFFBEB),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFFDE68A)),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.schedule, size: 12, color: Color(0xFFB45309)),
-                              SizedBox(width: 4),
-                              Text(
-                                '15:00',
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFB45309),
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Card Total Tagihan
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          const Text(
-                            'Total Pembayaran',
-                            style: TextStyle(fontSize: AppTypography.sizeBody, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                          ),
-                          Text(
-                            'Rp ${_formatRupiah(booking.totalCost)}',
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeMetric,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryNavy,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Tab Switcher (QRIS vs Virtual Account)
-                    Container(
-                      height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                setSheetState(() {
-                                  selectedTab = 0;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: selectedTab == 0 ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: selectedTab == 0
-                                      ? [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.05),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Text(
-                                  'QRIS Dinamis',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeBody,
-                                    fontWeight: selectedTab == 0 ? FontWeight.w700 : FontWeight.w500,
-                                    color: selectedTab == 0 ? AppColors.primaryNavy : AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                setSheetState(() {
-                                  selectedTab = 1;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: selectedTab == 1 ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: selectedTab == 1
-                                      ? [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.05),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Text(
-                                  'Virtual Account Bank',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeBody,
-                                    fontWeight: selectedTab == 1 ? FontWeight.w700 : FontWeight.w500,
-                                    color: selectedTab == 1 ? AppColors.primaryNavy : AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    if (selectedTab == 0) ...[
-                      // Konten Tab QRIS
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDC2626),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'QRIS',
-                                      style: TextStyle(
-                                        fontSize: AppTypography.sizeCaption,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'STANDAR PEMBAYARAN NASIONAL',
-                                    style: TextStyle(
-                                      fontSize: AppTypography.sizeMicro,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF475569),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                width: 170,
-                                height: 170,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFCBD5E1)),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.qr_code_2_rounded,
-                                    size: 140,
-                                    color: Color(0xFF0F172A),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Scan dengan aplikasi perbankan atau e-wallet apa saja:\nBCA, BRI, Mandiri, Dana, GoPay, OVO, ShopeePay',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeTiny,
-                                  color: AppColors.textSecondary,
-                                  fontFamily: 'Inter',
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Kode QR berhasil disimpan ke galeri perangkat.'),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.file_download_outlined, size: 16),
-                          label: const Text('Simpan Kode QR', style: TextStyle(fontSize: AppTypography.sizeCaption)),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textPrimary,
-                            side: const BorderSide(color: AppColors.borderSubtle),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      // Konten Tab Virtual Account
-                      const Text(
-                        'Pilih Bank Tujuan Transfer',
-                        style: AppTypography.bodyBold,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: ['Bank BRI', 'Bank BNI', 'Bank Mandiri', 'Bank BCA'].map((bank) {
-                          final isBankSelected = selectedBank == bank;
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 3),
-                              child: InkWell(
-                                onTap: () {
-                                  setSheetState(() {
-                                    selectedBank = bank;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: isBankSelected ? AppColors.primaryNavy : const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isBankSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    bank.replaceFirst('Bank ', ''),
-                                    style: TextStyle(
-                                      fontSize: AppTypography.sizeCaption,
-                                      fontWeight: FontWeight.w700,
-                                      color: isBankSelected ? Colors.white : AppColors.textPrimary,
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 14),
-
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.borderSubtle),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Nomor Virtual Account $selectedBank',
-                              style: const TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                            ),
-                            const SizedBox(height: 4),
-                              Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 6,
-                              children: [
-                                Text(
-                                  vaNumber,
-                                  style: const TextStyle(
-                                    fontSize: AppTypography.sizeHeading,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                    fontFamily: 'Inter',
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                TextButton.icon(
-                                  onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: vaNumber.replaceAll(' ', '')));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Nomor Virtual Account $selectedBank berhasil disalin.'),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.copy_rounded, size: 14),
-                                  label: const Text('Salin', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700)),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.primaryTeal,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Text(
-                              'Atas Nama: MobilJuragan Merauke',
-                              style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 20),
-
-                    // Tombol Aksi Verifikasi & Simulasi
-                    SizedBox(
-                      width: double.infinity,
-                      height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-                      child: ElevatedButton(
-                        onPressed: isVerifying
-                            ? null
-                            : () {
-                                setSheetState(() {
-                                  isVerifying = true;
-                                });
-                                Future.delayed(const Duration(milliseconds: 1400), () {
-                                  if (sheetContext.mounted) {
-                                    Navigator.pop(sheetContext);
-                                    final controller = context.read<BookingController>();
-                                    controller.completeOnlinePayment(
-                                      bookingId: booking.id,
-                                      paymentMethod: selectedTab == 0
-                                          ? PaymentMethodType.qrisOtomatis
-                                          : PaymentMethodType.virtualAccount,
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        backgroundColor: const Color(0xFF16A34A),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        content: Text(
-                                          'Pembayaran Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi otomatis!',
-                                          style: AppTypography.bodyStrong,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                });
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryNavy,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
-                        ),
-                        child: isVerifying
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text('Memverifikasi Transaksi...', style: TextStyle(fontSize: AppTypography.sizeBody)),
-                                ],
-                              )
-                            : const Text(
-                                'Cek Status Pembayaran (Otomatis)',
-                                style: AppTypography.cardTitle,
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Tombol Simulasi Berhasil Instan (Khusus Demo PBL)
-                    SizedBox(
-                      width: double.infinity,
-                      height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(sheetContext);
-                          final controller = context.read<BookingController>();
-                          controller.completeOnlinePayment(
-                            bookingId: booking.id,
-                            paymentMethod: selectedTab == 0
-                                ? PaymentMethodType.qrisOtomatis
-                                : PaymentMethodType.virtualAccount,
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: const Color(0xFF16A34A),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              content: const Text(
-                                'Simulasi pembayaran berhasil! E-Ticket resmi telah terbit.',
-                                style: AppTypography.bodyStrong,
-                              ),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primaryTeal,
-                          side: const BorderSide(color: AppColors.primaryTeal),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text(
-                          'Simulasikan Pembayaran Berhasil (Demo Sandbox)',
-                          style: AppTypography.bodyBold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
+        return OnlinePaymentSheetModal(
+          booking: booking,
+          onCodConfirmationRequested: () {
+            Navigator.pop(sheetContext);
+            _showCodConfirmationSheet(context, booking);
           },
         );
       },
@@ -3838,6 +3316,1088 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     return number.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]}.',
+    );
+  }
+}
+
+/// Modal lembar pembayaran dinamis dengan integrasi Dynamic QRIS (EMVCo),
+/// rincian kode unik 3 digit, countdown timer kedaluwarsa, tombol cek status otomatis,
+/// dan ketahanan offline saat server backend tidak dapat dijangkau.
+class OnlinePaymentSheetModal extends StatefulWidget {
+  final BookingModel booking;
+  final VoidCallback? onCodConfirmationRequested;
+
+  const OnlinePaymentSheetModal({
+    super.key,
+    required this.booking,
+    this.onCodConfirmationRequested,
+  });
+
+  @override
+  State<OnlinePaymentSheetModal> createState() => _OnlinePaymentSheetModalState();
+}
+
+class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
+  int _selectedTab = 0; // 0: QRIS Dinamis, 1: Transfer Bank, 2: Bayar Tunai (COD)
+  String _selectedBank = 'Bank BRI';
+  bool _isCheckingStatus = false;
+  // ignore: unused_field
+  bool _isLoadingPayment = true;
+
+  // ignore: unused_field
+  PaymentModel? _payment;
+  Timer? _countdownTimer;
+
+  late DateTime _expiresAt;
+  late int _baseAmount;
+  late int _uniqueCode;
+  late int _totalAmount;
+  late String _qrisPayload;
+
+  final PaymentApiService _apiService = PaymentApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _baseAmount = widget.booking.totalCost;
+    // Hitung alokasi kode unik 3 digit (50-949) untuk ketahanan offline
+    _uniqueCode = (widget.booking.id.hashCode.abs() % 900) + 50;
+    _totalAmount = _baseAmount + _uniqueCode;
+    _expiresAt = DateTime.now().add(const Duration(hours: 2));
+    _qrisPayload = PaymentModel.generateDynamicQris(_totalAmount);
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+
+    _initPayment();
+  }
+
+  Future<void> _initPayment() async {
+    try {
+      // 1. Cek apakah sudah ada payment di backend
+      PaymentModel? payment = await _apiService.getPaymentByBooking(widget.booking.id);
+      // 2. Buat tagihan baru jika belum ada
+      payment ??= await _apiService.createPayment(
+        bookingId: widget.booking.id,
+        method: PaymentMethod.qris,
+      );
+
+      final active = payment;
+      if (mounted) {
+        setState(() {
+          _payment = active;
+          _baseAmount = active.baseAmount;
+          _uniqueCode = active.uniqueCode;
+          _totalAmount = active.totalAmount;
+          if (active.expiresAt != null) {
+            _expiresAt = active.expiresAt!;
+          }
+          if (active.qrisPayload != null && active.qrisPayload!.isNotEmpty) {
+            _qrisPayload = active.qrisPayload!;
+          }
+          _isLoadingPayment = false;
+        });
+
+        if (active.isPaid) {
+          _handlePaymentSuccess(active);
+        }
+      }
+    } on SocketException {
+      if (mounted) {
+        setState(() {
+          _isLoadingPayment = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryNavy,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: const Text(
+              'Mode Offline: Menampilkan data tagihan & QRIS dinamis mandiri lokal.',
+              style: TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeCaption),
+            ),
+          ),
+        );
+      }
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          _isLoadingPayment = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingPayment = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkPaymentStatus() async {
+    if (_isCheckingStatus) return;
+    setState(() {
+      _isCheckingStatus = true;
+    });
+
+    try {
+      final payment = await _apiService.getPaymentByBooking(widget.booking.id);
+      if (!mounted) return;
+
+      if (payment != null) {
+        setState(() {
+          _payment = payment;
+        });
+
+        if (payment.isPaid) {
+          _handlePaymentSuccess(payment);
+          return;
+        }
+
+        if (payment.isPendingVerification) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFFD97706),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              content: const Text(
+                'Bukti transfer dalam antrean verifikasi staf operasional.',
+                style: AppTypography.bodyStrong,
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primaryNavy,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            'Pembayaran belum terdeteksi. Silakan transfer nominal pas Rp ${_formatRupiah(_totalAmount)}.',
+            style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
+          ),
+        ),
+      );
+    } on SocketException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: const Text(
+              'Tidak dapat terhubung ke server backend (Offline). Periksa koneksi internet Anda.',
+              style: TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } on TimeoutException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: const Text(
+              'Koneksi waktu habis (Timeout). Silakan coba lagi beberapa saat.',
+              style: TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text(
+              e.message,
+              style: const TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text(
+              'Pemeriksaan status belum berhasil: $e',
+              style: const TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingStatus = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _simulatePaymentSuccess() async {
+    try {
+      await _apiService.simulateMutation(
+        bookingId: widget.booking.id,
+        amount: _totalAmount,
+      );
+    } catch (_) {
+      // offline fallback
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    final controller = context.read<BookingController>();
+    controller.completeOnlinePayment(
+      bookingId: widget.booking.id,
+      paymentMethod: _selectedTab == 0
+          ? PaymentMethodType.qrisOtomatis
+          : PaymentMethodType.virtualAccount,
+      referenceCode: _payment?.id ?? 'SIM-${DateTime.now().millisecondsSinceEpoch}',
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF16A34A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Text(
+          'Simulasi pembayaran Rp ${_formatRupiah(_totalAmount)} berhasil! E-Ticket resmi telah terbit.',
+          style: AppTypography.bodyStrong,
+        ),
+      ),
+    );
+  }
+
+  void _handlePaymentSuccess(PaymentModel payment) {
+    if (!mounted) return;
+    Navigator.pop(context);
+    final controller = context.read<BookingController>();
+    controller.completeOnlinePayment(
+      bookingId: widget.booking.id,
+      paymentMethod: payment.method == PaymentMethod.qris
+          ? PaymentMethodType.qrisOtomatis
+          : PaymentMethodType.virtualAccount,
+      referenceCode: payment.id,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF16A34A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Text(
+          'Pembayaran Rp ${_formatRupiah(payment.totalAmount)} berhasil diverifikasi otomatis!',
+          style: AppTypography.bodyStrong,
+        ),
+      ),
+    );
+  }
+
+  String _formatCountdown() {
+    final diff = _expiresAt.difference(DateTime.now());
+    if (diff.isNegative) return 'Waktu Habis';
+    final hours = diff.inHours.toString().padLeft(2, '0');
+    final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
+    if (diff.inHours > 0) {
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  String _formatRupiah(int number) {
+    return number.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+  }
+
+  String _getAccountNumber(String bank) {
+    switch (bank) {
+      case 'Bank BRI':
+        return '0087 01 002345 53 1';
+      case 'Bank BCA':
+        return '8801 2026 0043 18';
+      case 'Bank Mandiri':
+        return '8950 2026 0043 18';
+      case 'Bank BNI':
+        return '9880 2026 0043 18';
+      default:
+        return '0087 01 002345 53 1';
+    }
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isExpired = _expiresAt.difference(DateTime.now()).isNegative;
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderSubtle,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Header info & countdown timer
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pembayaran Pemesanan',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeHeading,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Reservasi #${widget.booking.id}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isExpired ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isExpired ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.schedule,
+                        size: 14,
+                        color: isExpired ? const Color(0xFFDC2626) : const Color(0xFFB45309),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatCountdown(),
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: isExpired ? const Color(0xFFDC2626) : const Color(0xFFB45309),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Segmented Tab Switcher (QRIS, Transfer Bank, Tunai COD)
+            Container(
+              height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  _buildTabItem(0, 'QRIS Dinamis'),
+                  _buildTabItem(1, 'Transfer Bank'),
+                  _buildTabItem(2, 'Bayar di Tempat'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Tab Content
+            if (_selectedTab == 0) ...[
+              _buildQrisContent(),
+            ] else if (_selectedTab == 1) ...[
+              _buildBankTransferContent(),
+            ] else ...[
+              _buildCodContent(),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Card Breakdown Rincian Pembayaran (hanya untuk transfer / QRIS)
+            if (_selectedTab != 2) ...[
+              _buildBreakdownCard(),
+              const SizedBox(height: 18),
+              _buildActionButtons(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem(int index, String label) {
+    final isSelected = _selectedTab == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedTab = index;
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? AppColors.primaryNavy : AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQrisContent() {
+    return Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDC2626),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'QRIS',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const Text(
+                  'STANDAR PEMBAYARAN NASIONAL',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeMicro,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF475569),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: QrImageView(
+                data: _qrisPayload.isNotEmpty
+                    ? _qrisPayload
+                    : PaymentModel.officialGopayQris,
+                version: QrVersions.auto,
+                size: 190.0,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: AppColors.primaryNavy,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: AppColors.primaryNavy,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Scan dengan m-banking atau e-wallet apa saja:\nBCA, BRI, Mandiri, BNI, GoPay, OVO, Dana, ShopeePay',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppTypography.sizeTiny,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: _qrisPayload));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('String payload QRIS berhasil disalin ke clipboard.'),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.file_download_outlined, size: 16),
+              label: const Text('Salin String QRIS', style: TextStyle(fontSize: AppTypography.sizeCaption)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.borderSubtle),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBankTransferContent() {
+    final accountNumber = _getAccountNumber(_selectedBank);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pilih Bank Tujuan Transfer',
+          style: AppTypography.bodyBold,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: ['Bank BRI', 'Bank BCA', 'Bank Mandiri', 'Bank BNI'].map((bank) {
+            final isBankSelected = _selectedBank == bank;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedBank = bank;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isBankSelected ? AppColors.primaryNavy : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isBankSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
+                      ),
+                    ),
+                    child: Text(
+                      bank.replaceFirst('Bank ', ''),
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w700,
+                        color: isBankSelected ? Colors.white : AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Nomor Rekening $_selectedBank Resmi',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text(
+                    accountNumber,
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeHeading,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: accountNumber.replaceAll(' ', '')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Nomor rekening $_selectedBank berhasil disalin.'),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    label: const Text('Salin', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryTeal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Atas Nama: CV Mobil Juragan Express Transport',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCodContent() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.handshake_outlined, size: 24, color: Color(0xFF047857)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bayar Tunai di Tempat (COD)',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBodyLarge,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Pelunasan saat serah terima unit di Merauke',
+                      style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                const Text('Nominal Pelunasan Tunai', style: TextStyle(fontSize: AppTypography.sizeBody, color: AppColors.textSecondary, fontFamily: 'Inter')),
+                Text(
+                  'Rp ${_formatRupiah(_baseAmount)}',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeMetric,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryNavy,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildCodStepItem(Icons.payments_outlined, 'Siapkan uang tunai pas saat pemeriksaan fisik armada bersama staf.'),
+          const SizedBox(height: 6),
+          _buildCodStepItem(Icons.assignment_turned_in_outlined, 'Staf menyerahkan kunci dan tanda terima resmi pembayaran.'),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                final controller = context.read<BookingController>();
+                controller.confirmCodPayment(widget.booking.id);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF16A34A),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    content: const Text(
+                      'Metode pembayaran Tunai di Tempat (COD) telah dipilih.',
+                      style: AppTypography.bodyStrong,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: const Text('Pilih Bayar di Tempat (COD)', style: AppTypography.cardTitle),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF047857),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCodStepItem(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF047857)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBreakdownCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Tarif Sewa Pokok',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+              Text(
+                'Rp ${_formatRupiah(_baseAmount)}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Kode Unik Verifikasi',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+              Text(
+                '+Rp ${_formatRupiah(_uniqueCode)}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0D9488),
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+          ),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Total Transfer Pas:',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  Text(
+                    'Rp ${_formatRupiah(_totalAmount)}',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeHeading,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primaryNavy,
+                      fontFamily: 'Inter',
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: _totalAmount.toString()));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Nominal pas Rp ${_formatRupiah(_totalAmount)} berhasil disalin.'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppColors.primaryNavy,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 14),
+                label: const Text(
+                  'Salin Nominal Pas',
+                  style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFEF3C7),
+                  foregroundColor: const Color(0xFF92400E),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Color(0xFFFDE68A)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFB45309)),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Wajib transfer tepat 3 digit terakhir agar sistem mendeteksi pembayaran secara otomatis.',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeMicro,
+                      color: Color(0xFF92400E),
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+          child: ElevatedButton(
+            onPressed: _isCheckingStatus ? null : _checkPaymentStatus,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            child: _isCheckingStatus
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      ),
+                      SizedBox(width: 10),
+                      Text('Memverifikasi Transaksi...', style: TextStyle(fontSize: AppTypography.sizeBody)),
+                    ],
+                  )
+                : const Text(
+                    'Cek Status Pembayaran (Otomatis)',
+                    style: AppTypography.cardTitle,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
+          child: OutlinedButton(
+            onPressed: _simulatePaymentSuccess,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primaryTeal,
+              side: const BorderSide(color: AppColors.primaryTeal),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Simulasikan Pembayaran Berhasil (Demo Sandbox)',
+              style: AppTypography.bodyBold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

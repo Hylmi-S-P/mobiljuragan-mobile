@@ -53,6 +53,9 @@ dependencies:
   # REST API Client
   http: ^1.6.0
 
+  # Dynamic QR Code Generator (EMVCo QRIS)
+  qr_flutter: ^4.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
