@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
@@ -26,17 +27,58 @@ class BookingController extends ChangeNotifier {
   // Status pesanan aktif dan daftar riwayat pesanan
   BookingModel? _activeBooking;
   final List<BookingModel> _bookingHistory = [];
+  StreamSubscription<List<BookingModel>>? _bookingsSubscription;
 
   BookingController({BookingRepository? repository}) : _repository = repository {
     _initSampleData();
+    _init();
   }
 
   void _initSampleData() {
     _bookingHistory.clear();
     final samples = BookingModel.initialSampleBookings;
     _bookingHistory.addAll(samples);
-    // Pesanan aktif dan riwayat pesanan diatur 0 / kosong pada awal aplikasi
     _activeBooking = null;
+  }
+
+  Future<void> _init() async {
+    final repo = _repository;
+    if (repo != null) {
+      try {
+        final saved = await repo.getAllBookings();
+        if (saved.isNotEmpty) {
+          _bookingHistory.clear();
+          _bookingHistory.addAll(saved);
+          final actives = _bookingHistory
+              .where((b) =>
+                  b.status != BookingStatus.selesai &&
+                  b.status != BookingStatus.dibatalkan)
+              .toList();
+          _activeBooking = actives.isNotEmpty ? actives.first : null;
+          notifyListeners();
+        }
+      } catch (_) {}
+
+      _bookingsSubscription = repo.watchAllBookings().listen((updatedList) {
+        if (updatedList.isNotEmpty) {
+          _bookingHistory.clear();
+          _bookingHistory.addAll(updatedList);
+          final actives = _bookingHistory
+              .where((b) =>
+                  b.status != BookingStatus.selesai &&
+                  b.status != BookingStatus.dibatalkan)
+              .toList();
+          _activeBooking = actives.isNotEmpty ? actives.first : null;
+          notifyListeners();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _bookingsSubscription?.cancel();
+    super.dispose();
   }
 
   // Getters Formulir Pemesanan
@@ -207,6 +249,7 @@ class BookingController extends ChangeNotifier {
     if (index != -1) {
       _bookingHistory[index] = updated;
     }
+    _repository?.saveBooking(updated);
 
     notifyListeners();
   }
@@ -224,6 +267,7 @@ class BookingController extends ChangeNotifier {
       if (_activeBooking?.id == bookingId) {
         _activeBooking = updated;
       }
+      _repository?.saveBooking(updated);
       notifyListeners();
     }
   }
@@ -249,6 +293,7 @@ class BookingController extends ChangeNotifier {
       if (_activeBooking?.id == bookingId) {
         _activeBooking = updated;
       }
+      _repository?.saveBooking(updated);
       notifyListeners();
     }
   }
@@ -276,6 +321,7 @@ class BookingController extends ChangeNotifier {
     if (index != -1) {
       _bookingHistory[index] = updated;
     }
+    _repository?.saveBooking(updated);
 
     notifyListeners();
   }
@@ -324,6 +370,7 @@ class BookingController extends ChangeNotifier {
     if (_activeBooking?.id == bookingId) {
       _activeBooking = updated;
     }
+    _repository?.saveBooking(updated);
     notifyListeners();
   }
 

@@ -129,6 +129,15 @@ class BookingModel {
       return BookingStatus.permintaanDiterima;
     }
 
+    final assignedDriver = entry.withDriver
+        ? const DriverAssignment(
+            driverName: 'Bung Yohanes Mahuze',
+            staffId: 'STF-DRV-014',
+            phoneNumber: '0812-4822-9901',
+            operationalRole: 'Staf Pengemudi Tetap MobilJuragan Merauke',
+          )
+        : null;
+
     return BookingModel(
       id: entry.id,
       vehicle: vehicle,
@@ -139,6 +148,7 @@ class BookingModel {
       pickupLocation: entry.pickupLocation,
       pickupLatitude: entry.pickupLatitude,
       pickupLongitude: entry.pickupLongitude,
+      assignedDriver: assignedDriver,
       note: entry.customerNote,
       status: parseStatus(entry.status),
       createdAt: DateTime.fromMillisecondsSinceEpoch(entry.createdAt),
@@ -146,6 +156,9 @@ class BookingModel {
       serviceFee: entry.serviceFee,
       paymentBank: entry.paymentBank,
       paymentAccountNumber: entry.paymentAccountNumber,
+      adminAdjustments: entry.isFinalTariffConfirmed
+          ? BookingModel.standardAdminAdjustments
+          : const [],
       isFinalTariffConfirmed: entry.isFinalTariffConfirmed,
     );
   }
