@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
+import '../data/remote/faq_api_service.dart';
 import '../models/booking_model.dart';
+import '../models/faq_model.dart';
 import '../models/support_ticket_model.dart';
 
 /// Controller untuk mengelola tiket bantuan, FAQ, dan percakapan chat bantuan yang terisolasi per sesi
 class SupportController extends ChangeNotifier {
+  final FaqApiService _faqApiService;
   final List<SupportTicketModel> _tickets = [];
 
   /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
@@ -12,7 +15,13 @@ class SupportController extends ChangeNotifier {
   /// Peta status eskalasi percakapan ke admin manusia per sesi
   final Map<String, bool> _handoffStatus = {};
 
-  SupportController() {
+  /// Daftar FAQ aktif dengan fallback awal untuk ketahanan saat offline
+  List<FaqModel> _faqs = FaqModel.fallbackFaqs;
+  bool _isLoadingFaqs = false;
+  String? _faqError;
+
+  SupportController({FaqApiService? faqApiService})
+      : _faqApiService = faqApiService ?? FaqApiService() {
     _initData();
   }
 
@@ -78,6 +87,48 @@ class SupportController extends ChangeNotifier {
   }
 
   List<SupportTicketModel> get tickets => List.unmodifiable(_tickets);
+
+  /// Daftar FAQ aktif (fallback awal atau tersinkronisasi dari backend)
+  List<FaqModel> get faqs => List.unmodifiable(_faqs);
+
+  /// Status pemuatan sinkronisasi FAQ dari backend
+  bool get isLoadingFaqs => _isLoadingFaqs;
+
+  /// Pesan error saat sinkronisasi FAQ (jika ada)
+  String? get faqError => _faqError;
+
+  /// Kategori FAQ yang diekstraksi secara dinamis dari daftar FAQ aktif, selalu menyertakan opsi 'Semua'
+  List<String> get faqCategories {
+    final categories = _faqs
+        .map((f) => f.category.trim())
+        .where((cat) => cat.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return ['Semua', ...categories];
+  }
+
+  /// Mengambil data FAQ terbaru dari backend dengan penanganan offline graceful
+  Future<void> fetchFaqs({bool force = false}) async {
+    if (_isLoadingFaqs) return;
+    _isLoadingFaqs = true;
+    _faqError = null;
+    notifyListeners();
+
+    try {
+      final remoteFaqs = await _faqApiService.fetchFaqs();
+      if (remoteFaqs.isNotEmpty) {
+        _faqs = remoteFaqs;
+      }
+    } catch (e) {
+      // Offline resilience: tangkap galat jaringan secara aman,
+      // pertahankan data fallback yang ada tanpa melempar exception/crash ke UI
+      _faqError = e.toString();
+    } finally {
+      _isLoadingFaqs = false;
+      notifyListeners();
+    }
+  }
 
   /// Mengambil daftar pesan terisolasi sesuai sesi obrolan
   List<ChatMessageModel> getMessages(String conversationKey) {

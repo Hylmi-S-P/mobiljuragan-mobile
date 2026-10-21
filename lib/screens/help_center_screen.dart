@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/support_controller.dart';
+import '../models/faq_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
@@ -20,45 +21,15 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   String _selectedCategory = 'Semua';
   int? _expandedFaqIndex;
 
-  final List<String> _categories = [
-    'Semua',
-    'Booking & Sewa',
-    'Pembayaran',
-    'Armada',
-  ];
-
-  final List<Map<String, String>> _allFaqs = [
-    {
-      'category': 'Booking & Sewa',
-      'question': 'Bagaimana prosedur penjemputan di Bandara Mopah Merauke?',
-      'answer': 'Tim operasional kami akan menunggu di lobi kedatangan Bandara Mopah dengan papan nama penyewa atau menghubungi via WhatsApp 30 menit sebelum jadwal pesawat mendarat. Serah terima unit dilakukan langsung di area parkir bandara tanpa biaya tambahan antar-jemput.',
-    },
-    {
-      'category': 'Booking & Sewa',
-      'question': 'Bagaimana verifikasi dokumen KTP dan SIM A untuk lepas kunci?',
-      'answer': 'Verifikasi dokumen fisik asli (KTP elektronik dan SIM A aktif) dilakukan langsung di kantor operasional MobilJuragan atau saat serah terima unit di titik penjemputan Merauke.',
-    },
-    {
-      'category': 'Armada',
-      'question': 'Bagaimana kebijakan bahan bakar (BBM) armada?',
-      'answer': 'Mobil diserahterimakan dengan indikator BBM tertentu (umumnya terisi minimal setengah bar). Penyewa diharapkan mengembalikan unit dengan posisi BBM setara saat serah terima awal.',
-    },
-    {
-      'category': 'Booking & Sewa',
-      'question': 'Berapa tarif jasa pengemudi dan durasi kerjanya?',
-      'answer': 'Jasa pengemudi lokal Merauke bertarif Rp 150.000 per hari dengan durasi pemakaian normal hingga 12 jam per hari dalam wilayah perkotaan Merauke dan sekitarnya.',
-    },
-    {
-      'category': 'Pembayaran',
-      'question': 'Metode pembayaran apa saja yang berlaku?',
-      'answer': 'Pembayaran dapat diselesaikan langsung di aplikasi menggunakan QRIS Dinamis, Virtual Account / Transfer Bank (BRI / Mandiri), atau Tunai di Tempat (COD) saat serah terima unit di Merauke. Layanan konfirmasi manual melalui Chat CS juga siap membantu jika Anda memerlukan bantuan pembayaran.',
-    },
-    {
-      'category': 'Armada',
-      'question': 'Apakah tersedia bantuan jika terjadi kendala armada di jalan?',
-      'answer': 'MobilJuragan siap membantu penanganan kendala armada selama jam operasional (06.00 - 22.00 WIT) untuk wilayah Merauke Kota, Kurik, Tanah Miring, hingga Semangga. Hubungi nomor operasional kami jika membutuhkan bantuan darurat.',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<SupportController>().fetchFaqs();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -66,13 +37,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     super.dispose();
   }
 
-  List<Map<String, String>> get _filteredFaqs {
+  List<FaqModel> _filterFaqs(List<FaqModel> allFaqs) {
     final query = _searchController.text.toLowerCase().trim();
-    return _allFaqs.where((faq) {
-      final matchesCategory = _selectedCategory == 'Semua' || faq['category'] == _selectedCategory;
+    return allFaqs.where((faq) {
+      final matchesCategory = _selectedCategory == 'Semua' || faq.category == _selectedCategory;
       final matchesQuery = query.isEmpty ||
-          faq['question']!.toLowerCase().contains(query) ||
-          faq['answer']!.toLowerCase().contains(query);
+          faq.question.toLowerCase().contains(query) ||
+          faq.answer.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
   }
@@ -80,6 +51,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   @override
   Widget build(BuildContext context) {
     final support = context.watch<SupportController>();
+    final categories = support.faqCategories;
+    if (!categories.contains(_selectedCategory)) {
+      _selectedCategory = 'Semua';
+    }
+    final faqs = _filterFaqs(support.faqs);
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -89,47 +65,51 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         showBackButton: false,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section
-              const Text(
-                'Pusat Bantuan',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeDisplay,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+        child: RefreshIndicator(
+          onRefresh: () => context.read<SupportController>().fetchFaqs(force: true),
+          color: AppColors.primaryNavy,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Section
+                const Text(
+                  'Pusat Bantuan',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeDisplay,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Cari solusi cepat atau hubungi layanan bantuan rental.',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
+                const SizedBox(height: 4),
+                const Text(
+                  'Cari solusi cepat atau hubungi layanan bantuan rental.',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Search Bar FAQ
-              _buildSearchBar(),
-              const SizedBox(height: 14),
+                // Search Bar FAQ
+                _buildSearchBar(),
+                const SizedBox(height: 14),
 
-              // Filter Chips Kategori
-              _buildCategoryChips(),
-              const SizedBox(height: 20),
+                // Filter Chips Kategori Dinamis
+                _buildCategoryChips(categories),
+                const SizedBox(height: 20),
 
-              // 3 Tombol Pintas / Action Cards
-              _buildActionCards(),
-              const SizedBox(height: 24),
+                // 3 Tombol Pintas / Action Cards
+                _buildActionCards(),
+                const SizedBox(height: 24),
 
-              // Accordion FAQ Populer
-              _buildFaqSection(),
-              const SizedBox(height: 24),
+                // Accordion FAQ Populer Dinamis
+                _buildFaqSection(faqs),
+                const SizedBox(height: 24),
 
               // Tiket Bantuan Saya (Jika ada tiket)
               _buildUserTicketsSection(support),
@@ -165,8 +145,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSearchBar() {
     return Container(
@@ -211,11 +192,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     );
   }
 
-  Widget _buildCategoryChips() {
+  Widget _buildCategoryChips(List<String> categories) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: _categories.map((cat) {
+        children: categories.map((cat) {
           final isSelected = _selectedCategory == cat;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -243,6 +224,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 if (val) {
                   setState(() {
                     _selectedCategory = cat;
+                    _expandedFaqIndex = null;
                   });
                 }
               },
@@ -359,9 +341,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     );
   }
 
-  Widget _buildFaqSection() {
-    final faqs = _filteredFaqs;
-
+  Widget _buildFaqSection(List<FaqModel> faqs) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -438,7 +418,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                faq['question']!,
+                                faq.question,
                                 style: TextStyle(
                                   fontSize: AppTypography.sizeBody,
                                   fontWeight: isExpanded ? FontWeight.w700 : FontWeight.w500,
@@ -463,7 +443,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              faq['answer']!,
+                              faq.answer,
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeCaption,
                                 height: 1.45,
