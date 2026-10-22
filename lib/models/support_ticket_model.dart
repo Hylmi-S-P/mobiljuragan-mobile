@@ -4,7 +4,23 @@ enum TicketCategory {
   pembayaran,
   kendaraan,
   layananSopir,
-  lainnya,
+  lainnya;
+
+  /// Kunci enum yang sesuai dengan kontrak backend MariaDB Prisma
+  String get apiKey {
+    switch (this) {
+      case TicketCategory.reservasi:
+        return 'GENERAL';
+      case TicketCategory.pembayaran:
+        return 'PAYMENT_CONFIRMATION';
+      case TicketCategory.kendaraan:
+        return 'VEHICLE_ISSUE';
+      case TicketCategory.layananSopir:
+        return 'COMPLAINT';
+      case TicketCategory.lainnya:
+        return 'OTHER';
+    }
+  }
 }
 
 /// Entitas tiket bantuan pelanggan

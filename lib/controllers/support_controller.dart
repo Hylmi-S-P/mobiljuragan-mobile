@@ -270,7 +270,7 @@ class SupportController extends ChangeNotifier {
       final res = await _ticketApiService.createTicket(
         title: title,
         description: description,
-        category: category.name.toUpperCase(),
+        category: category.apiKey,
       );
       if (res.isNotEmpty && res.containsKey('id')) {
         final serverId = res['id'].toString();

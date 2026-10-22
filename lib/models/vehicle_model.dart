@@ -192,7 +192,7 @@ class VehicleModel {
   /// Data armada riil resmi MobilJuragan Merauke untuk seed awal offline
   static const List<VehicleModel> sampleVehicles = [
     VehicleModel(
-      id: 'avanza-g-putih',
+      id: 'avanza-g-putih-ps1692b',
       name: 'AVANZA G PUTIH',
       plateNumber: 'PS1692B',
       category: 'MPV',
@@ -209,7 +209,7 @@ class VehicleModel {
       isFavorite: false,
     ),
     VehicleModel(
-      id: 'fortuner-vrz-hitam',
+      id: 'fortuner-vrz-trd-hitam-b8833aku',
       name: 'FORTUNER VRZ TRD HITAM',
       plateNumber: 'B8833AKU',
       category: 'SUV',
@@ -225,7 +225,7 @@ class VehicleModel {
       isFavorite: false,
     ),
     VehicleModel(
-      id: 'hilux-g-hitam',
+      id: 'hilux-g-hitam-pa8593gz',
       name: 'HILUX G HITAM',
       plateNumber: 'PA8593GZ',
       category: 'Pickup',
@@ -241,7 +241,7 @@ class VehicleModel {
       isFavorite: false,
     ),
     VehicleModel(
-      id: 'innova-reborn-hitam',
+      id: 'innova-reborn-g-hitam-pa1504g',
       name: 'INNOVA REBORN G HITAM',
       plateNumber: 'PA1504G',
       category: 'MPV',
