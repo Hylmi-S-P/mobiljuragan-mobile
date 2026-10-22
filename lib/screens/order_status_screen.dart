@@ -618,43 +618,50 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  /// Stepper Mengikuti 5 Tahapan Resmi (Adaptif: Lepas Kunci vs Dengan Sopir)
+  /// Stepper Mengikuti 5 Tahapan Alur Resmi (Selaras dengan Alur Kanonik Admin & Backend)
   Widget _buildFigmaStepper(BookingModel booking) {
     final status = booking.status;
     final isDriver = booking.withDriver;
-
-    // Tahap 1: Permintaan diterima
-    final step1Done = true;
-
-    // Tahap 2: Pemeriksaan armada (Lepas Kunci) atau Penugasan sopir (Dengan Sopir)
-    final step2Done = true;
-
-    // Tahap 3: Konfirmasi tarif final
-    final step3Active = status == BookingStatus.menungguTarifFinal;
-    final step3Done = booking.isFinalTariffConfirmed ||
-        status == BookingStatus.menungguPembayaran ||
-        status == BookingStatus.pembayaranSelesai ||
-        status == BookingStatus.mobilSiapDigunakan ||
-        status == BookingStatus.selesai;
-
     final isCod = booking.paymentMethodType == PaymentMethodType.tunaiDiTempat;
 
-    // Tahap 4: Pembayaran Online / Pelunasan Tunai (COD)
-    // Jika COD: aktif saat mobilSiapDigunakan (menunggu penyerahan unit & uang tunai di lokasi). Selesai jika status == selesai.
-    // Jika Online: aktif saat menungguPembayaran, selesai jika pembayaran telah lunas (pembayaranSelesai/mobilSiapDigunakan/selesai).
-    final step4Active = isCod
-        ? (status == BookingStatus.mobilSiapDigunakan)
-        : (status == BookingStatus.menungguPembayaran);
-    final step4Done = isCod
-        ? (status == BookingStatus.selesai)
+    // Tahap 1: Permintaan Masuk (CREATED)
+    final step1Done = status != BookingStatus.permintaanDiterima;
+    final step1Active = status == BookingStatus.permintaanDiterima;
+
+    // Tahap 2: Konfirmasi Tarif & Armada (PENDING_CONFIRMATION)
+    final step2Done = booking.isFinalTariffConfirmed ||
+        status == BookingStatus.menungguPembayaran ||
+        status == BookingStatus.pembayaranSelesai ||
+        status == BookingStatus.verifikasiKantor ||
+        status == BookingStatus.mobilSiapDigunakan ||
+        status == BookingStatus.selesai;
+    final step2Active = !step2Done &&
+        (status == BookingStatus.pemeriksaanArmada ||
+            status == BookingStatus.menungguTarifFinal);
+
+    // Tahap 3: Menunggu Pembayaran / Pelunasan Tunai di Tempat (CONFIRMED)
+    // Selesai jika pembayaran online terverifikasi atau unit telah diserahkan (jika COD)
+    final step3Done = isCod
+        ? (status == BookingStatus.mobilSiapDigunakan ||
+            status == BookingStatus.selesai)
         : (status == BookingStatus.pembayaranSelesai ||
+            status == BookingStatus.verifikasiKantor ||
             status == BookingStatus.mobilSiapDigunakan ||
             status == BookingStatus.selesai);
+    final step3Active = !step3Done &&
+        (status == BookingStatus.menungguPembayaran ||
+            booking.isFinalTariffConfirmed);
 
-    // Tahap 5: Mobil siap digunakan / Sopir standby menjemput
-    final step5Active = status == BookingStatus.mobilSiapDigunakan ||
-        status == BookingStatus.pembayaranSelesai;
+    // Tahap 4: Sewa Berjalan (IN_PROGRESS)
+    final step4Done = status == BookingStatus.selesai;
+    final step4Active = !step4Done &&
+        (status == BookingStatus.pembayaranSelesai ||
+            status == BookingStatus.verifikasiKantor ||
+            status == BookingStatus.mobilSiapDigunakan);
+
+    // Tahap 5: Selesai (COMPLETED)
     final step5Done = status == BookingStatus.selesai;
+    final step5Active = status == BookingStatus.selesai;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -676,74 +683,86 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // Tahap 1: Permintaan Masuk
           _buildStepRow(
             stepNumber: 1,
-            title: 'Permintaan diterima',
-            subtitle: 'Data pengajuan telah tercatat di sistem MobilJuragan',
+            title: 'Permintaan Masuk',
+            subtitle: step1Done
+                ? 'Data pengajuan telah tercatat di sistem MobilJuragan'
+                : 'Pengajuan sewa sedang diproses oleh sistem operasional',
             isDone: step1Done,
-            isActive: false,
+            isActive: step1Active,
             isLast: false,
           ),
+
+          // Tahap 2: Konfirmasi Tarif & Armada
           _buildStepRow(
             stepNumber: 2,
-            title: isDriver ? 'Penugasan sopir operasional' : 'Pemeriksaan armada',
-            subtitle: isDriver
-                ? 'Staf pengemudi tetap telah dialokasikan. Kontak dikoordinasikan via Chat CS'
-                : 'Armada siap dan jadwal operasional terkonfirmasi di pool',
+            title: 'Konfirmasi Tarif & Armada',
+            subtitle: step2Done
+                ? (isDriver
+                    ? 'Tarif sewa resmi dan supir resmi telah dikonfirmasi admin'
+                    : 'Tarif sewa resmi dan kesiapan armada telah dikonfirmasi admin')
+                : (step2Active
+                    ? (isDriver
+                        ? 'Admin sedang memvalidasi rute perjalanan dan alokasi supir'
+                        : 'Admin sedang memeriksa unit armada dan menghitung tarif resmi')
+                    : (isDriver
+                        ? 'Menunggu validasi rute perjalanan dan penugasan supir'
+                        : 'Menunggu pemeriksaan fisik unit armada oleh admin')),
             isDone: step2Done,
-            isActive: false,
+            isActive: step2Active,
             isLast: false,
           ),
+
+          // Tahap 3: Menunggu Pembayaran / Pelunasan Tunai di Tempat
           _buildStepRow(
             stepNumber: 3,
-            title: isDriver ? 'Konfirmasi tarif final resmi' : 'Konfirmasi tarif final & deposit',
-            subtitle: step3Done
-                ? (isDriver
-                    ? 'Rincian tarif final resmi harian telah diterbitkan oleh admin'
-                    : 'Rincian tarif final dan deposit jaminan telah diterbitkan admin')
-                : (isDriver
-                    ? 'Admin sedang memvalidasi rute dan durasi 12 jam/hari'
-                    : 'Sedang diverifikasi oleh admin operasional'),
+            title: isCod ? 'Pelunasan Tunai di Tempat (COD)' : 'Menunggu Pembayaran',
+            subtitle: isCod
+                ? (step3Done
+                    ? 'Pembayaran tunai telah diterima staf kantor atau supir di lokasi'
+                    : (step3Active
+                        ? 'Siapkan uang tunai pas Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit'
+                        : 'Menunggu serah terima unit untuk pelunasan tunai'))
+                : (step3Done
+                    ? 'Pembayaran telah terverifikasi dan tercatat lunas'
+                    : (step3Active
+                        ? 'Tarif resmi terbit. Silakan selesaikan pembayaran via QRIS atau Transfer'
+                        : 'Menunggu konfirmasi tarif resmi sebelum pembayaran')),
             isDone: step3Done,
             isActive: step3Active,
             isLast: false,
           ),
+
+          // Tahap 4: Sewa Berjalan
           _buildStepRow(
             stepNumber: 4,
-            title: isCod ? 'Pelunasan Tunai di Tempat (COD)' : 'Menunggu Pembayaran',
-            subtitle: isCod
-                ? (step4Done
-                    ? 'Pembayaran tunai telah diterima staf atau pengemudi di lokasi'
-                    : (step4Active
-                        ? 'Siapkan uang tunai pas Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit'
-                        : 'Menunggu serah terima unit untuk pelunasan tunai'))
-                : (step4Done
-                    ? 'Pembayaran telah dikonfirmasi oleh tim CS'
-                    : (step4Active
-                        ? 'Silakan lakukan pembayaran dan konfirmasi via Chat CS'
-                        : 'Menunggu penerbitan rincian tarif final resmi')),
+            title: 'Sewa Berjalan',
+            subtitle: step4Done
+                ? 'Perjalanan sewa telah tuntas dilaksanakan'
+                : (step4Active
+                    ? (isDriver
+                        ? 'Sopir resmi siaga dan perjalanan sewa Anda sedang berjalan'
+                        : 'Unit armada telah diserahterimakan dan masa sewa aktif')
+                    : (isDriver
+                        ? 'Sopir akan siaga menjemput setelah pembayaran terkonfirmasi'
+                        : 'Kunci dan unit akan diserahkan setelah pembayaran terkonfirmasi')),
             isDone: step4Done,
             isActive: step4Active,
             isLast: false,
           ),
+
+          // Tahap 5: Selesai
           _buildStepRow(
             stepNumber: 5,
-            title: isDriver ? 'Sopir standby menjemput' : 'Serah terima unit & kunci',
+            title: 'Selesai',
             subtitle: step5Done
                 ? (isDriver
-                    ? 'Layanan sopir telah selesai dan armada telah kembali ke pool'
-                    : 'Masa sewa telah selesai dan unit telah kembali ke pool')
-                : (step5Active
-                    ? (isCod
-                        ? (isDriver
-                            ? 'Sopir siap menjemput Anda di ${booking.pickupLocation}. Pembayaran tunai saat penjemputan'
-                            : 'Kunci dan armada siap diserahterimakan di ${booking.pickupLocation}. Pembayaran tunai saat serah terima')
-                        : (isDriver
-                            ? 'Pembayaran tervalidasi. Sopir siap menjemput Anda di ${booking.pickupLocation}'
-                            : 'Pembayaran tervalidasi. Kunci dan armada siap diserahterimakan di ${booking.pickupLocation}'))
-                    : (isDriver
-                        ? 'Sopir akan standby menjemput setelah jadwal terkonfirmasi'
-                        : 'Kunci dan armada akan diserahkan setelah jadwal terkonfirmasi')),
+                    ? 'Layanan sopir telah selesai dan armada telah kembali ke kantor'
+                    : 'Masa sewa telah selesai dan unit telah kembali ke kantor')
+                : 'Penyewaan akan ditandai selesai setelah unit kembali ke kantor',
             isDone: step5Done,
             isActive: step5Active,
             isLast: true,
