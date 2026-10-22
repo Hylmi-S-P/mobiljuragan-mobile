@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/remote/faq_api_service.dart';
+import '../data/remote/ticket_api_service.dart';
 import '../models/booking_model.dart';
 import '../models/faq_model.dart';
 import '../models/support_ticket_model.dart';
@@ -7,6 +9,7 @@ import '../models/support_ticket_model.dart';
 /// Controller untuk mengelola tiket bantuan, FAQ, dan percakapan chat bantuan yang terisolasi per sesi
 class SupportController extends ChangeNotifier {
   final FaqApiService _faqApiService;
+  final TicketApiService _ticketApiService;
   final List<SupportTicketModel> _tickets = [];
 
   /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
@@ -20,8 +23,11 @@ class SupportController extends ChangeNotifier {
   bool _isLoadingFaqs = false;
   String? _faqError;
 
-  SupportController({FaqApiService? faqApiService})
-      : _faqApiService = faqApiService ?? FaqApiService() {
+  SupportController({
+    FaqApiService? faqApiService,
+    TicketApiService? ticketApiService,
+  })  : _faqApiService = faqApiService ?? FaqApiService(),
+        _ticketApiService = ticketApiService ?? TicketApiService() {
     _initData();
   }
 
@@ -217,14 +223,15 @@ class SupportController extends ChangeNotifier {
   ];
 
   /// Membuat tiket kendala baru dan menyiapkan thread percakapan terisolasi
-  void createTicket({
+  Future<void> createTicket({
     required String title,
     required TicketCategory category,
     required String description,
     String? attachmentName,
-  }) {
+  }) async {
+    final tempId = 'TCK-2026-${(82 + _tickets.length).toString().padLeft(3, '0')}';
     final newTicket = SupportTicketModel(
-      id: 'TCK-2026-${(82 + _tickets.length).toString().padLeft(3, '0')}',
+      id: tempId,
       title: title,
       category: category,
       description: description,
@@ -258,6 +265,30 @@ class SupportController extends ChangeNotifier {
     _conversations[ticketKey] = initialList;
 
     notifyListeners();
+
+    try {
+      final res = await _ticketApiService.createTicket(
+        title: title,
+        description: description,
+        category: category.name.toUpperCase(),
+      );
+      if (res.isNotEmpty && res.containsKey('id')) {
+        final serverId = res['id'].toString();
+        final serverTicketNumber = res['ticketNumber']?.toString() ?? tempId;
+        final serverTicket = newTicket.copyWith(
+          id: serverId,
+          title: '$title ($serverTicketNumber)',
+        );
+        final idx = _tickets.indexWhere((t) => t.id == tempId);
+        if (idx != -1) {
+          _tickets[idx] = serverTicket;
+        }
+        _conversations['ticket_$serverId'] = initialList;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Offline fallback: data lokal tetap tersimpan di controller
+    }
   }
 
   /// Mengirim pesan dari pengguna ke sesi obrolan yang sedang aktif
@@ -279,6 +310,12 @@ class SupportController extends ChangeNotifier {
     );
     list.add(userMsg);
     notifyListeners();
+
+    // Jika percakapan merupakan tiket kendala, kirim pesan ke backend REST API
+    if (conversationKey.startsWith('ticket_')) {
+      final ticketId = conversationKey.replaceFirst('ticket_', '');
+      unawaited(_ticketApiService.addMessage(ticketId: ticketId, message: text.trim()));
+    }
 
     final isHandedOff = isAiHandoffToAdminFor(conversationKey);
 

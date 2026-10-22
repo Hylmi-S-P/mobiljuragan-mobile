@@ -27,6 +27,26 @@ class SupportTicketModel {
     this.attachmentName,
   });
 
+  SupportTicketModel copyWith({
+    String? id,
+    String? title,
+    TicketCategory? category,
+    String? description,
+    String? status,
+    DateTime? createdAt,
+    String? attachmentName,
+  }) {
+    return SupportTicketModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      attachmentName: attachmentName ?? this.attachmentName,
+    );
+  }
+
   String get categoryLabel {
     switch (category) {
       case TicketCategory.reservasi:

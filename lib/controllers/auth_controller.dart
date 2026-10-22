@@ -22,8 +22,8 @@ class PasswordRules {
 /// Controller untuk mengelola autentikasi, status login, dan profil pengguna
 /// dengan keamanan token berbasis FlutterSecureStorage (Hardware Keystore).
 class AuthController extends ChangeNotifier {
-  final AuthRepository? _repository;
-  final SecureStorageService? _secureStorage;
+  final AuthRepository? repository;
+  final SecureStorageService? secureStorage;
 
   UserModel? _currentUser = UserModel.defaultUser;
   bool _isLoggedIn = true;
@@ -53,10 +53,9 @@ class AuthController extends ChangeNotifier {
   Map<String, String>? _pendingRegistration;
 
   AuthController({
-    AuthRepository? repository,
-    SecureStorageService? secureStorage,
-  })  : _repository = repository,
-        _secureStorage = secureStorage;
+    this.repository,
+    this.secureStorage,
+  });
 
   UserModel? get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
@@ -70,8 +69,8 @@ class AuthController extends ChangeNotifier {
 
   /// Memulihkan sesi login yang tersimpan di Hardware Keystore / Secure Storage saat aplikasi boot
   Future<void> initSession() async {
-    final storage = _secureStorage;
-    final repo = _repository;
+    final storage = secureStorage;
+    final repo = repository;
 
     if (storage != null) {
       final hasToken = await storage.hasValidToken();
@@ -164,7 +163,7 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> _saveSecureTokenAsync(UserModel user) async {
-    final storage = _secureStorage;
+    final storage = secureStorage;
     if (storage != null) {
       await storage.saveAuthTokens(
         accessToken: 'secure_session_${DateTime.now().millisecondsSinceEpoch}',
@@ -203,22 +202,50 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Menyelesaikan pendaftaran setelah verifikasi kode OTP berhasil
-  bool verifyRegisterOtp(String code) {
+  Future<bool> verifyRegisterOtp(String code) async {
+    final repo = repository;
+    final phone = _pendingRegistration?['phone'] ?? _phoneNumber;
+    final fullName = _pendingRegistration?['name'];
+    final idCard = _pendingRegistration?['idCard'];
+
+    if (repo != null) {
+      try {
+        final verifiedUser = await repo.verifyOtpAndSave(
+          phoneNumber: phone,
+          otp: code,
+          fullName: fullName,
+          idCardNumber: idCard,
+        );
+        if (verifiedUser != null) {
+          _currentUser = verifiedUser;
+          _isLoggedIn = true;
+          _hasLoginError = false;
+          _errorMessage = null;
+          _hasSecureToken = true;
+          _pendingRegistration = null;
+          notifyListeners();
+          return true;
+        }
+      } catch (_) {
+        // Fallback ke simulasi lokal jika API offline/gagal
+      }
+    }
+
     if (code == '123456' || code == '888888' || code == '1234') {
       if (_pendingRegistration != null) {
         final name = _pendingRegistration!['name']!;
-        final phone = _pendingRegistration!['phone']!;
+        final userPhone = _pendingRegistration!['phone']!;
         final email = _pendingRegistration!['email']!;
-        final idCard = _pendingRegistration!['idCard']!;
+        final nik = _pendingRegistration!['idCard']!;
         final city = _pendingRegistration!['city']!;
         final password = _pendingRegistration!['password']!;
 
         final newUser = UserModel(
           id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
           name: name,
-          phoneNumber: phone,
+          phoneNumber: userPhone,
           email: email,
-          idCardNumber: idCard,
+          idCardNumber: nik,
           city: city.isNotEmpty ? city : 'Merauke, Papua Selatan',
           avatarInitials: name.isNotEmpty
               ? (name.trim().split(' ').length > 1
@@ -233,7 +260,7 @@ class AuthController extends ChangeNotifier {
         // Daftarkan ke database memori
         _currentPassword = password;
         final cleanEmail = email.toLowerCase();
-        final cleanPhone = phone.replaceAll(RegExp(r'[\s\-]'), '');
+        final cleanPhone = userPhone.replaceAll(RegExp(r'[\s\-]'), '');
 
         _userPasswords[cleanEmail] = password;
         _userPasswords[cleanPhone] = password;
@@ -241,10 +268,10 @@ class AuthController extends ChangeNotifier {
         _usersDb[cleanPhone] = newUser;
 
         _pendingRegistration = null;
-        _saveSecureTokenAsync(newUser);
+        await _saveSecureTokenAsync(newUser);
       } else {
         _currentUser = UserModel.defaultUser;
-        _saveSecureTokenAsync(_currentUser!);
+        await _saveSecureTokenAsync(_currentUser!);
       }
 
       _isLoggedIn = true;
@@ -293,22 +320,55 @@ class AuthController extends ChangeNotifier {
     return true;
   }
 
-  /// Simulasi kirim OTP ke nomor WhatsApp / SMS
-  void sendOtp(String phone) {
+  /// Mengirim kode OTP ke nomor WhatsApp / SMS via backend API (dengan fallback simulasi)
+  Future<void> sendOtp(String phone) async {
     _phoneNumber = phone;
     _hasLoginError = false;
     _errorMessage = null;
     notifyListeners();
+
+    final repo = repository;
+    if (repo != null) {
+      try {
+        await repo.requestOtp(
+          phoneNumber: phone,
+          fullName: _pendingRegistration?['name'],
+        );
+      } catch (_) {
+        // Fallback offline/demo mode tanpa melempar error tak tertangani
+      }
+    }
   }
 
-  /// Verifikasi kode OTP umum
-  bool verifyOtp(String code) {
+  /// Verifikasi kode OTP umum melalui backend API (dengan fallback simulasi)
+  Future<bool> verifyOtp(String code) async {
+    final repo = repository;
+    if (repo != null) {
+      try {
+        final verifiedUser = await repo.verifyOtpAndSave(
+          phoneNumber: _phoneNumber,
+          otp: code,
+        );
+        if (verifiedUser != null) {
+          _currentUser = verifiedUser;
+          _isLoggedIn = true;
+          _hasLoginError = false;
+          _errorMessage = null;
+          _hasSecureToken = true;
+          notifyListeners();
+          return true;
+        }
+      } catch (_) {
+        // Fallback offline/demo mode
+      }
+    }
+
     if (code == '123456' || code == '888888' || code == '1234' || code == '8888') {
       _isLoggedIn = true;
       _hasLoginError = false;
       _errorMessage = null;
       _currentUser ??= UserModel.defaultUser;
-      _saveSecureTokenAsync(_currentUser!);
+      await _saveSecureTokenAsync(_currentUser!);
       notifyListeners();
       return true;
     } else {
@@ -350,7 +410,7 @@ class AuthController extends ChangeNotifier {
   Future<void> logout() async {
     _isLoggedIn = false;
     _hasSecureToken = false;
-    final storage = _secureStorage;
+    final storage = secureStorage;
     if (storage != null) {
       await storage.clearAuth();
     }

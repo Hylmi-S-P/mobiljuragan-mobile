@@ -9,58 +9,56 @@ import '../remote/vehicle_api_service.dart';
 /// Mengatur sinkronisasi data backend ke database SQLite Drift lokal,
 /// mengalirkan Stream reaktif ke UI, dan mempertahankan ketersediaan data saat offline.
 class VehicleRepository {
-  final VehicleDao _vehicleDao;
+  final VehicleDao vehicleDao;
   final VehicleApiService _apiService;
-  final AppSettingsService _settingsService;
+  final AppSettingsService settingsService;
 
   // Cache Time-To-Live: 5 Menit
   static const int cacheTtlMillis = 5 * 60 * 1000;
 
   VehicleRepository({
-    required VehicleDao vehicleDao,
+    required this.vehicleDao,
     VehicleApiService? apiService,
-    required AppSettingsService settingsService,
-  })  : _vehicleDao = vehicleDao,
-        _apiService = apiService ?? VehicleApiService(),
-        _settingsService = settingsService;
+    required this.settingsService,
+  })  : _apiService = apiService ?? VehicleApiService();
 
   /// Memastikan database lokal memiliki data dasar armada Merauke saat aplikasi pertama kali dijalankan
   Future<void> ensureSeeded() async {
-    final count = await _vehicleDao.countVehicles();
+    final count = await vehicleDao.countVehicles();
     if (count == 0) {
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       final seedEntries = VehicleModel.sampleVehicles
           .map((v) => v.toCompanion(lastFetchedMillis: now))
           .toList();
-      await _vehicleDao.upsertVehiclesBatch(seedEntries);
-      await _settingsService.setLastSyncTime(now);
+      await vehicleDao.upsertVehiclesBatch(seedEntries);
+      await settingsService.setLastSyncTime(now);
     }
   }
 
   /// Stream reaktif seluruh armada kendaraan yang langsung bersumber dari database SQLite lokal
   Stream<List<VehicleModel>> watchVehicles({String category = 'Semua'}) {
-    return _vehicleDao.watchVehiclesByCategory(category).map((driftList) {
+    return vehicleDao.watchVehiclesByCategory(category).map((driftList) {
       return driftList.map((entry) => VehicleModel.fromDrift(entry)).toList();
     });
   }
 
   /// Stream reaktif armada favorit pengguna
   Stream<List<VehicleModel>> watchFavoriteVehicles() {
-    return _vehicleDao.watchFavoriteVehicles().map((driftList) {
+    return vehicleDao.watchFavoriteVehicles().map((driftList) {
       return driftList.map((entry) => VehicleModel.fromDrift(entry)).toList();
     });
   }
 
   /// Stream reaktif detail armada tunggal berdasarkan ID
   Stream<VehicleModel?> watchVehicleById(String id) {
-    return _vehicleDao.watchVehicleById(id).map((entry) {
+    return vehicleDao.watchVehicleById(id).map((entry) {
       return entry != null ? VehicleModel.fromDrift(entry) : null;
     });
   }
 
   /// Mengambil data armada tunggal secara Future (Cache-First)
   Future<VehicleModel?> getVehicleById(String id) async {
-    final entry = await _vehicleDao.getVehicleById(id);
+    final entry = await vehicleDao.getVehicleById(id);
     if (entry != null) {
       return VehicleModel.fromDrift(entry);
     }
@@ -72,7 +70,7 @@ class VehicleRepository {
   /// Menggunakan Database Transaction (Atomic Write) agar penulisan batch multi-baris aman.
   /// Jika offline atau koneksi gagal, data lokal tetap dipertahankan tanpa error yang memblokir UI.
   Future<bool> syncFromBackend({bool force = false}) async {
-    final lastSync = _settingsService.getLastSyncTime() ?? 0;
+    final lastSync = settingsService.getLastSyncTime() ?? 0;
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
 
     // Lewati jika cache masih segar (< 5 menit) dan tidak dipaksa refresh
@@ -89,8 +87,8 @@ class VehicleRepository {
         }).toList();
 
         // Atomic Batch Upsert di dalam Drift transaction
-        await _vehicleDao.upsertVehiclesBatch(companions);
-        await _settingsService.setLastSyncTime(now);
+        await vehicleDao.upsertVehiclesBatch(companions);
+        await settingsService.setLastSyncTime(now);
         return true;
       }
     } catch (_) {
@@ -101,6 +99,6 @@ class VehicleRepository {
 
   /// Toggle status favorit pada armada (reaktif seketika melalui Stream Drift)
   Future<bool> toggleFavorite(String vehicleId) async {
-    return await _vehicleDao.toggleFavorite(vehicleId);
+    return await vehicleDao.toggleFavorite(vehicleId);
   }
 }

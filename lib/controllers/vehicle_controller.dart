@@ -7,8 +7,8 @@ import '../models/vehicle_model.dart';
 /// Controller untuk mengelola katalog armada, filter kategori, pencarian,
 /// dan status favorit kendaraan secara reaktif dari database Drift lokal (Offline-First).
 class VehicleController extends ChangeNotifier {
-  final VehicleRepository? _repository;
-  final AppSettingsService? _settingsService;
+  final VehicleRepository? repository;
+  final AppSettingsService? settingsService;
 
   List<VehicleModel> _vehicles = VehicleModel.sampleVehicles;
   String _selectedCategory = 'Semua';
@@ -26,21 +26,20 @@ class VehicleController extends ChangeNotifier {
   ];
 
   VehicleController({
-    VehicleRepository? repository,
-    AppSettingsService? settingsService,
-  })  : _repository = repository,
-        _settingsService = settingsService {
+    this.repository,
+    this.settingsService,
+  }) {
     _init();
   }
 
   Future<void> _init() async {
     // Muat preferensi filter kategori yang tersimpan di SharedPreferences
-    final settings = _settingsService;
+    final settings = settingsService;
     if (settings != null) {
       _selectedCategory = settings.getSelectedCategory();
     }
 
-    final repo = _repository;
+    final repo = repository;
     if (repo != null) {
       // Pastikan database lokal memiliki seed awal
       await repo.ensureSeeded();
@@ -79,12 +78,12 @@ class VehicleController extends ChangeNotifier {
 
   /// Waktu sinkronisasi data terakhir
   DateTime? get lastSyncTime {
-    final millis = _settingsService?.getLastSyncTime();
+    final millis = settingsService?.getLastSyncTime();
     return millis != null ? DateTime.fromMillisecondsSinceEpoch(millis) : null;
   }
 
   /// Daftar riwayat pencarian dari SharedPreferences
-  List<String> get recentSearches => _settingsService?.getSearchHistory() ?? [];
+  List<String> get recentSearches => settingsService?.getSearchHistory() ?? [];
 
   /// Daftar kendaraan yang sudah disaring berdasarkan kategori, favorit, dan pencarian
   List<VehicleModel> get filteredVehicles {
@@ -113,7 +112,7 @@ class VehicleController extends ChangeNotifier {
   void setCategory(String category) {
     if (_selectedCategory == category) return;
     _selectedCategory = category;
-    _settingsService?.setSelectedCategory(category);
+    settingsService?.setSelectedCategory(category);
     notifyListeners();
   }
 
@@ -121,7 +120,7 @@ class VehicleController extends ChangeNotifier {
   void setSearchQuery(String query) {
     _searchQuery = query;
     if (query.trim().isNotEmpty) {
-      _settingsService?.addSearchQuery(query.trim());
+      settingsService?.addSearchQuery(query.trim());
     }
     notifyListeners();
   }
@@ -147,7 +146,7 @@ class VehicleController extends ChangeNotifier {
     }
 
     // Persist ke Drift database lokal
-    final repo = _repository;
+    final repo = repository;
     if (repo != null) {
       await repo.toggleFavorite(vehicleId);
     }
@@ -155,7 +154,7 @@ class VehicleController extends ChangeNotifier {
 
   /// Sinkronisasi manual / pull-to-refresh dari backend
   Future<void> refreshCatalog({bool force = true}) async {
-    final repo = _repository;
+    final repo = repository;
     if (repo == null) return;
     _isSyncing = true;
     notifyListeners();

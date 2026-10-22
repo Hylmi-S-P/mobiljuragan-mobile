@@ -6,7 +6,7 @@ import '../models/vehicle_model.dart';
 
 /// Controller terpusat untuk mengelola seluruh siklus pemesanan kendaraan pelanggan
 class BookingController extends ChangeNotifier {
-  final BookingRepository? _repository;
+  final BookingRepository? repository;
 
   // Data formulir wizard pemesanan
   VehicleModel? _selectedVehicle = VehicleModel.sampleVehicles.first;
@@ -29,7 +29,7 @@ class BookingController extends ChangeNotifier {
   final List<BookingModel> _bookingHistory = [];
   StreamSubscription<List<BookingModel>>? _bookingsSubscription;
 
-  BookingController({BookingRepository? repository}) : _repository = repository {
+  BookingController({this.repository}) {
     _initSampleData();
     _init();
   }
@@ -42,7 +42,7 @@ class BookingController extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    final repo = _repository;
+    final repo = repository;
     if (repo != null) {
       try {
         final saved = await repo.getAllBookings();
@@ -228,7 +228,7 @@ class BookingController extends ChangeNotifier {
 
     _bookingHistory.insert(0, newBooking);
     _activeBooking = newBooking;
-    _repository?.saveBooking(newBooking);
+    repository?.saveBooking(newBooking);
     notifyListeners();
     return newBooking;
   }
@@ -249,7 +249,7 @@ class BookingController extends ChangeNotifier {
     if (index != -1) {
       _bookingHistory[index] = updated;
     }
-    _repository?.saveBooking(updated);
+    repository?.saveBooking(updated);
 
     notifyListeners();
   }
@@ -267,7 +267,7 @@ class BookingController extends ChangeNotifier {
       if (_activeBooking?.id == bookingId) {
         _activeBooking = updated;
       }
-      _repository?.saveBooking(updated);
+      repository?.saveBooking(updated);
       notifyListeners();
     }
   }
@@ -293,7 +293,7 @@ class BookingController extends ChangeNotifier {
       if (_activeBooking?.id == bookingId) {
         _activeBooking = updated;
       }
-      _repository?.saveBooking(updated);
+      repository?.saveBooking(updated);
       notifyListeners();
     }
   }
@@ -321,7 +321,7 @@ class BookingController extends ChangeNotifier {
     if (index != -1) {
       _bookingHistory[index] = updated;
     }
-    _repository?.saveBooking(updated);
+    repository?.saveBooking(updated);
 
     notifyListeners();
   }
@@ -370,7 +370,7 @@ class BookingController extends ChangeNotifier {
     if (_activeBooking?.id == bookingId) {
       _activeBooking = updated;
     }
-    _repository?.saveBooking(updated);
+    repository?.saveBooking(updated);
     notifyListeners();
   }
 

@@ -118,16 +118,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       _isLoading = true;
     });
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 500), () async {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      final isSuccess = auth.verifyRegisterOtp(code);
+      final isSuccess = await auth.verifyRegisterOtp(code);
 
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
 
       if (isSuccess) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Verifikasi berhasil! Selamat datang di MobilJuragan Merauke.'),

@@ -2,12 +2,15 @@ import 'dart:async';
 import '../../models/booking_model.dart';
 import '../../models/vehicle_model.dart';
 import '../local/database/daos/booking_dao.dart';
+import '../remote/booking_api_service.dart';
 
 /// Repository untuk penyimpanan dan sinkronisasi data pemesanan rental mobil (Offline-First Drift SQLite)
 class BookingRepository {
   final BookingDao _bookingDao;
+  final BookingApiService _apiService;
 
-  BookingRepository(this._bookingDao);
+  BookingRepository(this._bookingDao, [BookingApiService? apiService])
+      : _apiService = apiService ?? BookingApiService();
 
   Map<String, VehicleModel> get _defaultVehicleMap => {
         for (final v in VehicleModel.sampleVehicles) v.id: v,
@@ -69,9 +72,23 @@ class BookingRepository {
     });
   }
 
-  /// Menyimpan pesanan baru atau pembaruan status ke dalam SQLite lokal
+  /// Menyimpan pesanan baru atau pembaruan status ke dalam SQLite lokal dan sinkronisasi ke backend jika online
   Future<void> saveBooking(BookingModel booking) async {
     await _bookingDao.insertOrUpdateBooking(booking.toCompanion());
+    try {
+      final start = booking.startDate;
+      final end = start.add(Duration(days: booking.durationDays > 0 ? booking.durationDays : 1));
+      await _apiService.createBooking(
+        vehicleId: booking.vehicle.id,
+        startDateTime: start,
+        endDateTime: end,
+        withDriver: booking.withDriver,
+        pickupLocation: booking.pickupLocation,
+        customerRequest: booking.note,
+      );
+    } catch (_) {
+      // Offline-first fallback: pesanan tetap tersimpan di database SQLite lokal
+    }
   }
 
   /// Memperbarui status pesanan secara spesifik
