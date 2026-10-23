@@ -88,6 +88,14 @@ class SupportTicketModel {
         status: 'Diproses',
         createdAt: DateTime.now().subtract(const Duration(hours: 3)),
       ),
+      SupportTicketModel(
+        id: 'TCK-2026-074',
+        title: 'Panduan pembayaran via QRIS Dinamis Merauke',
+        category: TicketCategory.pembayaran,
+        description: 'Verifikasi konfirmasi transaksi pembayaran sewa harian menggunakan QRIS Dinamis berhasil terbit.',
+        status: 'Selesai',
+        createdAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
     ];
   }
 }

@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
 import 'create_ticket_screen.dart';
+import 'ticket_history_screen.dart';
 import '../theme/app_typography.dart';
 
 /// Halaman Pusat Bantuan Pelanggan dan Layanan Operasional Merauke (Frame 09)
@@ -17,7 +18,6 @@ class HelpCenterScreen extends StatefulWidget {
 }
 
 class _HelpCenterScreenState extends State<HelpCenterScreen> {
-  final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'Semua';
   int? _expandedFaqIndex;
 
@@ -31,20 +31,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   List<FaqModel> _filterFaqs(List<FaqModel> allFaqs) {
-    final query = _searchController.text.toLowerCase().trim();
     return allFaqs.where((faq) {
-      final matchesCategory = _selectedCategory == 'Semua' || faq.category == _selectedCategory;
-      final matchesQuery = query.isEmpty ||
-          faq.question.toLowerCase().contains(query) ||
-          faq.answer.toLowerCase().contains(query);
-      return matchesCategory && matchesQuery;
+      return _selectedCategory == 'Semua' || faq.category == _selectedCategory;
     }).toList();
   }
 
@@ -86,61 +75,26 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Cari solusi cepat atau hubungi layanan bantuan rental.',
+                  'Solusi kendala sewa armada dan layanan operasional Merauke.',
                   style: TextStyle(
                     fontSize: AppTypography.sizeBodyLarge,
                     color: AppColors.textSecondary,
                     fontFamily: 'Inter',
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
 
-                // Search Bar FAQ
-                _buildSearchBar(),
-                const SizedBox(height: 14),
-
-                // Filter Chips Kategori Dinamis
-                _buildCategoryChips(categories),
-                const SizedBox(height: 20),
-
-                // 3 Tombol Pintas / Action Cards
-                _buildActionCards(),
+                // Seksi 1: Pertanyaan Populer (FAQ)
+                _buildFaqSection(faqs, categories),
                 const SizedBox(height: 24),
 
-                // Accordion FAQ Populer Dinamis
-                _buildFaqSection(faqs),
-                const SizedBox(height: 24),
-
-              // Tiket Bantuan Saya (Jika ada tiket)
+              // Seksi 2: Tiket Bantuan Saya
               _buildUserTicketsSection(support),
               const SizedBox(height: 24),
 
-              // Tombol Utama Buat Tiket Bantuan
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.add, size: 20),
-                  label: const Text(
-                    'Buat Tiket Bantuan Baru',
-                    style: AppTypography.sectionTitle,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    foregroundColor: AppColors.textWhite,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              // Seksi 3: Saluran Bantuan
+              _buildSupportChannelsSection(),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -148,49 +102,6 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     ),
   );
 }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (_) => setState(() {}),
-        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
-        decoration: InputDecoration(
-          hintText: 'Cari topik bantuan atau kata kunci...',
-          hintStyle: const TextStyle(
-            fontSize: AppTypography.sizeBody,
-            color: AppColors.textSecondary,
-            fontFamily: 'Inter',
-          ),
-          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, color: AppColors.textSecondary, size: 18),
-                  onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                    });
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        ),
-      ),
-    );
-  }
 
   Widget _buildCategoryChips(List<String> categories) {
     return SingleChildScrollView(
@@ -235,15 +146,118 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     );
   }
 
+  Widget _buildSupportChannelsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Hubungi Layanan Bantuan',
+          style: TextStyle(
+            fontSize: AppTypography.sizeTitle,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildActionCards(),
+        const SizedBox(height: 12),
+        _buildCsInfoBanner(),
+      ],
+    );
+  }
+
+  Widget _buildCsInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.tealLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.support_agent_rounded,
+                size: 20,
+                color: AppColors.primaryTeal,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Layanan CS AI 24/7',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFDBEAFE)),
+                      ),
+                      child: const Text(
+                        'Asisten Pintar',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1D4ED8),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Asisten virtual AI siap merespon kendala rental 24 jam dengan eskalasi langsung ke staf operasional Merauke.',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionCards() {
     return Row(
       children: [
-        // Action 1: Live Chat
+        // Action 1: Tanya Cepat (Live Chat umum)
         Expanded(
           child: _buildActionCardItem(
             icon: Icons.chat_bubble_outline,
-            label: 'Chat Bantuan',
-            subtitle: 'AI & Staf Lapangan',
+            label: 'Tanya Cepat',
+            subtitle: 'Konsultasi Instan',
             color: AppColors.primaryNavy,
             bgColor: const Color(0xFFEFF6FF),
             onTap: () {
@@ -255,12 +269,12 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         ),
         const SizedBox(width: 12),
 
-        // Action 2: Buat Tiket
+        // Action 2: Lapor Kendala (Tiket Resmi)
         Expanded(
           child: _buildActionCardItem(
-            icon: Icons.confirmation_number_outlined,
-            label: 'Buat Tiket',
-            subtitle: 'Lapor Kendala Sewa',
+            icon: Icons.assignment_late_outlined,
+            label: 'Lapor Kendala',
+            subtitle: 'Form Tiket Resmi',
             color: AppColors.primaryTeal,
             bgColor: AppColors.tealLight,
             onTap: () {
@@ -341,7 +355,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     );
   }
 
-  Widget _buildFaqSection(List<FaqModel> faqs) {
+  Widget _buildFaqSection(List<FaqModel> faqs, List<String> categories) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -380,6 +394,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _buildCategoryChips(categories),
           const SizedBox(height: 12),
           const Divider(color: AppColors.borderSubtle, height: 1),
           if (faqs.isEmpty) ...[
@@ -466,34 +482,58 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Widget _buildUserTicketsSection(SupportController support) {
-    if (support.tickets.isEmpty) return const SizedBox.shrink();
+    final activeTickets = support.tickets.where((t) => t.status != 'Selesai').toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
-            const Text(
-              'Tiket Bantuan Saya',
-              style: TextStyle(
-                fontSize: AppTypography.sizeTitle,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Tiket Bantuan Saya',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTitle,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                if (activeTickets.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${activeTickets.length} Berjalan',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTiny,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFB45309),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             GestureDetector(
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ChatSupportScreen()),
+                  MaterialPageRoute(builder: (_) => const TicketHistoryScreen()),
                 );
               },
               child: const Text(
-                'Lihat Chat ›',
+                'Riwayat Tiket ›',
                 style: TextStyle(
                   fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w600,
@@ -505,86 +545,129 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: support.tickets.length > 2 ? 2 : support.tickets.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 8),
-          itemBuilder: (context, index) {
-            final ticket = support.tickets[index];
-            return InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatSupportScreen(ticket: ticket),
-                  ),
-                );
-              },
+
+        if (activeTickets.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.cardWhite,
               borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.cardWhite,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.borderSubtle),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 18,
+                  color: Color(0xFF16A34A),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: ticket.status == 'Selesai'
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        ticket.status,
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeTiny,
-                          fontWeight: FontWeight.w700,
-                          color: ticket.status == 'Selesai'
-                              ? const Color(0xFF15803D)
-                              : const Color(0xFFB45309),
-                          fontFamily: 'Inter',
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Tidak ada kendala aktif. Armada Anda berjalan normal.',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: activeTickets.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final ticket = activeTickets[index];
+              return InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChatSupportScreen(ticket: ticket),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardWhite,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFD97706),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Aktif • ${ticket.status}',
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeTiny,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFB45309),
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            ticket.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeBody,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              ticket.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeBody,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'ID: ${ticket.id} • ${ticket.categoryLabel}',
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
+                            const SizedBox(height: 2),
+                            Text(
+                              'ID: ${ticket.id} • ${ticket.categoryLabel}',
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeTiny,
+                                color: AppColors.textSecondary,
+                                fontFamily: 'Inter',
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
-                  ],
+                      const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
       ],
     );
   }

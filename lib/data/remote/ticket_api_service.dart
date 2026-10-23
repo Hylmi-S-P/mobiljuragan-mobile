@@ -62,4 +62,20 @@ class TicketApiService {
     }
     return {};
   }
+
+  /// Mengambil detail tiket beserta seluruh pesan percakapan dari backend
+  Future<Map<String, dynamic>?> fetchTicketDetail(String ticketId) async {
+    try {
+      final response = await _client.get(
+        '${ApiConstants.ticketsEndpoint}/$ticketId',
+        requiresAuth: true,
+      );
+      if (response is Map) {
+        return Map<String, dynamic>.from(response);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }

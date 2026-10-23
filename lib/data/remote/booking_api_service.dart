@@ -52,4 +52,17 @@ class BookingApiService {
     }
     return [];
   }
+
+  /// Mengambil detail lengkap pemesanan terkini beserta status & rincian surcharge (GET /api/v1/bookings/:id)
+  Future<Map<String, dynamic>> fetchBookingDetail(String bookingId) async {
+    final response = await _client.get(
+      '${ApiConstants.bookingsEndpoint}/$bookingId',
+      requiresAuth: true,
+    );
+
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    return {};
+  }
 }

@@ -34,4 +34,6 @@ class AppColors {
   static const Color badgeGreenBg = Color(0xFFECFDF5);
   static const Color badgeGreenText = Color(0xFF065F46);
   static const Color badgeNavyBg = Color(0xFF1E3A5F);
+  static const Color statusCancelled = Color(0xFFDC2626);
+  static const Color statusCancelledBg = Color(0xFFFEF2F2);
 }

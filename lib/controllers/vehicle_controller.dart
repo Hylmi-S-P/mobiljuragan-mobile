@@ -54,7 +54,7 @@ class VehicleController extends ChangeNotifier {
       });
 
       // Lakukan sinkronisasi background jika koneksi tersedia
-      unawaited(refreshCatalog(force: false));
+      unawaited(refreshCatalog(force: true));
     }
   }
 

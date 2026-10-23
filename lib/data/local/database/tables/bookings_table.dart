@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 
 /// Skema tabel SQLite lokal Drift untuk entitas pemesanan sewa mobil pelanggan
 class Bookings extends Table {
-  /// Kode pemesanan unik (contoh: 'MKQ-2026-001')
+  /// Kode pemesanan unik (contoh: 'MKQ-2026-001' atau UUID/bookingCode dari backend)
   TextColumn get id => text()();
 
   /// ID referensi armada kendaraan
@@ -49,6 +49,9 @@ class Bookings extends Table {
 
   /// Apakah tarif final sudah dikonfirmasi admin
   BoolColumn get isFinalTariffConfirmed => boolean().withDefault(const Constant(false))();
+
+  /// Rincian penyesuaian biaya / surcharge dari admin (format JSON array)
+  TextColumn get adminAdjustmentsJson => text().nullable()();
 
   /// Waktu pembuatan pesanan (UTC epoch milliseconds)
   IntColumn get createdAt => integer()();

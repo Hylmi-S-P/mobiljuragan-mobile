@@ -35,45 +35,41 @@ class OrderStatusScreen extends StatefulWidget {
 }
 
 class _OrderStatusScreenState extends State<OrderStatusScreen> {
-  Timer? _calculationTimer;
+  Timer? _pollingTimer;
   bool _notificationShown = false;
   bool _isTariffDetailsExpanded = false;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _checkAndStartTimer();
+    _checkAndStartPolling();
   }
 
-  void _checkAndStartTimer() {
+  void _checkAndStartPolling() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final controller = context.read<BookingController>();
-      final currentBooking = widget.booking ?? controller.activeBooking;
-
-      if (currentBooking != null &&
-          currentBooking.status == BookingStatus.menungguTarifFinal) {
-        _startAdminCalculationTimer();
-      }
+      _startStatusPolling();
     });
   }
 
-  void _startAdminCalculationTimer() {
-    _calculationTimer?.cancel();
-    _notificationShown = false;
+  void _startStatusPolling() {
+    _pollingTimer?.cancel();
 
-    // Timer berjalan hening 10 detik di latar belakang tanpa hitung mundur visual
-    _calculationTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted) {
-        _onAdminCalculationCompleted();
+    // Lakukan polling perdana secara asinkron
+    _pollBookingStatus();
+
+    // Polling berkala setiap 5 detik selama status masih dalam pemeriksaan atau antrean admin
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
+      _pollBookingStatus();
     });
   }
 
-  void _onAdminCalculationCompleted() {
-    if (!mounted) return;
+  Future<void> _pollBookingStatus() async {
     final controller = context.read<BookingController>();
-    controller.confirmFinalTariffFromAdmin();
-
     final currentBooking = widget.booking != null
         ? (controller.bookingHistory.firstWhere(
             (b) => b.id == widget.booking!.id,
@@ -81,14 +77,80 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ))
         : controller.activeBooking;
 
-    // Memicu notifikasi native sistem perangkat (terlihat di luar aplikasi)
-    if (currentBooking != null) {
-      NotificationService().showTariffReadyNotification(
-        bookingId: currentBooking.id,
-        vehicleName: currentBooking.vehicle.name,
-        totalCost: currentBooking.totalCost,
-      );
+    if (currentBooking == null) return;
+
+    // Polling tetap aktif selama pesanan dalam proses kalkulasi admin ATAU menunggu pembayaran / serah terima armada
+    final needsPolling = currentBooking.status == BookingStatus.permintaanDiterima ||
+        currentBooking.status == BookingStatus.pemeriksaanArmada ||
+        currentBooking.status == BookingStatus.menungguTarifFinal ||
+        currentBooking.status == BookingStatus.menungguPembayaran;
+
+    if (!needsPolling) {
+      _pollingTimer?.cancel();
+      return;
     }
+
+    final hasUpdated = await controller.refreshActiveBookingStatus(currentBooking.id);
+    if (!mounted) return;
+
+    if (hasUpdated) {
+      final updatedBooking = widget.booking != null
+          ? (controller.bookingHistory.firstWhere(
+              (b) => b.id == widget.booking!.id,
+              orElse: () => widget.booking!,
+            ))
+          : controller.activeBooking;
+
+      if (updatedBooking != null) {
+        if (updatedBooking.status == BookingStatus.menungguPembayaran && !_notificationShown) {
+          _onStatusUpdatedToConfirmed(updatedBooking);
+        } else if (updatedBooking.status == BookingStatus.mobilSiapDigunakan ||
+            updatedBooking.status == BookingStatus.selesai ||
+            updatedBooking.status == BookingStatus.pembayaranSelesai) {
+          _pollingTimer?.cancel();
+          _onStatusUpdatedToInProgress(updatedBooking);
+        }
+      }
+    }
+  }
+
+  void _onStatusUpdatedToInProgress(BookingModel booking) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF16A34A),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Armada ${booking.vehicle.name} telah diserahkan oleh staf admin! Masa sewa aktif berjalan.',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onStatusUpdatedToConfirmed(BookingModel booking) {
+    if (!mounted) return;
+
+    NotificationService().showTariffReadyNotification(
+      bookingId: booking.id,
+      vehicleName: booking.vehicle.name,
+      totalCost: booking.totalCost,
+    );
 
     if (!_notificationShown) {
       _notificationShown = true;
@@ -98,14 +160,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           duration: const Duration(seconds: 4),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.notifications_active, color: Color(0xFFFDE68A), size: 20),
-              SizedBox(width: 10),
+              const Icon(Icons.notifications_active, color: Color(0xFFFDE68A), size: 20),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Biaya final sudah tersedia dari admin! Status masuk ke Menunggu Pembayaran.',
-                  style: TextStyle(
+                  'Tarif final Rp ${_formatRupiah(booking.totalCost)} sudah disetujui admin! Status: Menunggu Pembayaran.',
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w600,
@@ -120,9 +182,51 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     }
   }
 
+  Future<void> _manualRefreshStatus(BookingModel booking) async {
+    setState(() => _isRefreshing = true);
+    final controller = context.read<BookingController>();
+    final hasUpdated = await controller.refreshActiveBookingStatus(booking.id);
+    if (!mounted) return;
+    setState(() => _isRefreshing = false);
+
+    final updatedBooking = widget.booking != null
+        ? (controller.bookingHistory.firstWhere(
+            (b) => b.id == widget.booking!.id,
+            orElse: () => widget.booking!,
+          ))
+        : controller.activeBooking;
+
+    if (hasUpdated && updatedBooking != null) {
+      if (updatedBooking.status == BookingStatus.menungguPembayaran ||
+          updatedBooking.isFinalTariffConfirmed) {
+        _onStatusUpdatedToConfirmed(updatedBooking);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryNavy,
+            content: Text(
+              'Status pesanan diperbarui: ${updatedBooking.statusLabel}',
+              style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
+            ),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.surfaceLight,
+          content: Text(
+            'Belum ada perubahan tarif dari admin operasional.',
+            style: TextStyle(fontFamily: 'Inter', color: AppColors.textPrimary),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
-    _calculationTimer?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
@@ -217,57 +321,64 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           }
         },
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusHeaderCard(activeBooking),
-            const SizedBox(height: 14),
+      body: RefreshIndicator(
+        color: AppColors.primaryTeal,
+        onRefresh: () async {
+          await _manualRefreshStatus(activeBooking);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatusHeaderCard(activeBooking),
+              const SizedBox(height: 14),
 
-            if (isCancelled) ...[
-              _buildCancelledBannerCard(activeBooking),
-              const SizedBox(height: 16),
-              _buildVehicleSummaryCard(activeBooking),
-              const SizedBox(height: 16),
-              _buildCancelledAssistanceCard(context, activeBooking),
-              const SizedBox(height: 16),
-            ] else ...[
-              _buildVehicleSummaryCard(activeBooking),
-              const SizedBox(height: 16),
-
-              // Kartu Khusus Staf Pengemudi (Dengan Sopir) atau Panduan Serah Terima (Lepas Kunci)
-              if (activeBooking.withDriver) ...[
-                _buildAssignedDriverCard(context, activeBooking),
+              if (isCancelled) ...[
+                _buildCancelledBannerCard(activeBooking),
+                const SizedBox(height: 16),
+                _buildVehicleSummaryCard(activeBooking),
+                const SizedBox(height: 16),
+                _buildCancelledAssistanceCard(context, activeBooking),
                 const SizedBox(height: 16),
               ] else ...[
-                _buildSelfDriveHandoverGuideCard(activeBooking),
+                _buildVehicleSummaryCard(activeBooking),
                 const SizedBox(height: 16),
+
+                // Kartu Khusus Staf Pengemudi (Dengan Sopir) atau Panduan Serah Terima (Lepas Kunci)
+                if (activeBooking.withDriver) ...[
+                  _buildAssignedDriverCard(context, activeBooking),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  _buildSelfDriveHandoverGuideCard(activeBooking),
+                  const SizedBox(height: 16),
+                ],
+
+                // Stepper Mengikuti Figma + Menunggu Pembayaran
+                _buildFigmaStepper(activeBooking),
+                const SizedBox(height: 16),
+
+                // Notifikasi menunggu konfirmasi tarif final (hanya saat proses kalkulasi admin berlangsung)
+                if (!activeBooking.isFinalTariffConfirmed) ...[
+                  _buildPendingTariffNoticeCard(activeBooking),
+                  const SizedBox(height: 16),
+                ],
+
+                // Kartu Pengingat Pembayaran atau E-Ticket Resmi
+                if (isWaitingPayment) ...[
+                  _buildPaymentNoticeCard(context, activeBooking),
+                  const SizedBox(height: 16),
+                ] else if (isPaid) ...[
+                  _buildETicketCard(context, activeBooking),
+                  const SizedBox(height: 16),
+                ],
               ],
 
-              // Stepper Mengikuti Figma + Menunggu Pembayaran
-              _buildFigmaStepper(activeBooking),
-              const SizedBox(height: 16),
-
-              // Notifikasi menunggu konfirmasi tarif final (hanya saat proses kalkulasi admin berlangsung)
-              if (!activeBooking.isFinalTariffConfirmed) ...[
-                _buildPendingTariffNoticeCard(activeBooking),
-                const SizedBox(height: 16),
-              ],
-
-              // Kartu Pengingat Pembayaran atau E-Ticket Resmi
-              if (isWaitingPayment) ...[
-                _buildPaymentNoticeCard(context, activeBooking),
-                const SizedBox(height: 16),
-              ] else if (isPaid) ...[
-                _buildETicketCard(context, activeBooking),
-                const SizedBox(height: 16),
-              ],
+              _buildActionButtons(context, activeBooking),
+              const SizedBox(height: 24),
             ],
-
-            _buildActionButtons(context, activeBooking),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );
@@ -3197,6 +3308,31 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         ] else ...[
           SizedBox(
             width: double.infinity,
+            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
+            child: ElevatedButton.icon(
+              onPressed: _isRefreshing ? null : () => _manualRefreshStatus(booking),
+              icon: _isRefreshing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.sync_rounded, size: 20, color: Colors.white),
+              label: Text(
+                _isRefreshing ? 'Memeriksa ke Sistem...' : 'Periksa Status Terbaru',
+                style: AppTypography.cardTitle,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryNavy,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
             height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
             child: OutlinedButton.icon(
               onPressed: () {
@@ -3224,73 +3360,60 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 10),
         ],
-        SizedBox(
-          width: double.infinity,
-          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-          child: isWaitingPayment || isPaid
-              ? OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-                      (route) => false,
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.borderSubtle),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text(
-                    'Kembali ke Beranda',
-                    style: AppTypography.bodyLargeStrong,
-                  ),
-                )
-              : ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-                      (route) => false,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Kembali ke Beranda',
-                    style: AppTypography.cardTitle,
-                  ),
-                ),
-        ),
+        // 2. Tombol Pembatalan / Refund Berwarna Merah Tegas
         if (booking.status != BookingStatus.selesai) ...[
-          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: TextButton.icon(
+            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+            child: OutlinedButton.icon(
               onPressed: () => _showCancellationBottomSheet(context, booking),
               icon: Icon(
                 isPaid ? Icons.undo_rounded : Icons.close_rounded,
-                size: 15,
-                color: const Color(0xFF64748B),
+                size: 18,
+                color: const Color(0xFFDC2626),
               ),
               label: Text(
                 isPaid ? 'Ajukan Pembatalan & Refund' : 'Batalkan Pesanan Ini',
                 style: const TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B),
+                  fontSize: AppTypography.sizeBodyLarge,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFDC2626),
                   fontFamily: 'Inter',
                 ),
               ),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFB91C1C),
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: const Color(0xFFFEF2F2),
+                side: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
               ),
             ),
           ),
+          const SizedBox(height: 10),
         ],
+
+        // 3. Tombol Kembali ke Beranda
+        SizedBox(
+          width: double.infinity,
+          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+          child: OutlinedButton(
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                (route) => false,
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: AppColors.borderSubtle),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Kembali ke Beranda',
+              style: AppTypography.bodyLargeStrong,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -3461,6 +3584,36 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     });
 
     try {
+      // 1. Sinkronisasi status booking dari backend (apabila admin klik "Serahkan Armada" di dashboard atau konfirmasi manual)
+      final bookingController = context.read<BookingController>();
+      final hasBookingUpdated = await bookingController.refreshActiveBookingStatus(widget.booking.id);
+      if (!mounted) return;
+
+      if (hasBookingUpdated) {
+        final active = bookingController.bookingHistory.firstWhere(
+          (b) => b.id == widget.booking.id,
+          orElse: () => bookingController.activeBooking ?? widget.booking,
+        );
+        if (active.status == BookingStatus.mobilSiapDigunakan ||
+            active.status == BookingStatus.selesai ||
+            active.status == BookingStatus.pembayaranSelesai) {
+          Navigator.pop(context); // Tutup payment modal sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              content: Text(
+                'Armada ${active.vehicle.name} telah diserahkan oleh admin! Masa sewa berjalan aktif.',
+                style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      // 2. Periksa mutasi pembayaran online di tabel payment
       final payment = await _apiService.getPaymentByBooking(widget.booking.id);
       if (!mounted) return;
 

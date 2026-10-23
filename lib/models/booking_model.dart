@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import '../data/local/database/app_database.dart';
 import 'vehicle_model.dart';
@@ -36,6 +37,22 @@ class BookingFeeAdjustment {
   });
 
   bool get isDeduction => amount < 0;
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'amount': amount,
+        if (note != null) 'note': note,
+      };
+
+  factory BookingFeeAdjustment.fromJson(Map<String, dynamic> json) {
+    return BookingFeeAdjustment(
+      title: json['title']?.toString() ?? '',
+      amount: (json['amount'] is num)
+          ? (json['amount'] as num).toInt()
+          : int.tryParse(json['amount']?.toString() ?? '0') ?? 0,
+      note: json['note']?.toString(),
+    );
+  }
 }
 
 /// Entitas data staf pengemudi tetap MobilJuragan
@@ -120,6 +137,30 @@ class BookingModel {
     this.paymentReference,
   }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
 
+  /// Pemetaan status dari respons backend Prisma ke BookingStatus aplikasi mobile
+  static BookingStatus mapBackendStatus(String backendStatus, String? tariffStatus) {
+    switch (backendStatus.toUpperCase()) {
+      case 'CREATED':
+        return BookingStatus.permintaanDiterima;
+      case 'PENDING_CONFIRMATION':
+        return BookingStatus.menungguTarifFinal;
+      case 'CONFIRMED':
+        return BookingStatus.menungguPembayaran;
+      case 'IN_PROGRESS':
+        return BookingStatus.mobilSiapDigunakan;
+      case 'COMPLETED':
+        return BookingStatus.selesai;
+      case 'CANCELLED':
+      case 'REJECTED':
+        return BookingStatus.dibatalkan;
+      default:
+        if (tariffStatus == 'CONFIRMED') {
+          return BookingStatus.menungguPembayaran;
+        }
+        return BookingStatus.menungguTarifFinal;
+    }
+  }
+
   /// Konversi dari entitas tabel Drift (Booking) ke domain BookingModel
   factory BookingModel.fromDrift(Booking entry, VehicleModel vehicle) {
     BookingStatus parseStatus(String statusStr) {
@@ -137,6 +178,18 @@ class BookingModel {
             operationalRole: 'Staf Pengemudi Tetap MobilJuragan Merauke',
           )
         : null;
+
+    List<BookingFeeAdjustment> adjustments = [];
+    if (entry.adminAdjustmentsJson != null && entry.adminAdjustmentsJson!.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(entry.adminAdjustmentsJson!) as List;
+        adjustments = decoded
+            .map((e) => BookingFeeAdjustment.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      } catch (_) {}
+    } else if (entry.isFinalTariffConfirmed) {
+      adjustments = [];
+    }
 
     return BookingModel(
       id: entry.id,
@@ -156,9 +209,7 @@ class BookingModel {
       serviceFee: entry.serviceFee,
       paymentBank: entry.paymentBank,
       paymentAccountNumber: entry.paymentAccountNumber,
-      adminAdjustments: entry.isFinalTariffConfirmed
-          ? BookingModel.standardAdminAdjustments
-          : const [],
+      adminAdjustments: adjustments,
       isFinalTariffConfirmed: entry.isFinalTariffConfirmed,
     );
   }
@@ -166,6 +217,10 @@ class BookingModel {
   /// Konversi ke Drift BookingsCompanion
   BookingsCompanion toCompanion({int? lastFetchedMillis}) {
     final nowMillis = lastFetchedMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+    final adjustmentsJson = adminAdjustments.isNotEmpty
+        ? jsonEncode(adminAdjustments.map((a) => a.toJson()).toList())
+        : null;
+
     return BookingsCompanion(
       id: Value(id),
       vehicleId: Value(vehicle.id),
@@ -183,8 +238,83 @@ class BookingModel {
       paymentBank: Value(paymentBank),
       paymentAccountNumber: Value(paymentAccountNumber),
       isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
+      adminAdjustmentsJson: Value(adjustmentsJson),
       createdAt: Value(createdAt.millisecondsSinceEpoch),
       lastFetched: Value(nowMillis),
+    );
+  }
+
+  /// Factory untuk mengonversi data JSON resmi dari REST API backend
+  factory BookingModel.fromJson(Map<String, dynamic> json, VehicleModel vehicle) {
+    final rawId = json['bookingCode']?.toString() ?? json['id']?.toString() ?? '';
+    final start = DateTime.tryParse(json['startDateTime']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+    final end = DateTime.tryParse(json['endDateTime']?.toString() ?? '')?.toLocal() ??
+        start.add(const Duration(days: 1));
+    final duration = end.difference(start).inDays;
+    final withDriver = json['rentalType'] == 'WITH_DRIVER';
+
+    final rawStatus = json['status']?.toString() ?? 'CREATED';
+    final tariffStatus = json['tariffStatus']?.toString();
+    final mappedStatus = mapBackendStatus(rawStatus, tariffStatus);
+
+    final rawQuoted = json['quotedAmount'];
+    int? quotedInt;
+    if (rawQuoted != null) {
+      if (rawQuoted is num) {
+        quotedInt = rawQuoted.toInt();
+      } else {
+        quotedInt = int.tryParse(rawQuoted.toString().replaceAll(RegExp(r'[^\d]'), ''));
+      }
+    }
+
+    final isTariffConfirmed =
+        tariffStatus == 'CONFIRMED' || (quotedInt != null && quotedInt > 0) || rawStatus == 'CONFIRMED';
+
+    final List<BookingFeeAdjustment> adjustments = [];
+    if (json['surcharges'] is List) {
+      for (final s in json['surcharges'] as List) {
+        if (s is Map) {
+          adjustments.add(BookingFeeAdjustment.fromJson(Map<String, dynamic>.from(s)));
+        }
+      }
+    }
+
+    DriverAssignment? assignedDriver;
+    if (json['driver'] is Map) {
+      final d = Map<String, dynamic>.from(json['driver'] as Map);
+      assignedDriver = DriverAssignment(
+        driverName: d['fullName']?.toString() ?? 'Staf Sopir Resmi',
+        staffId: d['externalId']?.toString() ?? d['id']?.toString() ?? 'STF-DRV',
+        phoneNumber: d['phoneNumber']?.toString() ?? '0812-4822-9901',
+      );
+    } else if (withDriver) {
+      assignedDriver = const DriverAssignment(
+        driverName: 'Bung Yohanes Mahuze',
+        staffId: 'STF-DRV-014',
+        phoneNumber: '0812-4822-9901',
+      );
+    }
+
+    final createdAt =
+        DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+
+    return BookingModel(
+      id: rawId,
+      vehicle: vehicle,
+      startDate: start,
+      startTime:
+          '${start.hour.toString().padLeft(2, '0')}.${start.minute.toString().padLeft(2, '0')} WIT',
+      durationDays: duration > 0 ? duration : 1,
+      withDriver: withDriver,
+      pickupLocation: json['pickupLocation']?.toString() ?? 'Bandara Mopah Merauke',
+      note: json['customerRequest']?.toString(),
+      status: mappedStatus,
+      createdAt: createdAt,
+      dailyRate: vehicle.pricePerDay,
+      serviceFee: 25000,
+      adminAdjustments: adjustments,
+      isFinalTariffConfirmed: isTariffConfirmed,
+      assignedDriver: assignedDriver,
     );
   }
 

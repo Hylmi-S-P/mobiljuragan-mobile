@@ -350,6 +350,37 @@ class SupportController extends ChangeNotifier {
     });
   }
 
+  /// Menyinkronkan riwayat pesan tiket dari backend REST API
+  Future<void> refreshTicketConversation(String ticketId) async {
+    try {
+      final detail = await _ticketApiService.fetchTicketDetail(ticketId);
+      if (detail != null && detail.containsKey('messages')) {
+        final messages = detail['messages'] as List?;
+        if (messages != null && messages.isNotEmpty) {
+          final ticketKey = 'ticket_$ticketId';
+          final list = <ChatMessageModel>[];
+          for (final m in messages) {
+            final isUser = m['authorRole'] == 'CUSTOMER';
+            final authorName = isUser ? 'Anda' : (m['author']?['fullName'] ?? 'Admin Operasional Merauke');
+            list.add(
+              ChatMessageModel(
+                id: m['id']?.toString() ?? 'msg-$ticketId-${DateTime.now().millisecondsSinceEpoch}',
+                message: m['body']?.toString() ?? '',
+                timestamp: m['createdAt'] != null ? DateTime.tryParse(m['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+                isFromUser: isUser,
+                senderName: authorName,
+                isAI: false,
+                conversationKey: ticketKey,
+              ),
+            );
+          }
+          _conversations[ticketKey] = list;
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
   /// Mengalihkan percakapan sesi ke staf operasional manusia
   void handoffToAdmin({String conversationKey = 'general'}) {
     _handoffStatus[conversationKey] = true;
