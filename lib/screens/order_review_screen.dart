@@ -1,3 +1,4 @@
+import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -710,11 +711,12 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context).pop(); // Tutup dialog loading jika gagal
+      final errorMsg = e is ApiException ? e.message : 'Gagal mengirimkan pengajuan sewa: $e';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.statusCancelled,
           content: Text(
-            'Gagal mengirimkan pengajuan sewa: $e',
+            errorMsg,
             style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
           ),
         ),

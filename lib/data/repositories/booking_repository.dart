@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/network/api_client.dart';
 import '../../models/booking_model.dart';
 import '../../models/vehicle_model.dart';
 import '../local/database/daos/booking_dao.dart';
@@ -171,8 +172,12 @@ class BookingRepository {
         await _bookingDao.insertOrUpdateBooking(remoteModel.toCompanion());
         return remoteModel;
       }
+    } on ApiException {
+      // Kesalahan spesifik dari backend (seperti 409 armada bentrok jadwal, validasi, dsb.)
+      // Jangan disembunyikan sebagai fallback offline dummy agar pelanggan mengetahui alasan penolakan
+      rethrow;
     } catch (_) {
-      // Fallback offline-first jika backend tidak terjangkau
+      // Fallback offline-first hanya jika benar-benar kegagalan jaringan tak terjangkau
     }
 
     final fallbackCode =

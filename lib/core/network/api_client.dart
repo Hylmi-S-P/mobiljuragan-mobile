@@ -103,8 +103,12 @@ class ApiClient {
       return decoded;
     } else {
       String errorMessage = 'Permintaan gagal (${response.statusCode})';
-      if (decoded is Map<String, dynamic> && decoded.containsKey('message')) {
-        errorMessage = decoded['message'].toString();
+      if (decoded is Map<String, dynamic>) {
+        if (decoded.containsKey('message') && decoded['message'] != null) {
+          errorMessage = decoded['message'].toString();
+        } else if (decoded['error'] is Map && decoded['error']['message'] != null) {
+          errorMessage = decoded['error']['message'].toString();
+        }
       }
       throw ApiException(
         errorMessage,
