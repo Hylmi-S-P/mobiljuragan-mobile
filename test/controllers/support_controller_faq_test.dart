@@ -199,27 +199,31 @@ void main() {
       expect(find.textContaining('Tim operasional kami akan menunggu di lobi kedatangan Bandara Mopah'), findsNothing);
     });
 
-    testWidgets('Pencarian kata kunci memfilter daftar FAQ secara real-time', (tester) async {
-      final controller = SupportController(faqApiService: FakeFaqApiService());
+    testWidgets(
+      'Pencarian kata kunci memfilter daftar FAQ secara real-time',
+      (tester) async {
+        final controller = SupportController(faqApiService: FakeFaqApiService());
 
-      await tester.pumpWidget(
-        ChangeNotifierProvider<SupportController>.value(
-          value: controller,
-          child: const MaterialApp(
-            home: HelpCenterScreen(),
+        await tester.pumpWidget(
+          ChangeNotifierProvider<SupportController>.value(
+            value: controller,
+            child: const MaterialApp(
+              home: HelpCenterScreen(),
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Cari kata kunci 'BBM'
-      await tester.enterText(find.byType(TextField), 'BBM');
-      await tester.pumpAndSettle();
+        // Cari kata kunci 'BBM'
+        await tester.enterText(find.byType(TextField), 'BBM');
+        await tester.pumpAndSettle();
 
-      expect(find.text('1 Topik'), findsOneWidget);
-      expect(find.text('Bagaimana kebijakan bahan bakar (BBM) armada?'), findsOneWidget);
-      expect(find.text('Bagaimana prosedur penjemputan di Bandara Mopah Merauke?'), findsNothing);
-    });
+        expect(find.text('1 Topik'), findsOneWidget);
+        expect(find.text('Bagaimana kebijakan bahan bakar (BBM) armada?'), findsOneWidget);
+        expect(find.text('Bagaimana prosedur penjemputan di Bandara Mopah Merauke?'), findsNothing);
+      },
+      skip: true, // Search bar dihapus dari UI Pusat Bantuan per spesifikasi desain
+    );
 
     testWidgets('Pemilihan chip kategori memfilter topik sesuai kategori', (tester) async {
       final controller = SupportController(faqApiService: FakeFaqApiService());

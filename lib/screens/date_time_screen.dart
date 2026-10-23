@@ -581,43 +581,186 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     });
   }
 
-  void _showAlarmStyleTimePickerSheet() {
-    showModalBottomSheet(
+  Future<void> _pickTimeManually() async {
+    final parsed = _parseTimeOfDay(_selectedTime) ?? const TimeOfDay(hour: 9, minute: 0);
+    DateTime tempTime = DateTime(
+      2026,
+      1,
+      1,
+      parsed.hour,
+      parsed.minute,
+    );
+
+    final selected = await showModalBottomSheet<DateTime>(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return _AlarmTimePickerSheet(
-          initialTime: _selectedTime,
-          onTimeSelected: (formattedTime, description) {
-            _applyTime(formattedTime, desc: description);
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final currentHour = tempTime.hour;
+            final isOperational = currentHour >= 6 && currentHour <= 22;
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.cardWhite,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.borderSubtle,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header Bottom Sheet
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Pilih Jam Penjemputan',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeHeading,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Format digital 24 jam (WIT)',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeCaption,
+                                color: AppColors.textSecondary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Digital Wheel Picker
+                    Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: CupertinoTheme(
+                        data: const CupertinoThemeData(
+                          brightness: Brightness.light,
+                          textTheme: CupertinoTextThemeData(
+                            dateTimePickerTextStyle: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryNavy,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ),
+                        child: CupertinoDatePicker(
+                          mode: CupertinoDatePickerMode.time,
+                          use24hFormat: true,
+                          initialDateTime: tempTime,
+                          onDateTimeChanged: (DateTime newDateTime) {
+                            setSheetState(() {
+                              tempTime = newDateTime;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Status Jam Operasional Info
+                    Row(
+                      children: [
+                        Icon(
+                          isOperational ? Icons.check_circle_outline : Icons.info_outline,
+                          size: 16,
+                          color: isOperational ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            isOperational
+                                ? 'Jam operasional normal Merauke (06.00 - 22.00 WIT)'
+                                : 'Di luar jam operasional (06.00 - 22.00 WIT). Butuh konfirmasi khusus CS.',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              fontWeight: FontWeight.w500,
+                              color: isOperational ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Tombol Konfirmasi
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop(tempTime);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryNavy,
+                          foregroundColor: AppColors.textWhite,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Terapkan Jam Sewa',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBodyLarge,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           },
         );
       },
     );
+
+    if (selected != null) {
+      final formattedTime =
+          '${selected.hour.toString().padLeft(2, '0')}.${selected.minute.toString().padLeft(2, '0')} WIT';
+      _applyTime(formattedTime);
+    }
   }
 
   Widget _buildScheduleConfigCard() {
-    final quickTimes = [
-      '06.00 WIT',
-      '08.00 WIT',
-      '10.00 WIT',
-      '13.00 WIT',
-      '16.00 WIT',
-      '19.00 WIT',
-      '22.00 WIT',
-    ];
-
-    final quickDays = [
-      {'label': '1 Hari', 'days': 1},
-      {'label': '2 Hari', 'days': 2},
-      {'label': '3 Hari', 'days': 3},
-      {'label': '5 Hari', 'days': 5},
-      {'label': '7 Hari (1 Mgg)', 'days': 7},
-      {'label': '14 Hari (2 Mgg)', 'days': 14},
-      {'label': '30 Hari (1 Bln)', 'days': 30},
-    ];
-
     final returnDate = _selectedDate.add(Duration(days: _durationDays));
     final returnDayName = _dayNames[returnDate.weekday - 1];
     final formattedReturnDate =
@@ -635,84 +778,44 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Jam Sewa
-          // Wrap: tombol "Pilih Jam Lain" turun ke baris berikutnya saat ukuran
-          // teks sistem diperbesar, bukan terpotong di tepi kanan kartu.
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Wrap bersarang: judul dan badge jam boleh terpisah baris saat
-              // ukuran teks sistem ekstrem, bukan saling mendorong keluar.
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
+              const Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.access_time_rounded,
-                        size: 16,
-                        color: AppColors.primaryTeal,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Jam Sewa',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 16,
+                    color: AppColors.primaryTeal,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.borderSubtle),
-                    ),
-                    child: const Text(
-                      '06.00 - 22.00 WIT',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeTiny,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Jam Sewa',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
                     ),
                   ),
                 ],
               ),
-              InkWell(
-                onTap: _showAlarmStyleTimePickerSheet,
-                borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.tune_rounded,
-                        size: 13,
-                        color: AppColors.primaryTeal,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Pilih Jam Lain',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryTeal,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.borderSubtle),
+                ),
+                child: const Text(
+                  '06.00 - 22.00 WIT',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
                   ),
                 ),
               ),
@@ -720,71 +823,76 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Pilihan Chip Waktu
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                ...(() {
-                  final timesToShow = List<String>.from(quickTimes);
-                  if (!timesToShow.contains(_selectedTime)) {
-                    final parsed = _parseTimeOfDay(_selectedTime);
-                    if (_isWithinOperationalHours(parsed)) {
-                      timesToShow.insert(0, _selectedTime);
-                    }
-                  }
-                  return timesToShow.map((time) {
-                    final isSelected = _selectedTime == time;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: InkWell(
-                        onTap: () => _applyTime(time),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primaryNavy : AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            time,
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBody,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected ? Colors.white : AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
+          // Pilihan Jam Mandiri
+          InkWell(
+            onTap: _pickTimeManually,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderMedium),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryNavy,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.schedule_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedTime,
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeTitle,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryNavy,
+                            fontFamily: 'Inter',
                           ),
                         ),
-                      ),
-                    );
-                  });
-                })(),
-                InkWell(
-                  onTap: _showAlarmStyleTimePickerSheet,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Sesi $_timeDescription • Ketuk untuk ubah jam',
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.primaryTeal.withValues(alpha: 0.4),
-                        width: 1,
-                      ),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.borderSubtle),
                     ),
                     child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.alarm_rounded, size: 14, color: AppColors.primaryTeal),
+                        Icon(Icons.edit_outlined, size: 13, color: AppColors.primaryTeal),
                         SizedBox(width: 4),
                         Text(
-                          'Jam Lain...',
+                          'Pilih Jam',
                           style: TextStyle(
-                            fontSize: AppTypography.sizeBody,
+                            fontSize: AppTypography.sizeCaption,
                             fontWeight: FontWeight.w600,
                             color: AppColors.primaryTeal,
                             fontFamily: 'Inter',
@@ -793,21 +901,11 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Jam sewa terpilih: $_selectedTime (Sesi $_timeDescription)',
-            style: const TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
@@ -840,176 +938,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           const Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
           const SizedBox(height: 14),
 
-          // 2. Durasi Sewa
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_month_outlined,
-                      size: 16,
-                      color: AppColors.primaryNavy,
-                    ),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Durasi Sewa',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBodyLarge,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          Text(
-                            'Sewa harian hingga 30 hari',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                children: [
-                  InkWell(
-                    onTap: _durationDays > 1
-                        ? () {
-                            setState(() {
-                              _durationDays--;
-                              _isSelectingEndDate = false;
-                            });
-                          }
-                        : null,
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: _durationDays > 1 ? AppColors.surfaceLight : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: _durationDays > 1 ? AppColors.borderSubtle : Colors.transparent,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.remove_rounded,
-                        size: 16,
-                        color: _durationDays > 1 ? AppColors.primaryNavy : AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    constraints: const BoxConstraints(minWidth: 64),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$_durationDays Hari',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeTitle,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryNavy,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: _durationDays < 30
-                        ? () {
-                            setState(() {
-                              _durationDays++;
-                              _isSelectingEndDate = false;
-                            });
-                          }
-                        : null,
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: _durationDays < 30 ? AppColors.surfaceLight : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: _durationDays < 30 ? AppColors.borderSubtle : Colors.transparent,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.add_rounded,
-                        size: 16,
-                        color: _durationDays < 30 ? AppColors.primaryTeal : AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Pilihan Chip Durasi Hari
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: quickDays.map((item) {
-                final days = item['days'] as int;
-                final label = item['label'] as String;
-                final isSelected = _durationDays == days;
-
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _durationDays = days;
-                        _isSelectingEndDate = false;
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primaryNavy : AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // 3. Ringkasan Pengembalian Armada
+          // 2. Ringkasan Durasi & Pengembalian Armada (Ditentukan via Kalender)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFFF0FDF4),
               borderRadius: BorderRadius.circular(8),
@@ -1019,10 +951,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               children: [
                 const Icon(
                   Icons.event_available_rounded,
-                  size: 16,
+                  size: 18,
                   color: Color(0xFF16A34A),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1030,16 +962,17 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                       Text(
                         'Kembali: $formattedReturnDate pukul $_selectedTime',
                         style: const TextStyle(
-                          fontSize: AppTypography.sizeCaption,
+                          fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF166534),
                           fontFamily: 'Inter',
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        'Durasi total $_durationDays hari sewa (${_durationDays * 24} jam penuh)',
+                        'Durasi total $_durationDays hari sewa (${_durationDays * 24} jam penuh, diatur via kalender)',
                         style: const TextStyle(
-                          fontSize: AppTypography.sizeTiny,
+                          fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w500,
                           color: Color(0xFF15803D),
                           fontFamily: 'Inter',
@@ -1056,7 +989,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  Widget _buildRentalPolicyNotice() {
+    Widget _buildRentalPolicyNotice() {
     final booking = context.watch<BookingController>();
     final isDriver = booking.withDriver;
 
@@ -1191,544 +1124,3 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 }
 
-/// Bottom Sheet Interaktif dengan roda pemutar (wheel scroll) jam dan menit 24 jam ala alarm
-class _AlarmTimePickerSheet extends StatefulWidget {
-  final String initialTime;
-  final Function(String formattedTime, String description) onTimeSelected;
-
-  const _AlarmTimePickerSheet({
-    required this.initialTime,
-    required this.onTimeSelected,
-  });
-
-  @override
-  State<_AlarmTimePickerSheet> createState() => _AlarmTimePickerSheetState();
-}
-
-class _AlarmTimePickerSheetState extends State<_AlarmTimePickerSheet> {
-  late final ValueNotifier<TimeOfDay> _selectedTimeNotifier;
-  int _pickerKey = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    final parsed = _parseInitialTime(widget.initialTime);
-    _selectedTimeNotifier = ValueNotifier<TimeOfDay>(parsed);
-  }
-
-  @override
-  void dispose() {
-    _selectedTimeNotifier.dispose();
-    super.dispose();
-  }
-
-  TimeOfDay _parseInitialTime(String timeStr) {
-    try {
-      final clean = timeStr.replaceAll(' WIT', '').trim();
-      final parts = clean.contains(':') ? clean.split(':') : clean.split('.');
-      final hour = int.parse(parts[0]);
-      final minute = int.parse(parts[1]);
-      return TimeOfDay(hour: hour.clamp(0, 23), minute: minute.clamp(0, 59));
-    } catch (_) {
-      return const TimeOfDay(hour: 9, minute: 0);
-    }
-  }
-
-  bool _isWithinOperationalHours(TimeOfDay time) {
-    final totalMinutes = time.hour * 60 + time.minute;
-    return totalMinutes >= 360 && totalMinutes <= 1320;
-  }
-
-  String _getTimeDescription(int hour) {
-    if (hour >= 6 && hour < 11) {
-      return 'Pagi hari';
-    } else if (hour >= 11 && hour < 15) {
-      return 'Siang hari';
-    } else if (hour >= 15 && hour < 18) {
-      return 'Sore hari';
-    } else {
-      return 'Malam hari';
-    }
-  }
-
-  void _snapMinute(int targetMinute) {
-    final current = _selectedTimeNotifier.value;
-    final updated = TimeOfDay(hour: current.hour, minute: targetMinute);
-    _selectedTimeNotifier.value = updated;
-    setState(() {
-      _pickerKey++;
-    });
-  }
-
-  void _setTime(int hour, int minute) {
-    _selectedTimeNotifier.value = TimeOfDay(hour: hour, minute: minute);
-    setState(() {
-      _pickerKey++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.borderSubtle,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Header Judul & Tombol Tutup
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: AppColors.tealLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.alarm_rounded,
-                          size: 18,
-                          color: AppColors.primaryTeal,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Atur Jam Sewa',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeAmount,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Geser jam dan menit (Format 24 Jam WIT)',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Tampilan Digital Jam Real-time (Reaktif tanpa rebuild picker)
-            ValueListenableBuilder<TimeOfDay>(
-              valueListenable: _selectedTimeNotifier,
-              builder: (context, time, _) {
-                final isValid = _isWithinOperationalHours(time);
-                final hourStr = time.hour.toString().padLeft(2, '0');
-                final minuteStr = time.minute.toString().padLeft(2, '0');
-                final sessionDesc = _getTimeDescription(time.hour);
-
-                return Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isValid ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$hourStr : $minuteStr',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeClock,
-                              fontWeight: FontWeight.w800,
-                              color: isValid ? AppColors.primaryNavy : const Color(0xFF64748B),
-                              letterSpacing: 2,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: isValid ? AppColors.primaryNavy : const Color(0xFFE2E8F0),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  isValid ? 'WIT' : 'TUTUP',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeTiny,
-                                    fontWeight: FontWeight.w700,
-                                    color: isValid ? Colors.white : const Color(0xFF475569),
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                isValid ? 'Sesi $sessionDesc' : 'Di luar jam operasional',
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  fontWeight: FontWeight.w600,
-                                  color: isValid ? AppColors.primaryTeal : const Color(0xFF64748B),
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!isValid) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFFBEB),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFFDE68A)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.schedule_rounded,
-                              size: 16,
-                              color: Color(0xFFD97706),
-                            ),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text(
-                                'Waktu operasional tersedia pukul 06.00 s.d. 22.00 WIT. Untuk penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeTiny,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF92400E),
-                                  fontFamily: 'Inter',
-                                  height: 1.3,
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () {
-                                if (time.hour < 6) {
-                                  _setTime(6, 0);
-                                } else {
-                                  _setTime(22, 0);
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD97706),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  time.hour < 6 ? 'Atur 06.00' : 'Atur 22.00',
-                                  style: const TextStyle(
-                                    fontSize: AppTypography.sizeCaption,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Area Roda Pemutar Jam & Menit Native Cupertino Wheel
-            Container(
-              height: 190,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.borderSubtle),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: CupertinoTheme(
-                data: const CupertinoThemeData(
-                  brightness: Brightness.light,
-                  primaryColor: AppColors.primaryTeal,
-                  textTheme: CupertinoTextThemeData(
-                    dateTimePickerTextStyle: TextStyle(
-                      fontSize: AppTypography.sizePicker,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-                child: CupertinoDatePicker(
-                  key: ValueKey(_pickerKey),
-                  mode: CupertinoDatePickerMode.time,
-                  use24hFormat: true,
-                  initialDateTime: DateTime(
-                    2026,
-                    1,
-                    1,
-                    _selectedTimeNotifier.value.hour,
-                    _selectedTimeNotifier.value.minute,
-                  ),
-                  onDateTimeChanged: (DateTime newDateTime) {
-                    _selectedTimeNotifier.value = TimeOfDay(
-                      hour: newDateTime.hour,
-                      minute: newDateTime.minute,
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Tombol Pintas Jam Operasional Cepat
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Text(
-                    'Jam Populer: ',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  ...[
-                    {'label': '06.00', 'h': 6, 'm': 0},
-                    {'label': '09.00', 'h': 9, 'm': 0},
-                    {'label': '13.00', 'h': 13, 'm': 0},
-                    {'label': '17.00', 'h': 17, 'm': 0},
-                    {'label': '22.00', 'h': 22, 'm': 0},
-                  ].map((preset) {
-                    final h = preset['h'] as int;
-                    final m = preset['m'] as int;
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: InkWell(
-                        onTap: () => _setTime(h, m),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppColors.borderSubtle),
-                          ),
-                          child: Text(
-                            preset['label'] as String,
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryNavy,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Tombol Pintas Menit (:00, :15, :30, :45)
-            ValueListenableBuilder<TimeOfDay>(
-              valueListenable: _selectedTimeNotifier,
-              builder: (context, time, _) {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Bulatkan Menit: ',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    ...[0, 15, 30, 45].map((quickMin) {
-                      final isCurrentMin = time.minute == quickMin;
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: InkWell(
-                          onTap: () => _snapMinute(quickMin),
-                          borderRadius: BorderRadius.circular(6),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isCurrentMin ? AppColors.tealLight : AppColors.surfaceLight,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isCurrentMin ? AppColors.primaryTeal : AppColors.borderSubtle,
-                              ),
-                            ),
-                            child: Text(
-                              ':${quickMin.toString().padLeft(2, '0')}',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                fontWeight: isCurrentMin ? FontWeight.w700 : FontWeight.w500,
-                                color: isCurrentMin ? AppColors.primaryTeal : AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 18),
-
-            // Tombol Aksi
-            ValueListenableBuilder<TimeOfDay>(
-              valueListenable: _selectedTimeNotifier,
-              builder: (context, time, _) {
-                final isValid = _isWithinOperationalHours(time);
-                return Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: SizedBox(
-                        height: 46,
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.borderSubtle),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            'Batal',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBodyLarge,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 2,
-                      child: SizedBox(
-                        height: 46,
-                        child: ElevatedButton(
-                          onPressed: isValid
-                              ? () {
-                                  final current = _selectedTimeNotifier.value;
-                                  final formattedTime =
-                                      '${current.hour.toString().padLeft(2, '0')}.${current.minute.toString().padLeft(2, '0')} WIT';
-                                  final sessionDesc = _getTimeDescription(current.hour);
-                                  widget.onTimeSelected(formattedTime, sessionDesc);
-                                  Navigator.pop(context);
-                                }
-                              : () {
-                                  if (time.hour < 6) {
-                                    _setTime(6, 0);
-                                  } else {
-                                    _setTime(22, 0);
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isValid ? AppColors.primaryNavy : const Color(0xFFF1F5F9),
-                            foregroundColor: isValid ? AppColors.textWhite : AppColors.primaryNavy,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              side: BorderSide(
-                                color: isValid ? Colors.transparent : AppColors.borderSubtle,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            isValid
-                                ? 'Terapkan Jam Sewa'
-                                : (time.hour < 6
-                                    ? 'Atur ke Jam Buka (06.00)'
-                                    : 'Atur ke Jam Tutup (22.00)'),
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBodyLarge,
-                              fontWeight: FontWeight.w700,
-                              color: isValid ? Colors.white : AppColors.primaryNavy,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

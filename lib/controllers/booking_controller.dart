@@ -192,21 +192,32 @@ class BookingController extends ChangeNotifier {
 
   /// Mengirim pengajuan sewa (Finalisasi dari Frame 06 Tinjau Pesanan)
   /// Mengarahkan pesanan ke tahap 3 Figma: Konfirmasi tarif final (sedang dihitung admin)
-  BookingModel submitBooking() {
-    final newOrderCode = 'MBJ-2026-${(43 + _bookingHistory.length).toString().padLeft(4, '0')}';
+  Future<BookingModel> submitBooking() async {
     final vehicle = _selectedVehicle ?? VehicleModel.sampleVehicles.first;
 
-    // Alokasi staf sopir internal jika memilih Dengan Sopir
-    final assignedDriver = _withDriver
-        ? const DriverAssignment(
-            driverName: 'Bung Yohanes Mahuze',
-            staffId: 'STF-DRV-014',
-            phoneNumber: '0812-4822-9901',
-            operationalRole: 'Staf Pengemudi Tetap MobilJuragan Merauke',
-          )
-        : null;
+    final repo = repository;
+    if (repo != null) {
+      final remoteBooking = await repo.createBookingRemote(
+        vehicle: vehicle,
+        startDate: _selectedDate,
+        startTime: _selectedTime,
+        durationDays: _durationDays,
+        withDriver: _withDriver,
+        pickupLocation: _pickupLocation,
+        pickupLatitude: _pickupLatitude,
+        pickupLongitude: _pickupLongitude,
+        note: _customerNote.isNotEmpty ? _customerNote : null,
+      );
 
-    final newBooking = BookingModel(
+      _bookingHistory.removeWhere((b) => b.id == remoteBooking.id);
+      _bookingHistory.insert(0, remoteBooking);
+      _activeBooking = remoteBooking;
+      notifyListeners();
+      return remoteBooking;
+    }
+
+    final newOrderCode = 'MBJ-2026-${(43 + _bookingHistory.length).toString().padLeft(4, '0')}';
+    final fallbackBooking = BookingModel(
       id: newOrderCode,
       vehicle: vehicle,
       startDate: _selectedDate,
@@ -216,7 +227,6 @@ class BookingController extends ChangeNotifier {
       pickupLocation: _pickupLocation,
       pickupLatitude: _pickupLatitude,
       pickupLongitude: _pickupLongitude,
-      assignedDriver: assignedDriver,
       note: _customerNote.isNotEmpty ? _customerNote : null,
       status: BookingStatus.menungguTarifFinal,
       createdAt: DateTime.now(),
@@ -226,11 +236,47 @@ class BookingController extends ChangeNotifier {
       isFinalTariffConfirmed: false,
     );
 
-    _bookingHistory.insert(0, newBooking);
-    _activeBooking = newBooking;
-    repository?.saveBooking(newBooking);
+    _bookingHistory.insert(0, fallbackBooking);
+    _activeBooking = fallbackBooking;
     notifyListeners();
-    return newBooking;
+    return fallbackBooking;
+  }
+
+  /// Sinkronisasi status pesanan aktif dari backend REST API
+  /// Mengembalikan true jika status berubah atau tarif final baru saja terbit
+  Future<bool> refreshActiveBookingStatus([String? bookingId]) async {
+    final targetId = bookingId ?? _activeBooking?.id;
+    final repo = repository;
+    if (targetId == null || repo == null) return false;
+
+    BookingModel? targetBooking;
+    try {
+      targetBooking = _bookingHistory.firstWhere((b) => b.id == targetId);
+    } catch (_) {
+      targetBooking = _activeBooking;
+    }
+
+    final previousStatus = targetBooking?.status;
+    final previouslyConfirmed = targetBooking?.isFinalTariffConfirmed ?? false;
+
+    final updated = await repo.syncBookingStatus(targetId);
+    if (updated != null) {
+      if (_activeBooking?.id == targetId) {
+        _activeBooking = updated;
+      }
+      final index = _bookingHistory.indexWhere((b) => b.id == updated.id);
+      if (index != -1) {
+        _bookingHistory[index] = updated;
+      } else {
+        _bookingHistory.insert(0, updated);
+      }
+      notifyListeners();
+
+      final justConfirmed = !previouslyConfirmed && updated.isFinalTariffConfirmed;
+      final statusChanged = previousStatus != updated.status;
+      return justConfirmed || statusChanged;
+    }
+    return false;
   }
 
   /// Simulasi konfirmasi rincian tarif final oleh admin dari dashboard website

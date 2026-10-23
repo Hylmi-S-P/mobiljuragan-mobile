@@ -60,6 +60,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.ticket != null) {
+        context.read<SupportController>().refreshTicketConversation(widget.ticket!.id);
+      }
+
       // Inisialisasi otomatis hanya jika chat dibuka dari pesanan sewa mobil spesifik
       if (widget.booking != null) {
         final bookingCtrl = context.read<BookingController>();

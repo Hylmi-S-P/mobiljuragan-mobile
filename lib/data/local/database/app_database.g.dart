@@ -1211,6 +1211,17 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _adminAdjustmentsJsonMeta =
+      const VerificationMeta('adminAdjustmentsJson');
+  @override
+  late final GeneratedColumn<String> adminAdjustmentsJson =
+      GeneratedColumn<String>(
+        'admin_adjustments_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1251,6 +1262,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     paymentBank,
     paymentAccountNumber,
     isFinalTariffConfirmed,
+    adminAdjustmentsJson,
     createdAt,
     lastFetched,
   ];
@@ -1405,6 +1417,15 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         ),
       );
     }
+    if (data.containsKey('admin_adjustments_json')) {
+      context.handle(
+        _adminAdjustmentsJsonMeta,
+        adminAdjustmentsJson.isAcceptableOrUnknown(
+          data['admin_adjustments_json']!,
+          _adminAdjustmentsJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1497,6 +1518,10 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_final_tariff_confirmed'],
       )!,
+      adminAdjustmentsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}admin_adjustments_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -1515,7 +1540,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
 }
 
 class Booking extends DataClass implements Insertable<Booking> {
-  /// Kode pemesanan unik (contoh: 'MKQ-2026-001')
+  /// Kode pemesanan unik (contoh: 'MKQ-2026-001' atau UUID/bookingCode dari backend)
   final String id;
 
   /// ID referensi armada kendaraan
@@ -1563,6 +1588,9 @@ class Booking extends DataClass implements Insertable<Booking> {
   /// Apakah tarif final sudah dikonfirmasi admin
   final bool isFinalTariffConfirmed;
 
+  /// Rincian penyesuaian biaya / surcharge dari admin (format JSON array)
+  final String? adminAdjustmentsJson;
+
   /// Waktu pembuatan pesanan (UTC epoch milliseconds)
   final int createdAt;
 
@@ -1585,6 +1613,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     required this.paymentBank,
     required this.paymentAccountNumber,
     required this.isFinalTariffConfirmed,
+    this.adminAdjustmentsJson,
     required this.createdAt,
     required this.lastFetched,
   });
@@ -1613,6 +1642,9 @@ class Booking extends DataClass implements Insertable<Booking> {
     map['payment_bank'] = Variable<String>(paymentBank);
     map['payment_account_number'] = Variable<String>(paymentAccountNumber);
     map['is_final_tariff_confirmed'] = Variable<bool>(isFinalTariffConfirmed);
+    if (!nullToAbsent || adminAdjustmentsJson != null) {
+      map['admin_adjustments_json'] = Variable<String>(adminAdjustmentsJson);
+    }
     map['created_at'] = Variable<int>(createdAt);
     map['last_fetched'] = Variable<int>(lastFetched);
     return map;
@@ -1642,6 +1674,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       paymentBank: Value(paymentBank),
       paymentAccountNumber: Value(paymentAccountNumber),
       isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
+      adminAdjustmentsJson: adminAdjustmentsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(adminAdjustmentsJson),
       createdAt: Value(createdAt),
       lastFetched: Value(lastFetched),
     );
@@ -1673,6 +1708,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       isFinalTariffConfirmed: serializer.fromJson<bool>(
         json['isFinalTariffConfirmed'],
       ),
+      adminAdjustmentsJson: serializer.fromJson<String?>(
+        json['adminAdjustmentsJson'],
+      ),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       lastFetched: serializer.fromJson<int>(json['lastFetched']),
     );
@@ -1697,6 +1735,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       'paymentBank': serializer.toJson<String>(paymentBank),
       'paymentAccountNumber': serializer.toJson<String>(paymentAccountNumber),
       'isFinalTariffConfirmed': serializer.toJson<bool>(isFinalTariffConfirmed),
+      'adminAdjustmentsJson': serializer.toJson<String?>(adminAdjustmentsJson),
       'createdAt': serializer.toJson<int>(createdAt),
       'lastFetched': serializer.toJson<int>(lastFetched),
     };
@@ -1719,6 +1758,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     String? paymentBank,
     String? paymentAccountNumber,
     bool? isFinalTariffConfirmed,
+    Value<String?> adminAdjustmentsJson = const Value.absent(),
     int? createdAt,
     int? lastFetched,
   }) => Booking(
@@ -1743,6 +1783,9 @@ class Booking extends DataClass implements Insertable<Booking> {
     paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
     isFinalTariffConfirmed:
         isFinalTariffConfirmed ?? this.isFinalTariffConfirmed,
+    adminAdjustmentsJson: adminAdjustmentsJson.present
+        ? adminAdjustmentsJson.value
+        : this.adminAdjustmentsJson,
     createdAt: createdAt ?? this.createdAt,
     lastFetched: lastFetched ?? this.lastFetched,
   );
@@ -1784,6 +1827,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       isFinalTariffConfirmed: data.isFinalTariffConfirmed.present
           ? data.isFinalTariffConfirmed.value
           : this.isFinalTariffConfirmed,
+      adminAdjustmentsJson: data.adminAdjustmentsJson.present
+          ? data.adminAdjustmentsJson.value
+          : this.adminAdjustmentsJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastFetched: data.lastFetched.present
           ? data.lastFetched.value
@@ -1810,6 +1856,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           ..write('paymentBank: $paymentBank, ')
           ..write('paymentAccountNumber: $paymentAccountNumber, ')
           ..write('isFinalTariffConfirmed: $isFinalTariffConfirmed, ')
+          ..write('adminAdjustmentsJson: $adminAdjustmentsJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastFetched: $lastFetched')
           ..write(')'))
@@ -1834,6 +1881,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     paymentBank,
     paymentAccountNumber,
     isFinalTariffConfirmed,
+    adminAdjustmentsJson,
     createdAt,
     lastFetched,
   );
@@ -1857,6 +1905,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           other.paymentBank == this.paymentBank &&
           other.paymentAccountNumber == this.paymentAccountNumber &&
           other.isFinalTariffConfirmed == this.isFinalTariffConfirmed &&
+          other.adminAdjustmentsJson == this.adminAdjustmentsJson &&
           other.createdAt == this.createdAt &&
           other.lastFetched == this.lastFetched);
 }
@@ -1878,6 +1927,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<String> paymentBank;
   final Value<String> paymentAccountNumber;
   final Value<bool> isFinalTariffConfirmed;
+  final Value<String?> adminAdjustmentsJson;
   final Value<int> createdAt;
   final Value<int> lastFetched;
   final Value<int> rowid;
@@ -1898,6 +1948,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.paymentBank = const Value.absent(),
     this.paymentAccountNumber = const Value.absent(),
     this.isFinalTariffConfirmed = const Value.absent(),
+    this.adminAdjustmentsJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastFetched = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1919,6 +1970,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     required String paymentBank,
     required String paymentAccountNumber,
     this.isFinalTariffConfirmed = const Value.absent(),
+    this.adminAdjustmentsJson = const Value.absent(),
     required int createdAt,
     required int lastFetched,
     this.rowid = const Value.absent(),
@@ -1952,6 +2004,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Expression<String>? paymentBank,
     Expression<String>? paymentAccountNumber,
     Expression<bool>? isFinalTariffConfirmed,
+    Expression<String>? adminAdjustmentsJson,
     Expression<int>? createdAt,
     Expression<int>? lastFetched,
     Expression<int>? rowid,
@@ -1975,6 +2028,8 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
         'payment_account_number': paymentAccountNumber,
       if (isFinalTariffConfirmed != null)
         'is_final_tariff_confirmed': isFinalTariffConfirmed,
+      if (adminAdjustmentsJson != null)
+        'admin_adjustments_json': adminAdjustmentsJson,
       if (createdAt != null) 'created_at': createdAt,
       if (lastFetched != null) 'last_fetched': lastFetched,
       if (rowid != null) 'rowid': rowid,
@@ -1998,6 +2053,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Value<String>? paymentBank,
     Value<String>? paymentAccountNumber,
     Value<bool>? isFinalTariffConfirmed,
+    Value<String?>? adminAdjustmentsJson,
     Value<int>? createdAt,
     Value<int>? lastFetched,
     Value<int>? rowid,
@@ -2020,6 +2076,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
       paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
       isFinalTariffConfirmed:
           isFinalTariffConfirmed ?? this.isFinalTariffConfirmed,
+      adminAdjustmentsJson: adminAdjustmentsJson ?? this.adminAdjustmentsJson,
       createdAt: createdAt ?? this.createdAt,
       lastFetched: lastFetched ?? this.lastFetched,
       rowid: rowid ?? this.rowid,
@@ -2081,6 +2138,11 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
         isFinalTariffConfirmed.value,
       );
     }
+    if (adminAdjustmentsJson.present) {
+      map['admin_adjustments_json'] = Variable<String>(
+        adminAdjustmentsJson.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -2112,6 +2174,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
           ..write('paymentBank: $paymentBank, ')
           ..write('paymentAccountNumber: $paymentAccountNumber, ')
           ..write('isFinalTariffConfirmed: $isFinalTariffConfirmed, ')
+          ..write('adminAdjustmentsJson: $adminAdjustmentsJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastFetched: $lastFetched, ')
           ..write('rowid: $rowid')
@@ -2598,6 +2661,7 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   required String paymentBank,
   required String paymentAccountNumber,
   Value<bool> isFinalTariffConfirmed,
+  Value<String?> adminAdjustmentsJson,
   required int createdAt,
   required int lastFetched,
   Value<int> rowid,
@@ -2619,6 +2683,7 @@ typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<String> paymentBank,
   Value<String> paymentAccountNumber,
   Value<bool> isFinalTariffConfirmed,
+  Value<String?> adminAdjustmentsJson,
   Value<int> createdAt,
   Value<int> lastFetched,
   Value<int> rowid,
@@ -2710,6 +2775,11 @@ class $$BookingsTableFilterComposer
 
   ColumnFilters<bool> get isFinalTariffConfirmed => $composableBuilder(
     column: $table.isFinalTariffConfirmed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get adminAdjustmentsJson => $composableBuilder(
+    column: $table.adminAdjustmentsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2813,6 +2883,11 @@ class $$BookingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get adminAdjustmentsJson => $composableBuilder(
+    column: $table.adminAdjustmentsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2901,6 +2976,11 @@ class $$BookingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get adminAdjustmentsJson => $composableBuilder(
+    column: $table.adminAdjustmentsJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -2954,6 +3034,7 @@ class $$BookingsTableTableManager
                 Value<String> paymentBank = const Value.absent(),
                 Value<String> paymentAccountNumber = const Value.absent(),
                 Value<bool> isFinalTariffConfirmed = const Value.absent(),
+                Value<String?> adminAdjustmentsJson = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> lastFetched = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2974,6 +3055,7 @@ class $$BookingsTableTableManager
                 paymentBank: paymentBank,
                 paymentAccountNumber: paymentAccountNumber,
                 isFinalTariffConfirmed: isFinalTariffConfirmed,
+                adminAdjustmentsJson: adminAdjustmentsJson,
                 createdAt: createdAt,
                 lastFetched: lastFetched,
                 rowid: rowid,
@@ -2996,6 +3078,7 @@ class $$BookingsTableTableManager
                 required String paymentBank,
                 required String paymentAccountNumber,
                 Value<bool> isFinalTariffConfirmed = const Value.absent(),
+                Value<String?> adminAdjustmentsJson = const Value.absent(),
                 required int createdAt,
                 required int lastFetched,
                 Value<int> rowid = const Value.absent(),
@@ -3016,6 +3099,7 @@ class $$BookingsTableTableManager
                 paymentBank: paymentBank,
                 paymentAccountNumber: paymentAccountNumber,
                 isFinalTariffConfirmed: isFinalTariffConfirmed,
+                adminAdjustmentsJson: adminAdjustmentsJson,
                 createdAt: createdAt,
                 lastFetched: lastFetched,
                 rowid: rowid,

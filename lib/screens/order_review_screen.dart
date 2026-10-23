@@ -1,3 +1,4 @@
+import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -670,26 +671,57 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     BuildContext context,
     BookingController booking,
     VehicleModel vehicle,
-  ) {
-    final newBooking = booking.submitBooking();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => OrderStatusScreen(
-          booking: newBooking,
-          fromOrderSubmission: true,
-        ),
-      ),
-      (route) => route.isFirst,
-    );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.primaryNavy,
-        content: Text(
-          'Pengajuan sewa ${vehicle.name} (${newBooking.id}) berhasil dikirim! Menunggu konfirmasi rincian tarif final oleh admin operasional...',
-          style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
-        ),
+  ) async {
+    final auth = context.read<AuthController>();
+    if (!auth.isLoggedIn) {
+      auth.loginAsDefault();
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryTeal),
       ),
     );
+
+    try {
+      final newBooking = await booking.submitBooking();
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Tutup dialog loading
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => OrderStatusScreen(
+            booking: newBooking,
+            fromOrderSubmission: true,
+          ),
+        ),
+        (route) => route.isFirst,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primaryNavy,
+          content: Text(
+            'Pengajuan sewa ${vehicle.name} (${newBooking.id}) berhasil dikirim! Menunggu konfirmasi rincian tarif final oleh admin operasional...',
+            style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Tutup dialog loading jika gagal
+      final errorMsg = e is ApiException ? e.message : 'Gagal mengirimkan pengajuan sewa: $e';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.statusCancelled,
+          content: Text(
+            errorMsg,
+            style: const TextStyle(fontFamily: 'Inter', color: Colors.white),
+          ),
+        ),
+      );
+    }
   }
 
   void _showLoginRequiredSheet(
