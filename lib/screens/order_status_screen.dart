@@ -39,10 +39,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   bool _notificationShown = false;
   bool _isTariffDetailsExpanded = false;
   bool _isRefreshing = false;
+  String? _trackingBookingId;
 
   @override
   void initState() {
     super.initState();
+    _trackingBookingId = widget.booking?.id ??
+        context.read<BookingController>().activeBooking?.id;
     _checkAndStartPolling();
   }
 
@@ -70,45 +73,52 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   Future<void> _pollBookingStatus() async {
     final controller = context.read<BookingController>();
-    final currentBooking = widget.booking != null
-        ? (controller.bookingHistory.firstWhere(
-            (b) => b.id == widget.booking!.id,
-            orElse: () => widget.booking!,
-          ))
-        : controller.activeBooking;
+    final targetId = _trackingBookingId ?? widget.booking?.id ?? controller.activeBooking?.id;
+    if (targetId == null) return;
+
+    BookingModel? currentBooking;
+    try {
+      currentBooking = controller.bookingHistory.firstWhere((b) => b.id == targetId);
+    } catch (_) {
+      currentBooking = widget.booking ?? controller.activeBooking;
+    }
 
     if (currentBooking == null) return;
 
-    // Polling tetap aktif selama pesanan dalam proses kalkulasi admin ATAU menunggu pembayaran / serah terima armada
-    final needsPolling = currentBooking.status == BookingStatus.permintaanDiterima ||
-        currentBooking.status == BookingStatus.pemeriksaanArmada ||
-        currentBooking.status == BookingStatus.menungguTarifFinal ||
-        currentBooking.status == BookingStatus.menungguPembayaran;
+    // Polling tetap aktif selama pesanan belum mencapai status akhir (selesai atau dibatalkan)
+    final isFinished = currentBooking.status == BookingStatus.selesai ||
+        currentBooking.status == BookingStatus.dibatalkan;
 
-    if (!needsPolling) {
+    if (isFinished) {
       _pollingTimer?.cancel();
       return;
     }
 
-    final hasUpdated = await controller.refreshActiveBookingStatus(currentBooking.id);
+    final bookingId = currentBooking.id;
+    final hasUpdated = await controller.refreshActiveBookingStatus(bookingId);
     if (!mounted) return;
 
     if (hasUpdated) {
-      final updatedBooking = widget.booking != null
-          ? (controller.bookingHistory.firstWhere(
-              (b) => b.id == widget.booking!.id,
-              orElse: () => widget.booking!,
-            ))
-          : controller.activeBooking;
+      BookingModel? updatedBooking;
+      try {
+        updatedBooking = controller.bookingHistory.firstWhere((b) => b.id == bookingId);
+      } catch (_) {
+        updatedBooking = controller.activeBooking;
+      }
 
       if (updatedBooking != null) {
         if (updatedBooking.status == BookingStatus.menungguPembayaran && !_notificationShown) {
           _onStatusUpdatedToConfirmed(updatedBooking);
         } else if (updatedBooking.status == BookingStatus.mobilSiapDigunakan ||
-            updatedBooking.status == BookingStatus.selesai ||
-            updatedBooking.status == BookingStatus.pembayaranSelesai) {
-          _pollingTimer?.cancel();
+            updatedBooking.status == BookingStatus.pembayaranSelesai ||
+            updatedBooking.status == BookingStatus.verifikasiKantor) {
           _onStatusUpdatedToInProgress(updatedBooking);
+          // Polling sengaja tetap berlanjut agar penyelesaian sewa oleh admin terdeteksi otomatis
+        } else if (updatedBooking.status == BookingStatus.selesai) {
+          _pollingTimer?.cancel();
+          _onStatusUpdatedToCompleted(updatedBooking);
+        } else if (updatedBooking.status == BookingStatus.dibatalkan) {
+          _pollingTimer?.cancel();
         }
       }
     }
@@ -129,6 +139,41 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             Expanded(
               child: Text(
                 'Armada ${booking.vehicle.name} telah diserahkan oleh staf admin! Masa sewa aktif berjalan.',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onStatusUpdatedToCompleted(BookingModel booking) {
+    if (!mounted) return;
+
+    NotificationService().showRentalCompletedNotification(
+      bookingId: booking.id,
+      vehicleName: booking.vehicle.name,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF16A34A),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Row(
+          children: [
+            const Icon(Icons.verified_rounded, color: Colors.white, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Penyewaan ${booking.vehicle.name} telah selesai. Terima kasih telah mempercayai MobilJuragan!',
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: AppTypography.sizeBody,
@@ -189,17 +234,22 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     if (!mounted) return;
     setState(() => _isRefreshing = false);
 
-    final updatedBooking = widget.booking != null
-        ? (controller.bookingHistory.firstWhere(
-            (b) => b.id == widget.booking!.id,
-            orElse: () => widget.booking!,
-          ))
-        : controller.activeBooking;
+    final targetId = booking.id;
+    BookingModel? updatedBooking;
+    try {
+      updatedBooking = controller.bookingHistory.firstWhere((b) => b.id == targetId);
+    } catch (_) {
+      updatedBooking = controller.activeBooking;
+    }
 
     if (hasUpdated && updatedBooking != null) {
       if (updatedBooking.status == BookingStatus.menungguPembayaran ||
           updatedBooking.isFinalTariffConfirmed) {
         _onStatusUpdatedToConfirmed(updatedBooking);
+      } else if (updatedBooking.status == BookingStatus.selesai) {
+        _onStatusUpdatedToCompleted(updatedBooking);
+      } else if (updatedBooking.status == BookingStatus.mobilSiapDigunakan) {
+        _onStatusUpdatedToInProgress(updatedBooking);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -213,11 +263,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: AppColors.surfaceLight,
           content: Text(
-            'Belum ada perubahan tarif dari admin operasional.',
-            style: TextStyle(fontFamily: 'Inter', color: AppColors.textPrimary),
+            booking.status == BookingStatus.selesai
+                ? 'Status pesanan telah selesai.'
+                : 'Belum ada perubahan tarif dari admin operasional.',
+            style: const TextStyle(fontFamily: 'Inter', color: AppColors.textPrimary),
           ),
         ),
       );
@@ -233,10 +285,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   @override
   Widget build(BuildContext context) {
     final bookingController = context.watch<BookingController>();
-    final activeBooking = widget.booking != null
+    final targetId = _trackingBookingId ?? widget.booking?.id;
+    final activeBooking = targetId != null
         ? (bookingController.bookingHistory.firstWhere(
-            (b) => b.id == widget.booking!.id,
-            orElse: () => widget.booking!,
+            (b) => b.id == targetId,
+            orElse: () => widget.booking ?? (bookingController.activeBooking ?? (bookingController.bookingHistory.isNotEmpty ? bookingController.bookingHistory.first : widget.booking!)),
           ))
         : bookingController.activeBooking;
 
@@ -290,6 +343,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     }
 
     final isCancelled = activeBooking.status == BookingStatus.dibatalkan;
+    final isCompleted = activeBooking.status == BookingStatus.selesai;
     final isWaitingPayment = activeBooking.status == BookingStatus.menungguPembayaran;
     final isPaid = activeBooking.status == BookingStatus.pembayaranSelesai ||
         activeBooking.status == BookingStatus.verifikasiKantor ||
@@ -343,6 +397,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 _buildCancelledAssistanceCard(context, activeBooking),
                 const SizedBox(height: 16),
               ] else ...[
+                if (isCompleted) ...[
+                  _buildCompletedBannerCard(activeBooking),
+                  const SizedBox(height: 16),
+                ],
                 _buildVehicleSummaryCard(activeBooking),
                 const SizedBox(height: 16),
 
@@ -772,7 +830,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
     // Tahap 5: Selesai (COMPLETED)
     final step5Done = status == BookingStatus.selesai;
-    final step5Active = status == BookingStatus.selesai;
+    final step5Active = false;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1089,27 +1147,21 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             spacing: 8,
             runSpacing: 6,
             children: [
-              // Flexible: judul panduan boleh membungkus ke baris berikutnya
-              // saat ukuran teks sistem diperbesar, bukan meluber ke kanan.
-              const Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.key_rounded, size: 18, color: AppColors.primaryTeal),
-                    SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Panduan Serah Terima Mandiri',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.key_rounded, size: 18, color: AppColors.primaryTeal),
+                  SizedBox(width: 8),
+                  Text(
+                    'Panduan Serah Terima Mandiri',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1261,7 +1313,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                           ),
                         ),
                       ),
-                      if (isActive)
+                      if (isActive && !isDone)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -1274,6 +1326,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               fontSize: AppTypography.sizeMicro,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF1D4ED8),
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ),
+                      if (isLast && isDone)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.badgeGreenBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'SELESAI',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeMicro,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.badgeGreenText,
                               fontFamily: 'Inter',
                             ),
                           ),
@@ -2333,6 +2402,102 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
+  Widget _buildCompletedBannerCard(BookingModel booking) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF16A34A).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: const Icon(
+                  Icons.verified_rounded,
+                  size: 24,
+                  color: Color(0xFF16A34A),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Penyewaan Selesai',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeTitle,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF15803D),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Unit ${booking.vehicle.name} telah kembali ke kantor',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.badgeGreenBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'TUNTAS',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.badgeGreenText,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFDCFCE7)),
+          const SizedBox(height: 12),
+          Text(
+            'Masa sewa ${booking.vehicle.name} telah selesai dan unit telah diterima dalam kondisi baik oleh tim kantor operasional CV. Mobil Juragan Merauke. Terima kasih telah mempercayai layanan kami!',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeBody,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCancelledBannerCard(BookingModel booking) {
     final isCod = booking.paymentMethodType == PaymentMethodType.tunaiDiTempat;
     final hasRefund = !isCod &&
@@ -3187,6 +3352,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   Widget _buildActionButtons(BuildContext context, BookingModel booking) {
     final isCancelled = booking.status == BookingStatus.dibatalkan;
+    final isCompleted = booking.status == BookingStatus.selesai;
     final isWaitingPayment = booking.status == BookingStatus.menungguPembayaran;
     final isPaid = booking.status == BookingStatus.pembayaranSelesai ||
         booking.status == BookingStatus.verifikasiKantor ||
@@ -3240,6 +3406,64 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               child: const Text(
                 'Kembali ke Beranda',
                 style: AppTypography.bodyLargeStrong,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isCompleted) {
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialTabIndex: 0)),
+                  (route) => false,
+                );
+              },
+              icon: const Icon(Icons.home_rounded, size: 20, color: Colors.white),
+              label: const Text(
+                'Kembali ke Beranda',
+                style: AppTypography.cardTitle,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF16A34A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatSupportScreen(booking: booking),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.support_agent, size: 18, color: AppColors.primaryTeal),
+              label: const Text(
+                'Hubungi CS MobilJuragan',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryTeal,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primaryTeal),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),

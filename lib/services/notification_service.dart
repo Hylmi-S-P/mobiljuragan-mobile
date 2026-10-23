@@ -77,5 +77,38 @@ class NotificationService {
       notificationDetails: notificationDetails,
     );
   }
-}
 
+  /// Menampilkan notifikasi native saat masa sewa armada diselesaikan oleh admin
+  Future<void> showRentalCompletedNotification({
+    required String bookingId,
+    required String vehicleName,
+  }) async {
+    await init();
+
+    const androidDetails = AndroidNotificationDetails(
+      'mobiljuragan_order_status',
+      'Status Pesanan MobilJuragan',
+      channelDescription: 'Notifikasi perubahan status pesanan dan penyelesaian masa sewa armada.',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    await _notificationsPlugin.show(
+      id: bookingId.hashCode + 1,
+      title: 'Penyewaan Selesai',
+      body: 'Masa sewa $vehicleName ($bookingId) telah tuntas. Terima kasih telah mempercayai MobilJuragan!',
+      notificationDetails: notificationDetails,
+    );
+  }
+}
