@@ -89,28 +89,4 @@ class PaymentApiService {
     throw ApiException('Gagal memproses unggahan bukti transfer.');
   }
 
-  /// Menjalankan simulasi mutasi rekening otomatis untuk pengujian/sandbox
-  Future<bool> simulateMutation({
-    String? paymentId,
-    String? bookingId,
-    int? amount,
-  }) async {
-    try {
-      final response = await _client.post(
-        ApiConstants.paymentsSimulateMutationEndpoint,
-        body: {
-          'paymentId': ?paymentId,
-          'bookingId': ?bookingId,
-          'amount': ?amount,
-        },
-      );
-
-      if (response is Map && response['matched'] == true) {
-        return true;
-      }
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
 }
