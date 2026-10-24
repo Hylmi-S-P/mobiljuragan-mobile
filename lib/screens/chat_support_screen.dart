@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
@@ -513,7 +513,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   ),
                 ),
                 Text(
-                  'Kategori: ${ticket.categoryLabel} • Status: ${ticket.status}',
+                  'Kategori: ${ticket.categoryLabel} â€¢ Status: ${ticket.status}',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     color: AppColors.textSecondary,
@@ -654,15 +654,41 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.bottomRight,
-                  child: Text(
-                    timeString,
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeMicro,
-                      color: isUser
-                          ? AppColors.textWhite.withValues(alpha: 0.7)
-                          : AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Pesan yang gagal sampai ke server diberi penanda supaya
+                      // pelanggan tidak menunggu balasan atas pesan yang tidak
+                      // pernah diterima tim.
+                      if (msg.isFailed) ...[
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 12,
+                          color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Gagal terkirim',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeMicro,
+                            fontWeight: FontWeight.w600,
+                            color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        timeString,
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeMicro,
+                          color: isUser
+                              ? AppColors.textWhite.withValues(alpha: 0.7)
+                              : AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
