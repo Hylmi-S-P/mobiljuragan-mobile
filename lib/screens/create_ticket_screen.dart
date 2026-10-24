@@ -319,6 +319,14 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                             borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
                           ),
                         ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return null;
+                          final regex = RegExp(r'^(MBJ|MJ)-[A-Za-z0-9-]+$', caseSensitive: false);
+                          if (!regex.hasMatch(value.trim())) {
+                            return 'Format nomor booking tidak valid (Contoh: MBJ-2026-0042)';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -545,7 +553,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
       case TicketCategory.kendaraan:
         return 'Kondisi Armada';
       case TicketCategory.layananSopir:
-        return 'Layanan Driver';
+        return 'Layanan Sopir';
       case TicketCategory.lainnya:
         return 'Pertanyaan Umum';
     }

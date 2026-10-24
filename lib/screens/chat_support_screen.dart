@@ -147,14 +147,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
     // Ambil daftar pesan dan status handoff terisolasi untuk sesi saat ini
     final messages = support.getMessages(conversationKey);
-    final isHandedOff = support.isAiHandoffToAdminFor(conversationKey);
+    final isHandedOff = activeTicket != null || support.isAiHandoffToAdminFor(conversationKey);
 
     // Rekomendasi pesan cepat sesuai konteks sesi
     final List<String> suggestions;
     if (currentBooking != null) {
       if (currentBooking.status == BookingStatus.menungguPembayaran) {
         suggestions = [
-          'Konfirmasi Sudah Bayar',
           'No. Rekening Bank BRI',
           'Lokasi jemput Bandara Mopah',
           'Panggil Staf Lapangan',
@@ -169,10 +168,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       }
     } else if (activeTicket != null) {
       suggestions = [
-        'Status penanganan tiket',
-        'Hubungi staf lapangan',
-        'Estimasi tindak lanjut',
-        'Panggil Staf Admin',
+        'Status penanganan',
+        'Kirim foto kendala',
+        'Posisi armada saat ini',
       ];
     } else {
       suggestions = [
@@ -258,40 +256,60 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         ),
         actions: [
           if (!isHandedOff)
-            TextButton.icon(
-              onPressed: () {
-                support.handoffToAdmin(conversationKey: conversationKey);
-                _scrollToBottom();
-              },
-              icon: const Icon(Icons.support_agent, color: AppColors.primaryTeal, size: 18),
-              label: const Text(
-                'Panggil Staf',
-                style: TextStyle(
-                  color: AppColors.primaryTeal,
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
+            Container(
+              margin: const EdgeInsets.only(right: 12),
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  support.handoffToAdmin(conversationKey: conversationKey);
+                  _scrollToBottom();
+                },
+                icon: const Icon(Icons.support_agent_rounded, color: Color(0xFF5EEAD4), size: 16),
+                label: const Text(
+                  'Panggil Staf',
+                  style: TextStyle(
+                    color: AppColors.textWhite,
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF14B8A6), width: 1.2),
+                  backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.35),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: const Size(44, 32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
             )
           else
             Container(
               margin: const EdgeInsets.only(right: 14),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFF0D9488).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.5)),
+                color: const Color(0xFF064E3B),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF059669), width: 1),
               ),
-              child: const Row(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.verified, color: AppColors.primaryTeal, size: 14),
-                  SizedBox(width: 4),
-                  Text(
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
                     'Staf Aktif',
                     style: TextStyle(
                       fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryTeal,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6EE7B7),
+                      fontFamily: 'Inter',
                     ),
                   ),
                 ],
@@ -302,9 +320,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       resizeToAvoidBottomInset: true,
       body: Column(
         children: [
-          // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
-          if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
-
           // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
           if (currentBooking != null)
             _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
@@ -467,66 +482,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTicketSummaryBanner(SupportTicketModel ticket) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        border: Border(
-          bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.badgeNavyBg,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              ticket.id,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ticket.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                Text(
-                  'Kategori: ${ticket.categoryLabel} • Status: ${ticket.status}',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

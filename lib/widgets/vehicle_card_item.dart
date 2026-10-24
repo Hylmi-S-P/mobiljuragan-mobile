@@ -90,7 +90,7 @@ class VehicleCardItem extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Plat ${vehicle.plateNumber} • ${vehicle.seatCapacity}',
+                        '${vehicle.category} • ${vehicle.seatCapacity}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -172,3 +172,5 @@ class VehicleCardItem extends StatelessWidget {
     );
   }
 }
+
+

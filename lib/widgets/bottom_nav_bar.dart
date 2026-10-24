@@ -43,7 +43,7 @@ class CustomBottomNavBar extends StatelessWidget {
               ),
               _buildNavItem(
                 index: 2,
-                label: 'Status',
+                label: 'Pesanan',
                 icon: Icons.access_time_outlined,
                 activeIcon: Icons.access_time_filled,
               ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
@@ -49,18 +49,6 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildAssuranceBanner(),
               const SizedBox(height: 22),
               _buildPrimaryCTA(),
-              const SizedBox(height: 10),
-              const Center(
-                child: Text(
-                  'Tarif transparan • Konfirmasi instan via admin operasional',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
               const SizedBox(height: 16),
             ],
           ),
@@ -115,10 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const ProfileScreen()),
             );
           },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: 40,
-            height: 40,
+          borderRadius: BorderRadius.circular(24),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 40,
             decoration: BoxDecoration(
               color: isLoggedIn ? AppColors.primaryTeal : AppColors.surfaceLight,
               shape: BoxShape.circle,
@@ -137,6 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+      ),
+    ),
       ],
     );
   }
@@ -162,47 +156,21 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Wrap: badge plat nomor turun ke baris berikutnya saat ukuran teks
-            // sistem diperbesar, bukan meluber keluar kartu.
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.tealLight,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'TERPOPULER DI MERAUKE',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryTeal,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.tealLight,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'TERPOPULER DI MERAUKE',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeTiny,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryTeal,
+                  fontFamily: 'Inter',
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.badgeNavyBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    vehicle.plateNumber,
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textWhite,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -250,10 +218,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               children: [
                 _buildOptionChip(index: 0, label: 'Lepas Kunci'),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 _buildOptionChip(index: 1, label: 'Dengan Sopir'),
-                const SizedBox(width: 8),
-                _buildOptionChip(index: 2, label: 'Antar Bandara'),
               ],
             ),
           ],
@@ -272,13 +238,10 @@ class _HomeScreenState extends State<HomeScreen> {
           });
           final booking = context.read<BookingController>();
           booking.toggleDriver(index == 1);
-          if (index == 2) {
-            booking.setPickupLocation('Bandara Mopah Merauke', -8.5202, 140.4180);
-          }
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primaryTeal : AppColors.cardWhite,
             borderRadius: BorderRadius.circular(20),
@@ -327,43 +290,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontFamily: 'Inter',
               ),
             ),
-            InkWell(
-              onTap: () {
-                if (hasActive) {
+            if (hasActive)
+              InkWell(
+                onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => OrderStatusScreen(booking: activeOrder),
                     ),
                   );
-                } else if (widget.onNavigateToPesan != null) {
-                  widget.onNavigateToPesan!();
-                }
-              },
-              child: Text(
-                hasActive ? 'Detail Status ›' : 'Pesan Baru ›',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primaryTeal,
-                  fontFamily: 'Inter',
+                },
+                child: const Text(
+                  'Detail Status ›',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryTeal,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 10),
         InkWell(
-          onTap: () {
-            if (hasActive) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => OrderStatusScreen(booking: activeOrder),
-                ),
-              );
-            } else if (widget.onNavigateToPesan != null) {
-              widget.onNavigateToPesan!();
-            }
-          },
+          onTap: hasActive
+              ? () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => OrderStatusScreen(booking: activeOrder),
+                    ),
+                  );
+                }
+              : null,
           borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.all(14),
@@ -464,13 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 8),
                 if (hasActive)
-                  _buildReservationStatusBadge(activeOrder.status)
-                else
-                  const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textSecondary,
-                    size: 18,
-                  ),
+                  _buildReservationStatusBadge(activeOrder.status),
               ],
             ),
           ),
@@ -548,14 +500,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: const Row(
         children: [
-          Icon(Icons.check, color: AppColors.primaryTeal, size: 20),
-          SizedBox(width: 10),
+          Icon(Icons.verified_rounded, color: AppColors.primaryTeal, size: 22),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Armada Bersih, Terawat & Sopir Ramah',
                   style: TextStyle(
                     fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                     fontFamily: 'Inter',
                   ),

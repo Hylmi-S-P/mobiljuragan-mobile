@@ -142,7 +142,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         ),
         SizedBox(height: 4),
         Text(
-          'Tentukan moda sewa dan titik lokasi penjemputan atau serah terima unit di Merauke.',
+          'Tentukan model sewa dan titik lokasi penjemputan atau serah terima unit di Merauke.',
           style: TextStyle(
             fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w400,
@@ -221,7 +221,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                         runSpacing: 4,
                         children: [
                           const Text(
-                            'Lepas Kunci (Self-Drive)',
+                            'Lepas Kunci',
                             style: TextStyle(
                               fontSize: AppTypography.sizeTitle,
                               fontWeight: FontWeight.w700,
@@ -675,15 +675,15 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
           ),
           const SizedBox(height: 10),
           if (!isDriver) ...[
-            _buildPolicyRow('1. Wajib menunjukkan fisik e-KTP dan SIM A asli saat serah terima unit.'),
-            _buildPolicyRow('2. Serah terima unit dilakukan di pool kantor atau diantar ke bandara/hotel.'),
-            _buildPolicyRow('3. Deposit jaminan sewa (refundable) dikonfirmasi admin pada tarif final.'),
-            _buildPolicyRow('4. Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
+            _buildPolicyRow('Wajib menunjukkan fisik e-KTP dan SIM A asli saat serah terima unit.'),
+            _buildPolicyRow('Serah terima unit dilakukan di pool kantor atau diantar ke bandara/hotel.'),
+            _buildPolicyRow('Deposit jaminan sewa (refundable) dikonfirmasi admin pada tarif final.'),
+            _buildPolicyRow('Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
           ] else ...[
-            _buildPolicyRow('1. Pengemudi adalah staf tetap MobilJuragan yang terikat SOP perusahaan.'),
-            _buildPolicyRow('2. Jam kerja operasional harian sopir adalah 12 jam per hari.'),
-            _buildPolicyRow('3. Bebas uang deposit jaminan armada dan tanpa syarat SIM A penyewa.'),
-            _buildPolicyRow('4. Koordinasi nomor WhatsApp sopir dilakukan langsung melalui Chat CS.'),
+            _buildPolicyRow('Pengemudi adalah staf tetap MobilJuragan yang terikat SOP perusahaan.'),
+            _buildPolicyRow('Jam kerja operasional harian sopir adalah 12 jam per hari.'),
+            _buildPolicyRow('Bebas uang deposit jaminan armada dan tanpa syarat SIM A penyewa.'),
+            _buildPolicyRow('Koordinasi nomor WhatsApp sopir dilakukan langsung melalui Chat CS.'),
           ],
         ],
       ),
@@ -740,7 +740,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci (Self-Drive)',
+                    booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

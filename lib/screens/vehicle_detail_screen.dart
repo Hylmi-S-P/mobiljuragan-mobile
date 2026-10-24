@@ -213,7 +213,7 @@ class VehicleDetailScreen extends StatelessWidget {
             runSpacing: 2,
             children: [
               const Text(
-                'Tarif Sewa Terhitung (Sistem Resmi)',
+                'Tarif Sewa Terhitung',
                 style: TextStyle(
                   fontSize: AppTypography.sizeBody,
                   fontWeight: FontWeight.w700,

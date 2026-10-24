@@ -357,27 +357,27 @@ class ProfileScreen extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _buildStatItem('Sewa Aktif', '$activeCount', const Color(0xFF1D4ED8), const Color(0xFFEFF6FF)),
+          child: _buildStatItem('Sewa Aktif', '$activeCount', isHighlighted: activeCount > 0),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildStatItem('Selesai', '$completedCount', AppColors.badgeGreenText, AppColors.badgeGreenBg),
+          child: _buildStatItem('Selesai', '$completedCount'),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildStatItem('Total Sewa', '$totalCount', AppColors.primaryNavy, AppColors.surfaceLight),
+          child: _buildStatItem('Total Sewa', '$totalCount'),
         ),
       ],
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color textColor, Color bgColor) {
+  Widget _buildStatItem(String label, String value, {bool isHighlighted = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withValues(alpha: 0.15)),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
         children: [
@@ -386,7 +386,7 @@ class ProfileScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: AppTypography.sizeMetric,
               fontWeight: FontWeight.w800,
-              color: textColor,
+              color: isHighlighted ? AppColors.primaryTeal : AppColors.textPrimary,
               fontFamily: 'Inter',
             ),
           ),

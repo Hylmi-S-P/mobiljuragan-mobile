@@ -223,15 +223,24 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   ),
                 ],
               ),
-              Text(
-                _isSelectingEndDate ? 'Ketuk tanggal selesai' : 'Bulan terpilih',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w600,
-                  color: _isSelectingEndDate ? AppColors.primaryNavy : AppColors.primaryTeal,
-                  fontFamily: 'Inter',
+              if (_isSelectingEndDate)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: const Text(
+                    'Pilih tanggal selesai',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D4ED8),
+                      fontFamily: 'Inter',
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -266,6 +275,8 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   Widget _buildDatesGrid(int totalDays, int startingWeekday, DateTime returnDate) {
     final int emptyLeadingDays = startingWeekday - 1;
     final int totalGridItems = emptyLeadingDays + totalDays;
+    final int trailingDays = (7 - (totalGridItems % 7)) % 7;
+    final int totalSlots = totalGridItems + trailingDays;
 
     final DateTime startDayOnly = DateTime(
       _selectedDate.year,
@@ -279,10 +290,14 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       returnDate.day,
     );
 
+    final DateTime prevMonth = DateTime(_displayedMonth.year, _displayedMonth.month - 1, 1);
+    final int daysInPrevMonth = DateUtils.getDaysInMonth(prevMonth.year, prevMonth.month);
+    final DateTime nextMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 1);
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: totalGridItems,
+      itemCount: totalSlots,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
         mainAxisSpacing: 4,
@@ -290,16 +305,23 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         childAspectRatio: 1.15,
       ),
       itemBuilder: (context, index) {
-        if (index < emptyLeadingDays) {
-          return const SizedBox.shrink();
-        }
+        final int day;
+        final DateTime currentDayOnly;
+        final bool isOtherMonth;
 
-        final int day = index - emptyLeadingDays + 1;
-        final DateTime currentDayOnly = DateTime(
-          _displayedMonth.year,
-          _displayedMonth.month,
-          day,
-        );
+        if (index < emptyLeadingDays) {
+          day = daysInPrevMonth - emptyLeadingDays + 1 + index;
+          currentDayOnly = DateTime(prevMonth.year, prevMonth.month, day);
+          isOtherMonth = true;
+        } else if (index < totalGridItems) {
+          day = index - emptyLeadingDays + 1;
+          currentDayOnly = DateTime(_displayedMonth.year, _displayedMonth.month, day);
+          isOtherMonth = false;
+        } else {
+          day = index - totalGridItems + 1;
+          currentDayOnly = DateTime(nextMonth.year, nextMonth.month, day);
+          isOtherMonth = true;
+        }
 
         final bool isStartDate = currentDayOnly.isAtSameMomentAs(startDayOnly);
         final bool isEndDate = currentDayOnly.isAtSameMomentAs(endDayOnly);
@@ -310,6 +332,9 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           onTap: () {
             HapticFeedback.selectionClick();
             setState(() {
+              if (isOtherMonth) {
+                _displayedMonth = DateTime(currentDayOnly.year, currentDayOnly.month, 1);
+              }
               if (!_isSelectingEndDate) {
                 // Ketukan 1: Memilih tanggal mulai sewa
                 _selectedDate = currentDayOnly;
@@ -393,7 +418,9 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                           ? AppColors.textWhite
                           : isInRange
                               ? AppColors.primaryNavy
-                              : AppColors.textPrimary,
+                              : isOtherMonth
+                                  ? AppColors.textSecondary.withValues(alpha: 0.35)
+                                  : AppColors.textPrimary,
                       fontFamily: 'Inter',
                     ),
                   ),

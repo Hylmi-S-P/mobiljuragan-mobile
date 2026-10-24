@@ -92,7 +92,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Bandingkan tipe, kapasitas, dan plat nomor kendaraan.',
+                      'Bandingkan tipe, kapasitas, dan transmisi armada untuk kenyamanan perjalanan Anda.',
                       style: TextStyle(
                         fontSize: AppTypography.sizeBody,
                         fontWeight: FontWeight.w400,
@@ -102,6 +102,8 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     ),
                     const SizedBox(height: 16),
                     _buildCategoryFilterBar(vehicleController),
+                    const SizedBox(height: 12),
+                    _buildNoticeCard(vehicleController, filteredVehicles.length),
                     const SizedBox(height: 16),
                     if (filteredVehicles.isEmpty)
                       _buildEmptyState(vehicleController)
@@ -127,8 +129,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                           );
                         },
                       ),
-                    const SizedBox(height: 8),
-                    _buildNoticeCard(vehicleController, filteredVehicles.length),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -341,8 +341,10 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               ),
               elevation: 0,
             ),
-            child: const Text(
-              'Pilih Armada',
+            child: Text(
+              'Lanjutkan: ${selectedVehicle.name}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: AppTypography.sizeBodyLarge,
                 fontWeight: FontWeight.w700,

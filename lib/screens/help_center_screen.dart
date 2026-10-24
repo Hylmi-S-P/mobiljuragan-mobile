@@ -168,83 +168,68 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Widget _buildCsInfoBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.tealLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.support_agent_rounded,
-                size: 20,
-                color: AppColors.primaryTeal,
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ChatSupportScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.tealLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.support_agent_rounded,
+                  size: 20,
+                  color: AppColors.primaryTeal,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Layanan CS AI 24/7',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Layanan Bantuan 24 Jam',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFDBEAFE)),
-                      ),
-                      child: const Text(
-                        'Asisten Pintar',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1D4ED8),
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                const Text(
-                  'Asisten virtual AI siap merespon kendala rental 24 jam dengan eskalasi langsung ke staf operasional Merauke.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    height: 1.35,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
                   ),
-                ),
-              ],
+                  SizedBox(height: 3),
+                  Text(
+                    'Tim operasional dan asisten respon cepat siap melayani kendala sewa armada Anda kapan saja.',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      height: 1.35,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -402,7 +387,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             const SizedBox(height: 20),
             const Center(
               child: Text(
-                'Topik bantuan tidak ditemukan. Coba kata kunci lain atau hubungi CS langsung.',
+                'Belum ada topik bantuan untuk kategori ini. Silakan hubungi CS langsung.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: AppTypography.sizeBody, color: AppColors.textSecondary),
               ),

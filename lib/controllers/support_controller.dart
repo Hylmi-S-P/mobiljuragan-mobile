@@ -243,10 +243,11 @@ class SupportController extends ChangeNotifier {
     _tickets.insert(0, newTicket);
 
     final ticketKey = 'ticket_${newTicket.id}';
+    _handoffStatus[ticketKey] = true;
     final initialList = [
       ChatMessageModel(
         id: 'tck-sys-${newTicket.id}',
-        message: 'Tiket bantuan #${newTicket.id} (${newTicket.title}) telah terdaftar dengan status Menunggu. Tim operasional MobilJuragan akan segera merespons kendala Anda.',
+        message: 'Laporan Anda telah diterima tim operasional Merauke. Mohon sampaikan rincian tambahan atau tunggu tanggapan staf.',
         timestamp: DateTime.now(),
         isFromUser: false,
         senderName: 'Sistem',

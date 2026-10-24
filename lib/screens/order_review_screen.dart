@@ -1,4 +1,4 @@
-import '../core/network/api_client.dart';
+﻿import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -93,7 +93,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         ),
         SizedBox(height: 4),
         Text(
-          'Pastikan pilihan armada, durasi tanggal, dan moda rental telah sesuai.',
+          'Pastikan pilihan armada, durasi tanggal, dan model rental telah sesuai.',
           style: TextStyle(
             fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w400,
@@ -310,7 +310,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     );
   }
 
-  /// Kartu Ringkasan 3: Moda Rental & Lokasi Penjemputan dengan Mini Map Preview
+  /// Kartu Ringkasan 3: Model Rental & Lokasi Penjemputan dengan Mini Map Preview
   Widget _buildRentalOptionsSummaryCard(BuildContext context, BookingController booking) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -338,7 +338,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        'Moda & Lokasi Serah Terima',
+                        'Model & Lokasi Serah Terima',
                         style: TextStyle(
                           fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
@@ -378,7 +378,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           const SizedBox(height: 12),
           _buildInfoRow(
             'Layanan Pengemudi',
-            booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci (Self-Drive)',
+            booking.withDriver ? 'Dengan Sopir Lokal' : 'Lepas Kunci',
           ),
           const SizedBox(height: 6),
           _buildInfoRow(

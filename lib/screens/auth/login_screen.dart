@@ -274,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: const Center(
               child: Icon(
-                Icons.person_pin_circle_outlined,
+                Icons.account_circle_outlined,
                 color: AppColors.primaryTeal,
                 size: 22,
               ),
