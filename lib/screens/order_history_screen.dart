@@ -45,7 +45,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         title: 'Riwayat Pesanan',
         showBackButton: widget.showBackButton,
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: () => bookingController.refreshFromRemote(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,6 +68,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             const SizedBox(height: 32),
           ],
         ),
+      ),
       ),
     );
   }

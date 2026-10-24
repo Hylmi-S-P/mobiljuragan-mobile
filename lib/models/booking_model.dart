@@ -68,6 +68,23 @@ class DriverAssignment {
     required this.phoneNumber,
     this.operationalRole = 'Staf Pengemudi Tetap MobilJuragan Merauke',
   });
+
+  Map<String, dynamic> toJson() => {
+        'driverName': driverName,
+        'staffId': staffId,
+        'phoneNumber': phoneNumber,
+        'operationalRole': operationalRole,
+      };
+
+  factory DriverAssignment.fromJson(Map<String, dynamic> json) {
+    return DriverAssignment(
+      driverName: json['driverName']?.toString() ?? 'Staf Sopir Resmi',
+      staffId: json['staffId']?.toString() ?? 'STF-DRV',
+      phoneNumber: json['phoneNumber']?.toString() ?? '0812-4822-9901',
+      operationalRole: json['operationalRole']?.toString() ??
+          'Staf Pengemudi Tetap MobilJuragan Merauke',
+    );
+  }
 }
 
 /// Entitas data pemesanan rental mobil pelanggan
@@ -170,14 +187,19 @@ class BookingModel {
       return BookingStatus.permintaanDiterima;
     }
 
-    final assignedDriver = entry.withDriver
-        ? const DriverAssignment(
-            driverName: 'Bung Yohanes Mahuze',
-            staffId: 'STF-DRV-014',
-            phoneNumber: '0812-4822-9901',
-            operationalRole: 'Staf Pengemudi Tetap MobilJuragan Merauke',
-          )
-        : null;
+    DriverAssignment? assignedDriver;
+    if (entry.driverJson != null && entry.driverJson!.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(entry.driverJson!) as Map<String, dynamic>;
+        assignedDriver = DriverAssignment.fromJson(decoded);
+      } catch (_) {}
+    } else if (entry.withDriver) {
+      assignedDriver = const DriverAssignment(
+        driverName: 'Staf Sopir Ditugaskan',
+        staffId: 'STF-DRV',
+        phoneNumber: '0812-4822-9901',
+      );
+    }
 
     List<BookingFeeAdjustment> adjustments = [];
     if (entry.adminAdjustmentsJson != null && entry.adminAdjustmentsJson!.isNotEmpty) {
@@ -220,6 +242,9 @@ class BookingModel {
     final adjustmentsJson = adminAdjustments.isNotEmpty
         ? jsonEncode(adminAdjustments.map((a) => a.toJson()).toList())
         : null;
+    final driverDataJson = assignedDriver != null
+        ? jsonEncode(assignedDriver!.toJson())
+        : null;
 
     return BookingsCompanion(
       id: Value(id),
@@ -239,6 +264,7 @@ class BookingModel {
       paymentAccountNumber: Value(paymentAccountNumber),
       isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
       adminAdjustmentsJson: Value(adjustmentsJson),
+      driverJson: Value(driverDataJson),
       createdAt: Value(createdAt.millisecondsSinceEpoch),
       lastFetched: Value(nowMillis),
     );
@@ -289,8 +315,8 @@ class BookingModel {
       );
     } else if (withDriver) {
       assignedDriver = const DriverAssignment(
-        driverName: 'Bung Yohanes Mahuze',
-        staffId: 'STF-DRV-014',
+        driverName: 'Staf Sopir Ditugaskan',
+        staffId: 'STF-DRV',
         phoneNumber: '0812-4822-9901',
       );
     }

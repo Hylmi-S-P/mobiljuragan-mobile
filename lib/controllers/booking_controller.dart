@@ -72,6 +72,17 @@ class BookingController extends ChangeNotifier {
           notifyListeners();
         }
       });
+
+      // Lakukan sinkronisasi pesanan dari remote REST API ke Drift SQLite
+      unawaited(repo.syncAllBookingsFromRemote());
+    }
+  }
+
+  /// Sinkronisasi manual seluruh pesanan pelanggan dari backend REST API
+  Future<void> refreshFromRemote() async {
+    final repo = repository;
+    if (repo != null) {
+      await repo.syncAllBookingsFromRemote();
     }
   }
 

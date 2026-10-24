@@ -53,6 +53,9 @@ class Bookings extends Table {
   /// Rincian penyesuaian biaya / surcharge dari admin (format JSON array)
   TextColumn get adminAdjustmentsJson => text().nullable()();
 
+  /// Data staf pengemudi resmi yang ditugaskan (format JSON)
+  TextColumn get driverJson => text().nullable()();
+
   /// Waktu pembuatan pesanan (UTC epoch milliseconds)
   IntColumn get createdAt => integer()();
 

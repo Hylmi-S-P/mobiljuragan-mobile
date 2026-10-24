@@ -944,7 +944,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   /// Kartu Informasi Staf Pengemudi Tetap (Khusus Dengan Sopir, Tanpa Rating Ojol)
   Widget _buildAssignedDriverCard(BuildContext context, BookingModel booking) {
     final driver = booking.assignedDriver;
-    final driverName = driver?.driverName ?? 'Bung Yohanes Mahuze';
+    final driverName = driver?.driverName ?? 'Staf Sopir Ditugaskan';
     final role = driver?.operationalRole ?? 'Staf Pengemudi Tetap MobilJuragan Merauke';
 
     return Container(
@@ -2118,7 +2118,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildTicketDetailItem(
-                        label: 'Moda Sewa',
+                        label: 'Model Sewa',
                         value: booking.modeLabel,
                         subValue: '${booking.durationDays} Hari Operasional',
                       ),
@@ -2927,7 +2927,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     final List<String> reasonOptions = [
       'Perubahan rencana atau jadwal perjalanan',
       'Salah memilih tanggal, jam, atau lokasi sewa',
-      'Ingin mengganti unit mobil atau moda sewa',
+      'Ingin mengganti unit mobil atau model sewa',
       'Menemukan alternatif transportasi lain',
       'Alasan lainnya',
     ];

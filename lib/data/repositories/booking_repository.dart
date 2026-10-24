@@ -233,6 +233,36 @@ class BookingRepository {
     return null;
   }
 
+  /// Sinkronisasi seluruh daftar pesanan pelanggan dari backend REST API ke SQLite lokal
+  Future<List<BookingModel>> syncAllBookingsFromRemote([Map<String, VehicleModel>? vehicleMap]) async {
+    final map = vehicleMap ?? _defaultVehicleMap;
+    try {
+      final list = await _apiService.fetchBookings();
+      if (list.isNotEmpty) {
+        final List<BookingModel> synced = [];
+        for (final item in list) {
+          if (item is Map) {
+            final json = Map<String, dynamic>.from(item);
+            final vehicleJson = json['vehicle'] is Map
+                ? Map<String, dynamic>.from(json['vehicle'] as Map)
+                : null;
+            final rawVehicleId = json['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
+            final vehicle = _resolveVehicle(
+              vehicleId: rawVehicleId,
+              vehicleJson: vehicleJson,
+              customMap: map,
+            );
+            final model = BookingModel.fromJson(json, vehicle);
+            await _bookingDao.insertOrUpdateBooking(model.toCompanion());
+            synced.add(model);
+          }
+        }
+        return synced;
+      }
+    } catch (_) {}
+    return [];
+  }
+
   /// Menyimpan pesanan baru atau pembaruan status ke dalam SQLite lokal dan sinkronisasi ke backend jika online
   Future<void> saveBooking(BookingModel booking) async {
     await _bookingDao.insertOrUpdateBooking(booking.toCompanion());

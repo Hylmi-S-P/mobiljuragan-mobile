@@ -1222,6 +1222,17 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _driverJsonMeta = const VerificationMeta(
+    'driverJson',
+  );
+  @override
+  late final GeneratedColumn<String> driverJson = GeneratedColumn<String>(
+    'driver_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1263,6 +1274,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     paymentAccountNumber,
     isFinalTariffConfirmed,
     adminAdjustmentsJson,
+    driverJson,
     createdAt,
     lastFetched,
   ];
@@ -1426,6 +1438,12 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         ),
       );
     }
+    if (data.containsKey('driver_json')) {
+      context.handle(
+        _driverJsonMeta,
+        driverJson.isAcceptableOrUnknown(data['driver_json']!, _driverJsonMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1522,6 +1540,10 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         DriftSqlType.string,
         data['${effectivePrefix}admin_adjustments_json'],
       ),
+      driverJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -1591,6 +1613,9 @@ class Booking extends DataClass implements Insertable<Booking> {
   /// Rincian penyesuaian biaya / surcharge dari admin (format JSON array)
   final String? adminAdjustmentsJson;
 
+  /// Data staf pengemudi resmi yang ditugaskan (format JSON)
+  final String? driverJson;
+
   /// Waktu pembuatan pesanan (UTC epoch milliseconds)
   final int createdAt;
 
@@ -1614,6 +1639,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     required this.paymentAccountNumber,
     required this.isFinalTariffConfirmed,
     this.adminAdjustmentsJson,
+    this.driverJson,
     required this.createdAt,
     required this.lastFetched,
   });
@@ -1644,6 +1670,9 @@ class Booking extends DataClass implements Insertable<Booking> {
     map['is_final_tariff_confirmed'] = Variable<bool>(isFinalTariffConfirmed);
     if (!nullToAbsent || adminAdjustmentsJson != null) {
       map['admin_adjustments_json'] = Variable<String>(adminAdjustmentsJson);
+    }
+    if (!nullToAbsent || driverJson != null) {
+      map['driver_json'] = Variable<String>(driverJson);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['last_fetched'] = Variable<int>(lastFetched);
@@ -1677,6 +1706,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       adminAdjustmentsJson: adminAdjustmentsJson == null && nullToAbsent
           ? const Value.absent()
           : Value(adminAdjustmentsJson),
+      driverJson: driverJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(driverJson),
       createdAt: Value(createdAt),
       lastFetched: Value(lastFetched),
     );
@@ -1711,6 +1743,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       adminAdjustmentsJson: serializer.fromJson<String?>(
         json['adminAdjustmentsJson'],
       ),
+      driverJson: serializer.fromJson<String?>(json['driverJson']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       lastFetched: serializer.fromJson<int>(json['lastFetched']),
     );
@@ -1736,6 +1769,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       'paymentAccountNumber': serializer.toJson<String>(paymentAccountNumber),
       'isFinalTariffConfirmed': serializer.toJson<bool>(isFinalTariffConfirmed),
       'adminAdjustmentsJson': serializer.toJson<String?>(adminAdjustmentsJson),
+      'driverJson': serializer.toJson<String?>(driverJson),
       'createdAt': serializer.toJson<int>(createdAt),
       'lastFetched': serializer.toJson<int>(lastFetched),
     };
@@ -1759,6 +1793,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     String? paymentAccountNumber,
     bool? isFinalTariffConfirmed,
     Value<String?> adminAdjustmentsJson = const Value.absent(),
+    Value<String?> driverJson = const Value.absent(),
     int? createdAt,
     int? lastFetched,
   }) => Booking(
@@ -1786,6 +1821,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     adminAdjustmentsJson: adminAdjustmentsJson.present
         ? adminAdjustmentsJson.value
         : this.adminAdjustmentsJson,
+    driverJson: driverJson.present ? driverJson.value : this.driverJson,
     createdAt: createdAt ?? this.createdAt,
     lastFetched: lastFetched ?? this.lastFetched,
   );
@@ -1830,6 +1866,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       adminAdjustmentsJson: data.adminAdjustmentsJson.present
           ? data.adminAdjustmentsJson.value
           : this.adminAdjustmentsJson,
+      driverJson: data.driverJson.present
+          ? data.driverJson.value
+          : this.driverJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastFetched: data.lastFetched.present
           ? data.lastFetched.value
@@ -1857,6 +1896,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           ..write('paymentAccountNumber: $paymentAccountNumber, ')
           ..write('isFinalTariffConfirmed: $isFinalTariffConfirmed, ')
           ..write('adminAdjustmentsJson: $adminAdjustmentsJson, ')
+          ..write('driverJson: $driverJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastFetched: $lastFetched')
           ..write(')'))
@@ -1882,6 +1922,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     paymentAccountNumber,
     isFinalTariffConfirmed,
     adminAdjustmentsJson,
+    driverJson,
     createdAt,
     lastFetched,
   );
@@ -1906,6 +1947,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           other.paymentAccountNumber == this.paymentAccountNumber &&
           other.isFinalTariffConfirmed == this.isFinalTariffConfirmed &&
           other.adminAdjustmentsJson == this.adminAdjustmentsJson &&
+          other.driverJson == this.driverJson &&
           other.createdAt == this.createdAt &&
           other.lastFetched == this.lastFetched);
 }
@@ -1928,6 +1970,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<String> paymentAccountNumber;
   final Value<bool> isFinalTariffConfirmed;
   final Value<String?> adminAdjustmentsJson;
+  final Value<String?> driverJson;
   final Value<int> createdAt;
   final Value<int> lastFetched;
   final Value<int> rowid;
@@ -1949,6 +1992,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.paymentAccountNumber = const Value.absent(),
     this.isFinalTariffConfirmed = const Value.absent(),
     this.adminAdjustmentsJson = const Value.absent(),
+    this.driverJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastFetched = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1971,6 +2015,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     required String paymentAccountNumber,
     this.isFinalTariffConfirmed = const Value.absent(),
     this.adminAdjustmentsJson = const Value.absent(),
+    this.driverJson = const Value.absent(),
     required int createdAt,
     required int lastFetched,
     this.rowid = const Value.absent(),
@@ -2005,6 +2050,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Expression<String>? paymentAccountNumber,
     Expression<bool>? isFinalTariffConfirmed,
     Expression<String>? adminAdjustmentsJson,
+    Expression<String>? driverJson,
     Expression<int>? createdAt,
     Expression<int>? lastFetched,
     Expression<int>? rowid,
@@ -2030,6 +2076,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
         'is_final_tariff_confirmed': isFinalTariffConfirmed,
       if (adminAdjustmentsJson != null)
         'admin_adjustments_json': adminAdjustmentsJson,
+      if (driverJson != null) 'driver_json': driverJson,
       if (createdAt != null) 'created_at': createdAt,
       if (lastFetched != null) 'last_fetched': lastFetched,
       if (rowid != null) 'rowid': rowid,
@@ -2054,6 +2101,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Value<String>? paymentAccountNumber,
     Value<bool>? isFinalTariffConfirmed,
     Value<String?>? adminAdjustmentsJson,
+    Value<String?>? driverJson,
     Value<int>? createdAt,
     Value<int>? lastFetched,
     Value<int>? rowid,
@@ -2077,6 +2125,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
       isFinalTariffConfirmed:
           isFinalTariffConfirmed ?? this.isFinalTariffConfirmed,
       adminAdjustmentsJson: adminAdjustmentsJson ?? this.adminAdjustmentsJson,
+      driverJson: driverJson ?? this.driverJson,
       createdAt: createdAt ?? this.createdAt,
       lastFetched: lastFetched ?? this.lastFetched,
       rowid: rowid ?? this.rowid,
@@ -2143,6 +2192,9 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
         adminAdjustmentsJson.value,
       );
     }
+    if (driverJson.present) {
+      map['driver_json'] = Variable<String>(driverJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -2175,6 +2227,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
           ..write('paymentAccountNumber: $paymentAccountNumber, ')
           ..write('isFinalTariffConfirmed: $isFinalTariffConfirmed, ')
           ..write('adminAdjustmentsJson: $adminAdjustmentsJson, ')
+          ..write('driverJson: $driverJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastFetched: $lastFetched, ')
           ..write('rowid: $rowid')
@@ -2662,6 +2715,7 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   required String paymentAccountNumber,
   Value<bool> isFinalTariffConfirmed,
   Value<String?> adminAdjustmentsJson,
+  Value<String?> driverJson,
   required int createdAt,
   required int lastFetched,
   Value<int> rowid,
@@ -2684,6 +2738,7 @@ typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<String> paymentAccountNumber,
   Value<bool> isFinalTariffConfirmed,
   Value<String?> adminAdjustmentsJson,
+  Value<String?> driverJson,
   Value<int> createdAt,
   Value<int> lastFetched,
   Value<int> rowid,
@@ -2780,6 +2835,11 @@ class $$BookingsTableFilterComposer
 
   ColumnFilters<String> get adminAdjustmentsJson => $composableBuilder(
     column: $table.adminAdjustmentsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get driverJson => $composableBuilder(
+    column: $table.driverJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2888,6 +2948,11 @@ class $$BookingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get driverJson => $composableBuilder(
+    column: $table.driverJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2981,6 +3046,11 @@ class $$BookingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get driverJson => $composableBuilder(
+    column: $table.driverJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -3035,6 +3105,7 @@ class $$BookingsTableTableManager
                 Value<String> paymentAccountNumber = const Value.absent(),
                 Value<bool> isFinalTariffConfirmed = const Value.absent(),
                 Value<String?> adminAdjustmentsJson = const Value.absent(),
+                Value<String?> driverJson = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> lastFetched = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3056,6 +3127,7 @@ class $$BookingsTableTableManager
                 paymentAccountNumber: paymentAccountNumber,
                 isFinalTariffConfirmed: isFinalTariffConfirmed,
                 adminAdjustmentsJson: adminAdjustmentsJson,
+                driverJson: driverJson,
                 createdAt: createdAt,
                 lastFetched: lastFetched,
                 rowid: rowid,
@@ -3079,6 +3151,7 @@ class $$BookingsTableTableManager
                 required String paymentAccountNumber,
                 Value<bool> isFinalTariffConfirmed = const Value.absent(),
                 Value<String?> adminAdjustmentsJson = const Value.absent(),
+                Value<String?> driverJson = const Value.absent(),
                 required int createdAt,
                 required int lastFetched,
                 Value<int> rowid = const Value.absent(),
@@ -3100,6 +3173,7 @@ class $$BookingsTableTableManager
                 paymentAccountNumber: paymentAccountNumber,
                 isFinalTariffConfirmed: isFinalTariffConfirmed,
                 adminAdjustmentsJson: adminAdjustmentsJson,
+                driverJson: driverJson,
                 createdAt: createdAt,
                 lastFetched: lastFetched,
                 rowid: rowid,
