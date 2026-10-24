@@ -45,7 +45,6 @@ class ApiConstants {
   // Endpoints Pembayaran
   static const String paymentsEndpoint = '/payments';
   static const String paymentsBookingEndpoint = '/payments/booking';
-  static const String paymentsSimulateMutationEndpoint = '/payments/simulate-mutation';
 
   // Durasi timeout HTTP request
   static const Duration timeoutDuration = Duration(seconds: 8);
