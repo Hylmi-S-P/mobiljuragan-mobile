@@ -125,7 +125,7 @@ void main() {
       expect(find.text('Pilih Bayar di Tempat (COD)'), findsOneWidget);
     });
 
-    testWidgets('Tombol Cek Status Pembayaran dan Simulasi Pembayaran Berhasil dapat ditekan', (tester) async {
+    testWidgets('Tombol Cek Status Pembayaran dapat ditekan dan tombol bypass simulasi tidak ada', (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       addTearDown(tester.view.resetPhysicalSize);
 
@@ -133,7 +133,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Cek Status Pembayaran (Otomatis)'), findsOneWidget);
-      expect(find.text('Simulasikan Pembayaran Berhasil (Demo Sandbox)'), findsOneWidget);
+      expect(find.text('Simulasikan Pembayaran Berhasil (Demo Sandbox)'), findsNothing);
 
       // Ketuk tombol Cek Status Pembayaran
       await tester.ensureVisible(find.text('Cek Status Pembayaran (Otomatis)'));
