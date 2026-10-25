@@ -81,4 +81,24 @@ class TicketApiService {
     }
     return false;
   }
+
+  /// Mengambil satu tiket beserta seluruh riwayat pesannya.
+  ///
+  /// Sebelumnya riwayat percakapan hanya hidup di memori aplikasi, sehingga
+  /// menutup layar bantuan atau memulai ulang aplikasi membuat seluruh percakapan
+  /// hilang — termasuk percakapan yang sebenarnya sudah tersimpan di server.
+  /// Fungsi ini yang memuatnya kembali.
+  Future<Map<String, dynamic>> fetchTicketDetail({required String ticketId}) async {
+    final response = await _client.get(
+      '${ApiConstants.ticketsEndpoint}/$ticketId',
+      requiresAuth: true,
+    );
+    if (response is Map) {
+      final data = response['data'];
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+    }
+    return {};
+  }
 }
