@@ -195,6 +195,67 @@ class SupportController extends ChangeNotifier {
     return _handoffStatus[conversationKey] ?? false;
   }
 
+  /// Memuat riwayat percakapan sebuah tiket dari server.
+  ///
+  /// Sebelumnya riwayat hanya hidup di memori aplikasi. Menutup layar bantuan atau
+  /// memulai ulang aplikasi membuat percakapan hilang, padahal pesannya sudah
+  /// tersimpan di server — termasuk jawaban asisten AI dan balasan staf.
+  ///
+  /// Hasilnya menggantikan isi percakapan lokal, lalu status handoff ikut
+  /// disesuaikan supaya tombol "Panggil Staf" tidak muncul lagi pada tiket yang
+  /// sudah ditangani staf.
+  Future<void> muatRiwayatTiket({required String ticketId}) async {
+    final conversationKey = 'ticket_$ticketId';
+
+    try {
+      final detail = await _ticketApiService.fetchTicketDetail(ticketId: ticketId);
+      final daftarPesan = detail['messages'];
+      if (daftarPesan is! List) return;
+
+      final hasil = <ChatMessageModel>[];
+      for (final mentah in daftarPesan) {
+        if (mentah is! Map) continue;
+
+        final adalahPelanggan = mentah['isCustomer'] == true;
+        final adalahAi = mentah['isAi'] == true;
+        final pengirim = mentah['sender'];
+        final namaPengirim = pengirim is Map
+            ? (pengirim['fullName'] as String?)?.trim()
+            : null;
+
+        hasil.add(
+          ChatMessageModel(
+            id: (mentah['id'] as String?) ?? 'srv-${hasil.length}',
+            message: (mentah['body'] as String?) ?? '',
+            timestamp:
+                DateTime.tryParse((mentah['sentAt'] as String?) ?? '') ?? DateTime.now(),
+            isFromUser: adalahPelanggan,
+            senderName: adalahPelanggan
+                ? 'Anda'
+                : adalahAi
+                    ? 'Asisten AI MobilJuragan'
+                    : (namaPengirim?.isNotEmpty == true
+                        ? namaPengirim!
+                        : 'Customer Service MobilJuragan'),
+            isAI: adalahAi,
+            conversationKey: conversationKey,
+          ),
+        );
+      }
+
+      _conversations[conversationKey] = hasil;
+
+      // Tiket yang sudah dipegang staf tidak boleh menampilkan tombol "Panggil Staf".
+      if ((detail['handledBy'] as String?) == 'HUMAN') {
+        _handoffStatus[conversationKey] = true;
+      }
+
+      notifyListeners();
+    } catch (_) {
+      // Gagal memuat tidak boleh menghapus percakapan yang sudah tampil.
+    }
+  }
+
   /// Backward-compatibility getter
   bool get isAiHandoffToAdmin => isAiHandoffToAdminFor('general');
 

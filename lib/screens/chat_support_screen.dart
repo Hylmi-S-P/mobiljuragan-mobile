@@ -60,6 +60,16 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      /* Muat riwayat dari server saat layar dibuka.
+       *
+       * Tanpa ini, percakapan hanya hidup di memori aplikasi: menutup layar atau
+       * memulai ulang aplikasi membuat riwayat hilang, padahal pesannya sudah
+       * tersimpan di server. Balasan staf yang masuk saat layar tertutup pun tidak
+       * akan pernah terlihat. */
+      if (widget.ticket != null) {
+        context.read<SupportController>().muatRiwayatTiket(ticketId: widget.ticket!.id);
+      }
+
       // Inisialisasi otomatis hanya jika chat dibuka dari pesanan sewa mobil spesifik
       if (widget.booking != null) {
         final bookingCtrl = context.read<BookingController>();
