@@ -223,36 +223,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-            Text(
-              'Pesanan Aktif (${activeBookings.length})',
-              style: const TextStyle(
-                fontSize: AppTypography.sizeBodyLarge,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            const Text(
-              'Pembaruan real-time',
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                color: AppColors.primaryTeal,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ...activeBookings.map((booking) => _buildBookingCard(booking, isActive: true)),
-      ],
+      children: activeBookings
+          .map((booking) => _buildBookingCard(booking, isActive: true))
+          .toList(),
     );
   }
 
@@ -276,19 +249,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Riwayat Sewa Sebelumnya (${completedBookings.length})',
-          style: const TextStyle(
-            fontSize: AppTypography.sizeBodyLarge,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            fontFamily: 'Inter',
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...completedBookings.map((booking) => _buildBookingCard(booking, isActive: false)),
-      ],
+      children: completedBookings
+          .map((booking) => _buildBookingCard(booking, isActive: false))
+          .toList(),
     );
   }
 
@@ -298,125 +261,127 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     final startDate = booking.startDate;
     final endDate = booking.endDate;
 
-    final startStr =
-        '${startDate.day} ${_monthNames[startDate.month - 1]} ${startDate.year}';
-    final endStr =
-        '${endDate.day} ${_monthNames[endDate.month - 1]} ${endDate.year}';
+    final startMonth = _monthNames[startDate.month - 1];
+    final endMonth = _monthNames[endDate.month - 1];
+    final dateRange = (startDate.year == endDate.year && startDate.month == endDate.month)
+        ? '${startDate.day} - ${endDate.day} $endMonth ${endDate.year}'
+        : (startDate.year == endDate.year)
+            ? '${startDate.day} $startMonth - ${endDate.day} $endMonth ${endDate.year}'
+            : '${startDate.day} $startMonth ${startDate.year} - ${endDate.day} $endMonth ${endDate.year}';
+    final timeStr = (booking.startTime.isNotEmpty && booking.startTime != '00.00 WIT')
+        ? ' • Pukul ${booking.startTime}'
+        : '';
+    final scheduleText = '$dateRange • ${booking.durationDays} Hari$timeStr';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isActive ? AppColors.primaryTeal.withValues(alpha: 0.35) : AppColors.borderSubtle,
-          width: isActive ? 1.2 : 1,
+          color: AppColors.borderSubtle,
+          width: 1.0,
         ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: AppColors.primaryNavy.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Kartu: Status Badge & Booking Ref
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-            children: [
-              _buildStatusBadge(booking.status),
-              Text(
-                booking.id,
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OrderStatusScreen(booking: booking),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.borderSubtle),
-          const SizedBox(height: 12),
-
-          // Detail Armada Kendaraan
-          Row(
-            children: [
-              Container(
-                width: 60,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    vehicle.imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.directions_car,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Kartu: Status Badge & Booking Ref (Rata Kiri-Kanan Penuh)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    _buildStatusBadge(booking.status),
                     Text(
-                      vehicle.name,
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeBodyLarge,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Plat: ${vehicle.plateNumber} • ${booking.modeLabel}',
+                      booking.id,
                       style: const TextStyle(
                         fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.borderSubtle),
+                const SizedBox(height: 12),
 
-          // Info Jadwal & Lokasi
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              children: [
+                // Detail Armada Kendaraan
                 Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          vehicle.imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.directions_car,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vehicle.name,
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeBodyLarge,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Plat: ${vehicle.plateNumber} • ${booking.modeLabel}',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Info Jadwal & Lokasi (Tanpa nested box abu-abu)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.primaryTeal),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '$startStr, ${booking.startTime} (${booking.durationDays} Hari) - Kembali: $endStr',
+                        scheduleText,
                         style: const TextStyle(
                           fontSize: AppTypography.sizeCaption,
                           fontWeight: FontWeight.w500,
@@ -429,6 +394,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 ),
                 const SizedBox(height: 6),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(Icons.location_on_outlined, size: 14, color: AppColors.primaryTeal),
                     const SizedBox(width: 8),
@@ -444,158 +410,186 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-          if (booking.status == BookingStatus.dibatalkan) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFECACA)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.remove_circle_outline_rounded, size: 13, color: Color(0xFF64748B)),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Alasan: ${booking.cancellationReason ?? "Dibatalkan oleh pelanggan"}',
+                if (booking.status == BookingStatus.dibatalkan) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.remove_circle_outline_rounded, size: 13, color: Color(0xFF64748B)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Alasan: ${booking.cancellationReason ?? "Dibatalkan oleh pelanggan"}',
+                                style: const TextStyle(
+                                  fontSize: AppTypography.sizeCaption,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF475569),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (booking.cancellationRefundAmount != null &&
+                            booking.cancellationRefundAmount! > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pengembalian Dana: Rp ${_formatRupiah(booking.cancellationRefundAmount!)}',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF166534),
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                const Divider(height: 1, color: AppColors.borderSubtle),
+                const SizedBox(height: 12),
+
+                // Tarif & Aksi (Rata Kiri-Kanan Penuh)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.isFinalTariffConfirmed ? 'Total Pembayaran' : 'Estimasi Total Biaya',
                           style: const TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF475569),
+                            fontSize: AppTypography.sizeTiny,
+                            color: AppColors.textSecondary,
                             fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Rp ${_formatRupiah(booking.totalCost)}',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeTitle,
+                            fontWeight: FontWeight.w800,
+                            color: booking.isFinalTariffConfirmed
+                                ? AppColors.primaryNavy
+                                : AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isActive) ...[
+                      if (booking.status == BookingStatus.menungguPembayaran)
+                        SizedBox(
+                          height: 38,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OrderStatusScreen(booking: booking),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryNavy,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Bayar Sekarang',
+                                  style: AppTypography.bodyBold,
+                                ),
+                                SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_rounded, size: 16),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OrderStatusScreen(booking: booking),
+                              ),
+                            );
+                          },
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(Icons.chevron_right, size: 16, color: AppColors.primaryTeal),
+                          label: const Text(
+                            'Lihat Detail',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeBody,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryTeal,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                    ] else ...[
+                      SizedBox(
+                        height: 36,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            final bookingCtrl = context.read<BookingController>();
+                            bookingCtrl.selectVehicle(vehicle);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DateTimeScreen(vehicle: vehicle),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primaryNavy,
+                            side: const BorderSide(color: AppColors.primaryNavy, width: 1.2),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                          ),
+                          child: const Text(
+                            'Sewa Lagi',
+                            style: AppTypography.bodyBold,
                           ),
                         ),
                       ),
                     ],
-                  ),
-                  if (booking.cancellationRefundAmount != null &&
-                      booking.cancellationRefundAmount! > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Pengembalian Dana: Rp ${_formatRupiah(booking.cancellationRefundAmount!)}',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF166534),
-                        fontFamily: 'Inter',
-                      ),
-                    ),
                   ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Tarif & Aksi
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    booking.isFinalTariffConfirmed ? 'Tarif Resmi Final' : 'Estimasi Total Biaya',
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Rp ${_formatRupiah(booking.totalCost)}',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTitle,
-                      fontWeight: FontWeight.w800,
-                      color: booking.isFinalTariffConfirmed
-                          ? AppColors.primaryNavy
-                          : AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-              if (isActive) ...[
-                SizedBox(
-                  height: 38,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OrderStatusScreen(booking: booking),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Cek Status',
-                          style: AppTypography.bodyBold,
-                        ),
-                        SizedBox(width: 4),
-                        Icon(Icons.chevron_right, size: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              ] else ...[
-                SizedBox(
-                  height: 38,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      // Sewa lagi: pilih kendaraan ini dan navigasi ke tanggal
-                      final bookingCtrl = context.read<BookingController>();
-                      bookingCtrl.selectVehicle(vehicle);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DateTimeScreen(vehicle: vehicle),
-                        ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primaryNavy,
-                      side: const BorderSide(color: AppColors.primaryNavy, width: 1.2),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                    ),
-                    child: const Text(
-                      'Sewa Lagi',
-                      style: AppTypography.bodyBold,
-                    ),
-                  ),
                 ),
               ],
-            ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -608,28 +602,28 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
     switch (status) {
       case BookingStatus.permintaanDiterima:
-        bg = const Color(0xFFEFF6FF);
-        text = const Color(0xFF1D4ED8);
-        label = 'Pengajuan Diterima';
-        icon = Icons.inbox_outlined;
+        bg = const Color(0xFFF1F5F9);
+        text = const Color(0xFF475569);
+        label = 'Menunggu Konfirmasi';
+        icon = Icons.hourglass_empty_rounded;
         break;
       case BookingStatus.pemeriksaanArmada:
-        bg = const Color(0xFFF0FDF4);
-        text = const Color(0xFF15803D);
-        label = 'Armada Tersedia';
-        icon = Icons.check_circle_outline;
+        bg = const Color(0xFFF1F5F9);
+        text = const Color(0xFF475569);
+        label = 'Pemeriksaan Armada';
+        icon = Icons.fact_check_outlined;
         break;
       case BookingStatus.menungguTarifFinal:
-        bg = const Color(0xFFFFFBEB);
+        bg = const Color(0xFFFEF3C7);
         text = const Color(0xFFB45309);
         label = 'Hitung Tarif Final';
         icon = Icons.calculate_outlined;
         break;
       case BookingStatus.menungguPembayaran:
-        bg = const Color(0xFFFEF2F2);
-        text = const Color(0xFFB91C1C);
+        bg = const Color(0xFFFEF3C7);
+        text = const Color(0xFFD97706);
         label = 'Menunggu Pembayaran';
-        icon = Icons.payment_outlined;
+        icon = Icons.schedule_rounded;
         break;
       case BookingStatus.pembayaranSelesai:
         bg = const Color(0xFFECFDF5);
@@ -640,19 +634,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       case BookingStatus.verifikasiKantor:
         bg = const Color(0xFFF5F3FF);
         text = const Color(0xFF6D28D9);
-        label = 'Verifikasi Fisik Kantor';
+        label = 'Verifikasi Kantor';
         icon = Icons.business_outlined;
         break;
       case BookingStatus.mobilSiapDigunakan:
         bg = const Color(0xFFECFDF5);
         text = const Color(0xFF047857);
-        label = 'Armada Siap Jalan';
+        label = 'Mobil Siap Digunakan';
         icon = Icons.directions_car_outlined;
         break;
       case BookingStatus.selesai:
         bg = const Color(0xFFF1F5F9);
         text = const Color(0xFF334155);
-        label = 'Selesai Digunakan';
+        label = 'Selesai';
         icon = Icons.task_alt;
         break;
       case BookingStatus.dibatalkan:

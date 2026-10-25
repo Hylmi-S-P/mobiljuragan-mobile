@@ -168,13 +168,12 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Bulan & Navigasi Kalender
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   InkWell(
                     onTap: _previousMonth,
@@ -225,18 +224,18 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               ),
               if (_isSelectingEndDate)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: AppColors.tealLight,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                    border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.2)),
                   ),
                   child: const Text(
                     'Pilih tanggal selesai',
                     style: TextStyle(
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D4ED8),
+                      color: AppColors.primaryTeal,
                       fontFamily: 'Inter',
                     ),
                   ),
@@ -265,8 +264,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           const SizedBox(height: 10),
           _buildDatesGrid(daysInMonth, startingWeekday, returnDate),
-          const SizedBox(height: 14),
-          _buildCalendarLegend(returnDate),
         ],
       ),
     );
@@ -368,7 +365,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 Positioned.fill(
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 3),
-                    color: AppColors.primaryTeal.withValues(alpha: 0.12),
+                    color: AppColors.primaryNavy.withValues(alpha: 0.10),
                   ),
                 )
               else if (isStartDate && _durationDays > 0)
@@ -378,7 +375,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   bottom: 3,
                   left: 17,
                   child: Container(
-                    color: AppColors.primaryTeal.withValues(alpha: 0.12),
+                    color: AppColors.primaryNavy.withValues(alpha: 0.10),
                   ),
                 )
               else if (isEndDate && _durationDays > 0)
@@ -388,7 +385,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                   bottom: 3,
                   right: 17,
                   child: Container(
-                    color: AppColors.primaryTeal.withValues(alpha: 0.12),
+                    color: AppColors.primaryNavy.withValues(alpha: 0.10),
                   ),
                 ),
 
@@ -397,11 +394,9 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: isStartDate
-                      ? AppColors.primaryTeal
-                      : isEndDate
-                          ? AppColors.primaryNavy
-                          : Colors.transparent,
+                  color: (isStartDate || isEndDate)
+                      ? AppColors.primaryNavy
+                      : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -430,116 +425,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildCalendarLegend(DateTime returnDate) {
-    final startFormatted =
-        '${_selectedDate.day} ${_monthNames[_selectedDate.month - 1].substring(0, 3)}';
-    final returnFormatted =
-        '${returnDate.day} ${_monthNames[returnDate.month - 1].substring(0, 3)}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 6,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryTeal,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Mulai: $startFormatted',
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryNavy,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Selesai: $returnFormatted',
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.tealLight,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '$_durationDays Hari',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryTeal,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.touch_app_outlined, size: 14, color: AppColors.primaryTeal),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _isSelectingEndDate
-                      ? 'Ketukan 2/2: Ketuk tanggal selesai untuk mengatur durasi sewa'
-                      : 'Ketukan 1/2: Ketuk tanggal di kalender untuk tanggal mulai sewa',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -804,51 +689,28 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Jam Sewa
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          // 1. Jam Mulai Sewa Header
+          const Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.access_time_rounded,
-                    size: 16,
-                    color: AppColors.primaryTeal,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Jam Sewa',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.access_time_rounded,
+                size: 18,
+                color: AppColors.primaryTeal,
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: AppColors.borderSubtle),
-                ),
-                child: const Text(
-                  '06.00 - 22.00 WIT',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
+              SizedBox(width: 8),
+              Text(
+                'Jam Mulai Sewa',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           // Pilihan Jam Mandiri
           InkWell(
@@ -858,15 +720,15 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.borderMedium),
+                border: Border.all(color: AppColors.borderSubtle),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: AppColors.primaryNavy,
                       borderRadius: BorderRadius.circular(8),
@@ -894,7 +756,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Sesi $_timeDescription • Ketuk untuk ubah jam',
+                          'Sesi $_timeDescription',
                           style: const TextStyle(
                             fontSize: AppTypography.sizeCaption,
                             color: AppColors.textSecondary,
@@ -905,19 +767,20 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    constraints: const BoxConstraints(minHeight: 36, minWidth: 64),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.borderSubtle),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.edit_outlined, size: 13, color: AppColors.primaryTeal),
+                        Icon(Icons.edit_outlined, size: 14, color: AppColors.primaryTeal),
                         SizedBox(width: 4),
                         Text(
-                          'Pilih Jam',
+                          'Ubah',
                           style: TextStyle(
                             fontSize: AppTypography.sizeCaption,
                             fontWeight: FontWeight.w600,
@@ -933,53 +796,47 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline, size: 14, color: AppColors.primaryTeal),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Untuk kebutuhan penjemputan subuh/malam hari, silakan konfirmasi khusus via Chat CS Merauke.',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                      height: 1.35,
-                    ),
+
+          // Keterangan Jam Operasional (Tanpa Box Berlapis)
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, size: 14, color: AppColors.primaryTeal),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Untuk kebutuhan khusus di luar jam tersebut, silakan konfirmasi melalui Chat CS.',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                    height: 1.35,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 14),
           const Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
           const SizedBox(height: 14),
 
-          // 2. Ringkasan Durasi & Pengembalian Armada (Ditentukan via Kalender)
+          // 2. Ringkasan Durasi & Pengembalian Armada (Netral)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
+              border: Border.all(color: AppColors.borderSubtle),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.event_available_rounded,
-                  size: 18,
-                  color: Color(0xFF16A34A),
+                  size: 20,
+                  color: AppColors.primaryNavy,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -991,17 +848,17 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                         style: const TextStyle(
                           fontSize: AppTypography.sizeBody,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF166534),
+                          color: AppColors.primaryNavy,
                           fontFamily: 'Inter',
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Durasi total $_durationDays hari sewa (${_durationDays * 24} jam penuh, diatur via kalender)',
+                        'Total durasi sewa $_durationDays Hari (${_durationDays * 24} jam penuh)',
                         style: const TextStyle(
                           fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF15803D),
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textSecondary,
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -1016,17 +873,17 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-    Widget _buildRentalPolicyNotice() {
+  Widget _buildRentalPolicyNotice() {
     final booking = context.watch<BookingController>();
     final isDriver = booking.withDriver;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderMedium),
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1036,8 +893,8 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           Expanded(
             child: Text(
               isDriver
-                  ? 'Layanan supir aktif 12 jam per hari (mulai pukul $_selectedTime). Supir standby setiap hari sesuai jadwal di Merauke.'
-                  : 'Hitungan sewa berlaku 24 jam penuh per hari sejak serah terima kunci unit di Merauke.',
+                  ? 'Layanan sopir aktif 12 jam per hari (mulai pukul $_selectedTime). Sopir standby setiap hari sesuai jadwal di Merauke.'
+                  : 'Hitungan sewa berlaku 24 jam penuh per hari sejak serah terima unit armada di Merauke.',
               style: const TextStyle(
                 fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w400,

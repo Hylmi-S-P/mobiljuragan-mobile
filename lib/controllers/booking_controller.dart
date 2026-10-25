@@ -470,4 +470,11 @@ class BookingController extends ChangeNotifier {
     _agreementChecked = true;
     notifyListeners();
   }
+
+  /// Khusus pengujian unit & widget: mengatur daftar riwayat pesanan secara eksplisit
+  void setBookingsForTesting(List<BookingModel> bookings) {
+    _bookingHistory.clear();
+    _bookingHistory.addAll(bookings);
+    notifyListeners();
+  }
 }

@@ -70,6 +70,7 @@ class MeraukeLocationMapPicker extends StatefulWidget {
   final double mapHeight;
   final bool showCardContainer;
   final bool showFullscreenButton;
+  final bool showOverlayBanner;
 
   const MeraukeLocationMapPicker({
     super.key,
@@ -82,6 +83,7 @@ class MeraukeLocationMapPicker extends StatefulWidget {
     this.mapHeight = 155,
     this.showCardContainer = true,
     this.showFullscreenButton = true,
+    this.showOverlayBanner = true,
   });
 
   @override
@@ -287,11 +289,12 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                 ),
               ],
             ),
-            Positioned(
-              bottom: 8,
-              left: 8,
-              right: 8,
-              child: Container(
+            if (widget.showOverlayBanner)
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primaryNavy.withValues(alpha: 0.88),

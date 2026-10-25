@@ -61,9 +61,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   _buildScheduleSummaryCard(context, booking),
                   const SizedBox(height: 14),
                   _buildRentalOptionsSummaryCard(context, booking),
-                  const SizedBox(height: 16),
-                  _buildPhysicalVerificationNotice(booking),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   _buildCostBreakdownCard(booking),
                   const SizedBox(height: 16),
                   _buildAgreementCheckbox(booking),
@@ -117,31 +115,25 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-              const Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.directions_car_outlined, size: 18, color: AppColors.primaryTeal),
-                    SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Armada Kendaraan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.directions_car_outlined, size: 18, color: AppColors.primaryTeal),
+                  SizedBox(width: 8),
+                  Text(
+                    'Armada Kendaraan',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               InkWell(
                 onTap: () {
@@ -150,7 +142,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Text(
                     'Ubah',
                     style: TextStyle(
@@ -202,20 +194,11 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Plat: ${vehicle.plateNumber}',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
                       '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.bodyType}',
                       style: const TextStyle(
                         fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.primaryNavy,
+                        color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
                     ),
@@ -247,31 +230,25 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-              const Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.primaryTeal),
-                    SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'Jadwal Rental',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.primaryTeal),
+                  SizedBox(width: 8),
+                  Text(
+                    'Jadwal Rental',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               InkWell(
                 onTap: () {
@@ -280,7 +257,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Text(
                     'Ubah',
                     style: TextStyle(
@@ -310,8 +287,12 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     );
   }
 
-  /// Kartu Ringkasan 3: Model Rental & Lokasi Penjemputan dengan Mini Map Preview
+  /// Kartu Ringkasan 3: Detail Penjemputan & Layanan dengan Mini Map Preview dan Catatan Layanan Terpadu
   Widget _buildRentalOptionsSummaryCard(BuildContext context, BookingController booking) {
+    final title = booking.withDriver
+        ? 'Detail Penjemputan & Layanan'
+        : 'Detail Serah Terima & Layanan';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -322,24 +303,19 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-              // Flexible di dalam Row bersarang ini membuat judul panjang
-              // membungkus ke baris berikutnya alih-alih meluber ke kanan.
-              const Flexible(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.commute_outlined, size: 18, color: AppColors.primaryTeal),
-                    SizedBox(width: 8),
-                    Flexible(
+                    const Icon(Icons.commute_outlined, size: 18, color: AppColors.primaryTeal),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        'Model & Lokasi Serah Terima',
-                        style: TextStyle(
+                        title,
+                        style: const TextStyle(
                           fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
@@ -350,6 +326,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   final vehicle = booking.selectedVehicle ?? widget.vehicle;
@@ -361,7 +338,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Text(
                     'Ubah',
                     style: TextStyle(
@@ -386,67 +363,69 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             booking.pickupLocation,
           ),
           const SizedBox(height: 12),
-          // Cuplikan Mini Map Preview
+          // Cuplikan Mini Map Preview tanpa overlay banner duplikat
           MeraukeLocationMapPicker(
             selectedLocationName: booking.pickupLocation,
             selectedCoordinates: (booking.pickupLatitude != null && booking.pickupLongitude != null)
                 ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
                 : null,
             isMiniPreview: true,
+            showOverlayBanner: false,
             isWithDriver: booking.withDriver,
           ),
+          const SizedBox(height: 12),
+          // Inline Notice Box Netral
+          _buildInlineServiceNotice(booking),
         ],
       ),
     );
   }
 
-  /// Banner Pemberitahuan Ketentuan Dokumen / Staf Sopir (Adaptif)
-  Widget _buildPhysicalVerificationNotice(BookingController booking) {
+  /// Catatan Ketentuan Layanan / Verifikasi Dokumen Terpadu (Netral)
+  Widget _buildInlineServiceNotice(BookingController booking) {
     final isDriver = booking.withDriver;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDriver ? const Color(0xFFF0FDF4) : const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDriver ? const Color(0xFFBBF7D0) : const Color(0xFFBFDBFE),
-          width: 1,
-        ),
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             isDriver ? Icons.airline_seat_recline_normal : Icons.verified_user_outlined,
-            size: 20,
-            color: isDriver ? const Color(0xFF16A34A) : const Color(0xFF1D4ED8),
+            size: 18,
+            color: AppColors.primaryNavy,
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   isDriver
-                      ? 'Layanan Sopir Karyawan Tetap & Bebas Deposit'
-                      : 'Verifikasi Fisik Dokumen di Kantor / Lapangan',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
+                      ? 'Sopir Resmi & Bebas Deposit'
+                      : 'Verifikasi Dokumen Fisik',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
-                    color: isDriver ? const Color(0xFF166534) : const Color(0xFF1D4ED8),
+                    color: AppColors.textPrimary,
                     fontFamily: 'Inter',
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   isDriver
-                      ? 'Armada dikemudikan langsung oleh staf pengemudi resmi MobilJuragan. Bebas uang deposit jaminan sewa dan tidak memerlukan SIM A dari penyewa.'
-                      : 'Sesuai ketentuan resmi MobilJuragan Merauke, verifikasi fisik KTP asli dan SIM A dilakukan langsung oleh staf lapangan saat serah terima unit kendaraan.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
+                      ? 'Armada dikemudikan staf resmi MobilJuragan. Bebas uang jaminan dan tanpa syarat SIM A.'
+                      : 'KTP asli dan SIM A penyewa ditunjukkan kepada staf saat penyerahan unit kendaraan di Merauke.',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w400,
-                    color: isDriver ? const Color(0xFF14532D) : const Color(0xFF1E40AF),
+                    height: 1.35,
+                    color: AppColors.textSecondary,
                     fontFamily: 'Inter',
                   ),
                 ),
@@ -470,35 +449,17 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-              const Text(
+          const Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.primaryTeal),
+              SizedBox(width: 8),
+              Text(
                 'Rincian Biaya Sewa',
                 style: TextStyle(
                   fontSize: AppTypography.sizeBodyLarge,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                   fontFamily: 'Inter',
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.badgeAmberBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Menunggu Detail Harga',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.badgeAmberText,
-                    fontFamily: 'Inter',
-                  ),
                 ),
               ),
             ],
@@ -515,18 +476,17 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           ),
           const SizedBox(height: 6),
           _buildInfoRow(
-            'Biaya Layanan Sistem Operasional',
+            'Biaya Layanan',
             'Rp ${_formatRupiah(booking.serviceFee)}',
           ),
           const Divider(height: 20, color: AppColors.borderSubtle),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
               const Text(
-                'Total Terhitung',
+                'Estimasi Total',
                 style: TextStyle(
                   fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
@@ -549,25 +509,25 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              border: Border.all(color: AppColors.borderSubtle),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, size: 16, color: Color(0xFFB45309)),
+                const Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     booking.withDriver
-                        ? 'Rincian biaya final resmi (termasuk konfirmasi rute luar kota jika ada, durasi jam operasional 12 jam/hari, atau diskon promo pengguna baru) akan dikonfirmasi langsung oleh admin dari dashboard.'
-                        : 'Rincian biaya final resmi (termasuk biaya layanan jam operasional kantor, deposit jaminan refundable, atau diskon promo pengguna baru) akan dikonfirmasi langsung oleh admin dari dashboard.',
+                        ? 'Biaya final (termasuk rute luar kota, durasi sewa >12 jam/hari, atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.'
+                        : 'Biaya final (termasuk deposit jaminan refundable atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.',
                     style: const TextStyle(
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w400,
                       height: 1.4,
-                      color: Color(0xFF92400E),
+                      color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
                   ),
@@ -579,6 +539,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       ),
     );
   }
+
 
   Widget _buildAgreementCheckbox(BookingController booking) {
     return InkWell(
@@ -658,7 +619,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               elevation: 0,
             ),
             child: const Text(
-              'Kirim Pengajuan & Tunggu Tarif Final',
+              'Kirim Pengajuan Sewa',
               style: AppTypography.sectionTitle,
             ),
           ),
