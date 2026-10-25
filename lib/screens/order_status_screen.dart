@@ -344,7 +344,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
     final isCancelled = activeBooking.status == BookingStatus.dibatalkan;
     final isCompleted = activeBooking.status == BookingStatus.selesai;
-    final isWaitingPayment = activeBooking.status == BookingStatus.menungguPembayaran;
     final isPaid = activeBooking.status == BookingStatus.pembayaranSelesai ||
         activeBooking.status == BookingStatus.verifikasiKantor ||
         activeBooking.status == BookingStatus.mobilSiapDigunakan ||
@@ -386,9 +385,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildStatusHeaderCard(activeBooking),
-              const SizedBox(height: 14),
-
               if (isCancelled) ...[
                 _buildCancelledBannerCard(activeBooking),
                 const SizedBox(height: 16),
@@ -396,15 +392,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 const SizedBox(height: 16),
                 _buildCancelledAssistanceCard(context, activeBooking),
                 const SizedBox(height: 16),
-              ] else ...[
-                if (isCompleted) ...[
-                  _buildCompletedBannerCard(activeBooking),
-                  const SizedBox(height: 16),
-                ],
+              ] else if (isCompleted) ...[
+                _buildCompletedBannerCard(activeBooking),
+                const SizedBox(height: 16),
+                _buildFigmaStepper(activeBooking),
+                const SizedBox(height: 16),
                 _buildVehicleSummaryCard(activeBooking),
                 const SizedBox(height: 16),
-
-                // Kartu Khusus Staf Pengemudi (Dengan Sopir) atau Panduan Serah Terima (Lepas Kunci)
+              ] else if (isPaid) ...[
+                // Tahap 4: Sewa Berjalan (E-Ticket sebagai Hero Card Mandiri)
+                _buildETicketCard(context, activeBooking),
+                const SizedBox(height: 16),
+                _buildFigmaStepper(activeBooking),
+                const SizedBox(height: 16),
                 if (activeBooking.withDriver) ...[
                   _buildAssignedDriverCard(context, activeBooking),
                   const SizedBox(height: 16),
@@ -412,23 +412,22 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   _buildSelfDriveHandoverGuideCard(activeBooking),
                   const SizedBox(height: 16),
                 ],
-
-                // Stepper Mengikuti Figma + Menunggu Pembayaran
+              ] else ...[
+                // Tahap 1, 2, & 3: Sebelum Lunas (Permintaan Masuk, Konfirmasi Tarif, Menunggu Pembayaran)
+                _buildUnifiedHeroStatusCard(context, activeBooking),
+                const SizedBox(height: 16),
                 _buildFigmaStepper(activeBooking),
                 const SizedBox(height: 16),
-
-                // Notifikasi menunggu konfirmasi tarif final (hanya saat proses kalkulasi admin berlangsung)
-                if (!activeBooking.isFinalTariffConfirmed) ...[
-                  _buildPendingTariffNoticeCard(activeBooking),
-                  const SizedBox(height: 16),
-                ],
-
-                // Kartu Pengingat Pembayaran atau E-Ticket Resmi
-                if (isWaitingPayment) ...[
-                  _buildPaymentNoticeCard(context, activeBooking),
-                  const SizedBox(height: 16),
-                ] else if (isPaid) ...[
-                  _buildETicketCard(context, activeBooking),
+                _buildVehicleSummaryCard(activeBooking),
+                const SizedBox(height: 16),
+                if (activeBooking.withDriver) ...[
+                  // Card sopir hanya ditampilkan setelah pengajuan diterima/diverifikasi (Tahap 2 ke atas)
+                  if (activeBooking.status != BookingStatus.permintaanDiterima) ...[
+                    _buildAssignedDriverCard(context, activeBooking),
+                    const SizedBox(height: 16),
+                  ],
+                ] else ...[
+                  _buildSelfDriveHandoverGuideCard(activeBooking),
                   const SizedBox(height: 16),
                 ],
               ],
@@ -442,67 +441,392 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Widget _buildStatusHeaderCard(BookingModel booking) {
+  /// Unified Hero Status Card: Melebur Header Kode Booking & Notice Card menjadi satu Hero terpadu
+  Widget _buildUnifiedHeroStatusCard(BuildContext context, BookingModel booking) {
+    final isWaitingPayment = booking.status == BookingStatus.menungguPembayaran ||
+        (booking.isFinalTariffConfirmed &&
+            booking.status != BookingStatus.pembayaranSelesai &&
+            booking.status != BookingStatus.verifikasiKantor &&
+            booking.status != BookingStatus.mobilSiapDigunakan &&
+            booking.status != BookingStatus.selesai &&
+            booking.status != BookingStatus.dibatalkan);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isWaitingPayment ? const Color(0xFFFDE68A) : AppColors.borderSubtle,
+          width: isWaitingPayment ? 1.2 : 1.0,
+        ),
+        boxShadow: isWaitingPayment
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFD97706).withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+          // 1. Header Metadata Reservasi & Sinkronisasi
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  'Kode Reservasi',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'KODE RESERVASI',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeMicro,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              booking.id,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeHeading,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: booking.id));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Kode reservasi berhasil disalin'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(4),
+                            child: const Padding(
+                              padding: EdgeInsets.all(3),
+                              child: Icon(
+                                Icons.copy_rounded,
+                                size: 15,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  booking.id,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeHeading,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: _getStatusBgColor(booking.status),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        booking.statusLabel,
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: _getStatusTextColor(booking.status),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: _isRefreshing ? null : () => _manualRefreshStatus(booking),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: _isRefreshing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryTeal),
+                              )
+                            : const Icon(Icons.sync_rounded, size: 18, color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: _getStatusBgColor(booking.status),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              booking.statusLabel,
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w700,
-                color: _getStatusTextColor(booking.status),
-                fontFamily: 'Inter',
-              ),
-            ),
+
+          const Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
+
+          // 2. Hero Body: Aksi & Status Aktif Saat Ini
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: isWaitingPayment
+                ? _buildHeroWaitingPaymentContent(context, booking)
+                : _buildHeroPendingTariffContent(booking),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeroWaitingPaymentContent(BuildContext context, BookingModel booking) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.schedule_rounded,
+                    size: 20,
+                    color: Color(0xFFD97706),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Selesaikan Pembayaran',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBodyLarge,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF92400E),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Rincian tarif final telah diterbitkan',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.timer_outlined, size: 12, color: Color(0xFFB45309)),
+                  SizedBox(width: 4),
+                  Text(
+                    '23:59:00',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFB45309),
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Total Pembayaran',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              Text(
+                'Rp ${_formatRupiah(booking.totalCost)}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeHeading,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryNavy,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
+          child: ElevatedButton.icon(
+            onPressed: () => _showPaymentMethodPickerSheet(context, booking),
+            icon: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
+            label: const Text(
+              'Bayar Sekarang',
+              style: TextStyle(
+                fontSize: AppTypography.sizeBodyLarge,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                fontFamily: 'Inter',
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Center(
+          child: Text(
+            'Mendukung QRIS Dinamis, Transfer Bank (VA), & Tunai di Tempat (COD)',
+            style: TextStyle(
+              fontSize: AppTypography.sizeMicro,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroPendingTariffContent(BookingModel booking) {
+    final isDriver = booking.withDriver;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.hourglass_top_rounded,
+                size: 20,
+                color: Color(0xFFD97706),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pengajuan Sedang Ditinjau Admin',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF92400E),
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isDriver
+                        ? 'Pemeriksaan kesiapan armada dan alokasi sopir'
+                        : 'Pemeriksaan ketersediaan unit armada',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.info_outline, size: 16, color: AppColors.primaryTeal),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isDriver
+                      ? 'Admin sedang memeriksa ketersediaan armada, verifikasi penugasan sopir, dan rincian tarif. Estimasi proses verifikasi berkisar 15 - 30 menit.'
+                      : 'Admin sedang memeriksa ketersediaan armada dan menyusun rincian tarif final. Estimasi proses verifikasi berkisar 15 - 30 menit.',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -515,10 +839,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: booking.isFinalTariffConfirmed && !isCancelled
-              ? AppColors.primaryTeal.withValues(alpha: 0.35)
-              : AppColors.borderSubtle,
-          width: booking.isFinalTariffConfirmed && !isCancelled ? 1.5 : 1.0,
+          color: AppColors.borderSubtle,
+          width: 1.0,
         ),
       ),
       child: Column(
@@ -636,7 +958,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                           isCancelled
                               ? 'Total Nilai Sewa (Batal)'
                               : (booking.isFinalTariffConfirmed
-                                  ? 'Total Tarif Resmi Final'
+                                  ? 'Total Pembayaran'
                                   : 'Estimasi Total Biaya'),
                           style: const TextStyle(
                             fontSize: AppTypography.sizeBody,
@@ -723,7 +1045,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       style: TextStyle(
                         fontSize: AppTypography.sizeCaption,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1D4ED8),
+                        color: AppColors.primaryNavy,
                         fontFamily: 'Inter',
                       ),
                     ),
@@ -732,7 +1054,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       final isNegative = adj.isDeduction;
                       final prefix = isNegative ? '-Rp ' : '+Rp ';
                       final absAmount = adj.amount.abs();
-                      final color = isNegative ? const Color(0xFF059669) : const Color(0xFF1D4ED8);
+                      final color = isNegative ? const Color(0xFF059669) : AppColors.primaryNavy;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
@@ -852,90 +1174,91 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             ),
           ),
           const SizedBox(height: 16),
+            // Tahap 1: Permintaan Masuk
+            _buildStepRow(
+              stepNumber: 1,
+              title: 'Permintaan Masuk',
+              subtitle: step1Done
+                  ? 'Data pengajuan telah tercatat di sistem'
+                  : 'Formulir pengajuan sewa berhasil dikirim',
+              isDone: step1Done,
+              isActive: step1Active,
+              isLast: false,
+            ),
 
-          // Tahap 1: Permintaan Masuk
-          _buildStepRow(
-            stepNumber: 1,
-            title: 'Permintaan Masuk',
-            subtitle: step1Done
-                ? 'Data pengajuan telah tercatat di sistem MobilJuragan'
-                : 'Pengajuan sewa sedang diproses oleh sistem operasional',
-            isDone: step1Done,
-            isActive: step1Active,
-            isLast: false,
-          ),
+            // Tahap 2: Konfirmasi Tarif & Armada
+            _buildStepRow(
+              stepNumber: 2,
+              title: 'Konfirmasi Tarif & Armada',
+              subtitle: step2Done
+                  ? (isDriver
+                      ? 'Tarif sewa dan alokasi sopir telah dikonfirmasi admin'
+                      : 'Tarif sewa dan kesiapan armada telah dikonfirmasi admin')
+                  : (step2Active
+                      ? (isDriver
+                          ? 'Pemeriksaan rute perjalanan dan alokasi sopir'
+                          : 'Pemeriksaan kesiapan unit dan rincian biaya')
+                      : (isDriver
+                          ? 'Menunggu validasi rute perjalanan dan alokasi sopir'
+                          : 'Menunggu giliran pemeriksaan unit dan rincian biaya')),
+              isDone: step2Done,
+              isActive: step2Active,
+              isLast: false,
+            ),
 
-          // Tahap 2: Konfirmasi Tarif & Armada
-          _buildStepRow(
-            stepNumber: 2,
-            title: 'Konfirmasi Tarif & Armada',
-            subtitle: step2Done
-                ? (isDriver
-                    ? 'Tarif sewa resmi dan supir resmi telah dikonfirmasi admin'
-                    : 'Tarif sewa resmi dan kesiapan armada telah dikonfirmasi admin')
-                : (step2Active
-                    ? (isDriver
-                        ? 'Admin sedang memvalidasi rute perjalanan dan alokasi supir'
-                        : 'Admin sedang memeriksa unit armada dan menghitung tarif resmi')
-                    : (isDriver
-                        ? 'Menunggu validasi rute perjalanan dan penugasan supir'
-                        : 'Menunggu pemeriksaan fisik unit armada oleh admin')),
-            isDone: step2Done,
-            isActive: step2Active,
-            isLast: false,
-          ),
+            // Tahap 3: Pembayaran / Pelunasan Tunai di Tempat
+            _buildStepRow(
+              stepNumber: 3,
+              title: isCod
+                  ? (step3Done ? 'Pelunasan Tunai Selesai' : 'Pelunasan Tunai di Tempat (COD)')
+                  : (step3Done ? 'Pembayaran Diterima' : 'Pembayaran'),
+              subtitle: isCod
+                  ? (step3Done
+                      ? 'Pembayaran tunai telah diterima petugas kantor atau sopir di lokasi'
+                      : (step3Active
+                          ? 'Siapkan uang tunai pas Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit'
+                          : 'Menunggu serah terima unit untuk pelunasan tunai'))
+                  : (step3Done
+                      ? 'Pembayaran telah terverifikasi dan tercatat lunas'
+                      : (step3Active
+                          ? 'Batas pelunasan hingga 24 jam ke depan'
+                          : 'Menunggu penetapan rincian tarif final')),
+              isDone: step3Done,
+              isActive: step3Active,
+              isLast: false,
+            ),
 
-          // Tahap 3: Menunggu Pembayaran / Pelunasan Tunai di Tempat
-          _buildStepRow(
-            stepNumber: 3,
-            title: isCod ? 'Pelunasan Tunai di Tempat (COD)' : 'Menunggu Pembayaran',
-            subtitle: isCod
-                ? (step3Done
-                    ? 'Pembayaran tunai telah diterima staf kantor atau supir di lokasi'
-                    : (step3Active
-                        ? 'Siapkan uang tunai pas Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit'
-                        : 'Menunggu serah terima unit untuk pelunasan tunai'))
-                : (step3Done
-                    ? 'Pembayaran telah terverifikasi dan tercatat lunas'
-                    : (step3Active
-                        ? 'Tarif resmi terbit. Silakan selesaikan pembayaran via QRIS atau Transfer'
-                        : 'Menunggu konfirmasi tarif resmi sebelum pembayaran')),
-            isDone: step3Done,
-            isActive: step3Active,
-            isLast: false,
-          ),
+            // Tahap 4: Sewa Berjalan
+            _buildStepRow(
+              stepNumber: 4,
+              title: 'Sewa Berjalan',
+              subtitle: step4Done
+                  ? 'Perjalanan sewa telah tuntas dilaksanakan'
+                  : (step4Active
+                      ? (isDriver
+                          ? 'Sopir siaga dan perjalanan sewa Anda sedang berjalan'
+                          : 'Unit armada telah diserahterimakan dan masa sewa aktif')
+                      : (isDriver
+                          ? 'Sopir akan siaga menjemput setelah pembayaran terkonfirmasi'
+                          : 'Kunci dan unit akan diserahkan setelah pembayaran terkonfirmasi')),
+              isDone: step4Done,
+              isActive: step4Active,
+              isLast: false,
+            ),
 
-          // Tahap 4: Sewa Berjalan
-          _buildStepRow(
-            stepNumber: 4,
-            title: 'Sewa Berjalan',
-            subtitle: step4Done
-                ? 'Perjalanan sewa telah tuntas dilaksanakan'
-                : (step4Active
-                    ? (isDriver
-                        ? 'Sopir resmi siaga dan perjalanan sewa Anda sedang berjalan'
-                        : 'Unit armada telah diserahterimakan dan masa sewa aktif')
-                    : (isDriver
-                        ? 'Sopir akan siaga menjemput setelah pembayaran terkonfirmasi'
-                        : 'Kunci dan unit akan diserahkan setelah pembayaran terkonfirmasi')),
-            isDone: step4Done,
-            isActive: step4Active,
-            isLast: false,
-          ),
-
-          // Tahap 5: Selesai
-          _buildStepRow(
-            stepNumber: 5,
-            title: 'Selesai',
-            subtitle: step5Done
-                ? (isDriver
-                    ? 'Layanan sopir telah selesai dan armada telah kembali ke kantor'
-                    : 'Masa sewa telah selesai dan unit telah kembali ke kantor')
-                : 'Penyewaan akan ditandai selesai setelah unit kembali ke kantor',
-            isDone: step5Done,
-            isActive: step5Active,
-            isLast: true,
-          ),
+            // Tahap 5: Selesai
+            _buildStepRow(
+              stepNumber: 5,
+              title: 'Selesai',
+              subtitle: step5Done
+                  ? (isDriver
+                      ? 'Layanan sopir telah selesai dan armada telah kembali ke kantor'
+                      : 'Masa sewa telah selesai dan unit telah kembali ke kantor')
+                  : 'Pemeriksaan akhir unit & pengembalian deposit',
+              isDone: step5Done,
+              isActive: step5Active,
+              isLast: true,
+            ),
         ],
       ),
     );
@@ -945,19 +1268,21 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   Widget _buildAssignedDriverCard(BuildContext context, BookingModel booking) {
     final driver = booking.assignedDriver;
     final driverName = driver?.driverName ?? 'Staf Sopir Ditugaskan';
-    final role = driver?.operationalRole ?? 'Staf Pengemudi Tetap MobilJuragan Merauke';
+    final role = driver?.operationalRole != null && driver!.operationalRole.isNotEmpty
+        ? driver.operationalRole
+        : 'Pengemudi Area Merauke';
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.35), width: 1.5),
+        border: Border.all(color: AppColors.borderSubtle, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Wrap: badge "Karyawan Tetap" turun ke baris berikutnya saat ukuran
+          // Wrap: badge "Sopir Resmi" turun ke baris berikutnya saat ukuran
           // teks sistem diperbesar, bukan menimpa judul kartu.
           Wrap(
             alignment: WrapAlignment.spaceBetween,
@@ -971,7 +1296,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   const Icon(Icons.badge_outlined, size: 18, color: AppColors.primaryTeal),
                   const SizedBox(width: 8),
                   const Text(
-                    'Staf Pengemudi Bertugas',
+                    'Pengemudi Anda',
                     style: TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
@@ -988,7 +1313,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
-                  'Karyawan Tetap',
+                  'Sopir Resmi',
                   style: TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w700,
@@ -1049,14 +1374,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
+              border: Border.all(color: AppColors.borderSubtle),
             ),
             child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.chat_outlined, size: 16, color: Color(0xFF16A34A)),
+                Icon(Icons.chat_outlined, size: 16, color: AppColors.primaryTeal),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1065,7 +1390,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w400,
                       height: 1.4,
-                      color: Color(0xFF166534),
+                      color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
                   ),
@@ -1166,7 +1491,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: AppColors.tealLight,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
@@ -1174,7 +1499,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   style: TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1D4ED8),
+                    color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
                   ),
                 ),
@@ -1205,7 +1530,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             'Catatan penting serah terima unit:\n'
             '• Tunjukkan fisik asli e-KTP dan SIM A yang masih berlaku kepada staf lapangan.\n'
             '• Pengecekan bersama kondisi bodi, interior, ban cadangan, dan indikator bahan bakar.\n'
-            '• Deposit jaminan sewa (refundable) akan dikembalikan utuh setelah masa sewa berakhir.',
+            '• Uang deposit jaminan akan dikembalikan penuh setelah masa sewa berakhir.',
             style: TextStyle(
               fontSize: AppTypography.sizeCaption,
               height: 1.45,
@@ -1236,8 +1561,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       iconColor = AppColors.badgeGreenText;
       iconChild = Icon(Icons.check, size: 14, color: iconColor);
     } else if (isActive) {
-      iconBgColor = const Color(0xFFEFF6FF);
-      iconColor = const Color(0xFF1D4ED8);
+      iconBgColor = AppColors.tealLight;
+      iconColor = AppColors.primaryTeal;
       iconChild = Container(
         width: 8,
         height: 8,
@@ -1274,7 +1599,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isActive
-                        ? const Color(0xFF1D4ED8)
+                        ? AppColors.primaryTeal
                         : (isDone ? AppColors.badgeGreenText : AppColors.borderSubtle),
                     width: isActive ? 2 : 1,
                   ),
@@ -1307,7 +1632,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                             fontSize: AppTypography.sizeBodyLarge,
                             fontWeight: (isActive || isDone) ? FontWeight.w700 : FontWeight.w500,
                             color: isActive
-                                ? const Color(0xFF1D4ED8)
+                                ? AppColors.primaryNavy
                                 : (isDone ? AppColors.textPrimary : AppColors.textSecondary),
                             fontFamily: 'Inter',
                           ),
@@ -1317,7 +1642,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
+                            color: AppColors.tealLight,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -1325,7 +1650,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                             style: TextStyle(
                               fontSize: AppTypography.sizeMicro,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1D4ED8),
+                              color: AppColors.primaryTeal,
                               fontFamily: 'Inter',
                             ),
                           ),
@@ -1369,52 +1694,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
 
-  Widget _buildPendingTariffNoticeCard(BookingModel booking) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.hourglass_top, size: 18, color: Color(0xFFB45309)),
-              SizedBox(width: 8),
-              // Expanded: judul membungkus ke baris berikutnya saat ukuran
-              // teks sistem diperbesar, bukan meluber ke kanan.
-              Expanded(
-                child: Text(
-                  'Menunggu Rincian Tarif Final',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFB45309),
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            booking.withDriver
-                ? 'Estimasi awal saat ini Rp ${_formatRupiah(booking.baseEstimatedCost)}. Rincian penyesuaian operasional sopir atau rute perjalanan akan tampil di sini segera setelah dikonfirmasi admin.'
-                : 'Estimasi awal saat ini Rp ${_formatRupiah(booking.baseEstimatedCost)}. Rincian penyesuaian biaya operasional atau deposit jaminan refundable akan tampil di sini segera setelah dikonfirmasi admin.',
-            style: const TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildTariffRow(String label, String value) {
     return Row(
@@ -1503,162 +1783,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Widget _buildPaymentNoticeCard(BuildContext context, BookingModel booking) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD97706).withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Wrap: badge countdown turun ke baris berikutnya saat ukuran teks
-          // sistem diperbesar, bukan meluber keluar kartu.
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                    ),
-                    child: const Icon(
-                      Icons.schedule_rounded,
-                      size: 20,
-                      color: Color(0xFFD97706),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Flexible: kolom teks boleh menyusut dan membungkus saat
-                  // ukuran teks sistem diperbesar.
-                  const Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Menunggu Pembayaran',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBodyLarge,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF92400E),
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Tarif resmi final telah diterbitkan',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.timer_outlined, size: 12, color: Color(0xFFB45309)),
-                    SizedBox(width: 4),
-                    Text(
-                      '23:59:00',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFB45309),
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.borderSubtle),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              const Text(
-                'Total Tagihan Pembayaran',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              Text(
-                'Rp ${_formatRupiah(booking.totalCost)}',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeHeading,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primaryNavy,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, size: 14, color: AppColors.primaryTeal),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Tekan tombol "Bayar Sekarang" di bawah untuk memilih metode pembayaran (Online QRIS/VA atau Tunai COD).',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _showPaymentMethodPickerSheet(BuildContext context, BookingModel booking) {
     showModalBottomSheet(
@@ -1776,13 +1901,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
+                          color: AppColors.tealLight,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
                           Icons.qr_code_scanner_rounded,
                           size: 22,
-                          color: Color(0xFF1D4ED8),
+                          color: AppColors.primaryTeal,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -2017,7 +2142,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'E-TICKET RESMI MOBILJURAGAN',
+                            'E-TICKET RESERVASI MOBILJURAGAN',
                             style: TextStyle(
                               fontSize: AppTypography.sizeTiny,
                               fontWeight: FontWeight.w800,
@@ -2026,39 +2151,85 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               fontFamily: 'Inter',
                             ),
                           ),
-                          Text(
-                            booking.id,
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeTitle,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              fontFamily: 'Inter',
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                booking.id,
+                                style: const TextStyle(
+                                  fontSize: AppTypography.sizeTitle,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: booking.id));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Kode reservasi berhasil disalin'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(4),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(3),
+                                  child: Icon(
+                                    Icons.copy_rounded,
+                                    size: 15,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isCod ? const Color(0xFF1E3A8A) : const Color(0xFF065F46),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isCod ? const Color(0xFF60A5FA) : const Color(0xFF34D399),
-                      width: 0.8,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isCod ? const Color(0xFF1E3A8A) : const Color(0xFF065F46),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isCod ? const Color(0xFF60A5FA) : const Color(0xFF34D399),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        isCod ? 'METODE COD' : 'LUNAS',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeTiny,
+                          fontWeight: FontWeight.w800,
+                          color: isCod ? const Color(0xFFDBEAFE) : const Color(0xFFD1FAE5),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    isCod ? 'METODE COD' : 'LUNAS',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      fontWeight: FontWeight.w800,
-                      color: isCod ? const Color(0xFFDBEAFE) : const Color(0xFFD1FAE5),
-                      fontFamily: 'Inter',
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: _isRefreshing ? null : () => _manualRefreshStatus(booking),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: _isRefreshing
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.sync_rounded, size: 16, color: Colors.white70),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -2070,39 +2241,40 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Info Status Pelunasan
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isCod ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isCod ? Icons.info_outline : Icons.verified_outlined,
-                        size: 16,
-                        color: isCod ? const Color(0xFF1D4ED8) : const Color(0xFF047857),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          isCod
-                              ? 'Pelunasan Tunai: Siapkan Rp ${_formatRupiah(booking.totalCost)} saat serah terima.'
-                              : 'Pembayaran Lunas: Terverifikasi resmi sistem operasional.',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            fontWeight: FontWeight.w600,
-                            color: isCod ? const Color(0xFF1E40AF) : const Color(0xFF065F46),
-                            fontFamily: 'Inter',
+                // Info Pelunasan Tunai (hanya jika COD, jika online lunas sudah diwakili badge LUNAS di header)
+                if (isCod) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: AppColors.primaryNavy,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Pelunasan Tunai: Siapkan Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit.',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontFamily: 'Inter',
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
+                  const SizedBox(height: 14),
+                ],
 
                 // Grid Ringkasan Reservasi
                 Row(
@@ -2148,7 +2320,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // Barcode / Verifikasi Digital Mockup
+                // Barcode / Verifikasi Digital Serah Terima
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
@@ -2157,16 +2329,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      const Icon(Icons.qr_code_2_rounded, size: 36, color: AppColors.primaryNavy),
-                      const SizedBox(width: 12),
+                      Icon(Icons.qr_code_2_rounded, size: 36, color: AppColors.primaryNavy),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Kode Validasi Unit: VALID-MBJ-OK',
+                            Text(
+                              'Kode Serah Terima: VALID-MBJ-OK',
                               style: TextStyle(
                                 fontSize: AppTypography.sizeCaption,
                                 fontWeight: FontWeight.w700,
@@ -2174,12 +2346,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                 fontFamily: 'Inter',
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            SizedBox(height: 2),
                             Text(
-                              booking.withDriver && booking.assignedDriver != null
-                                  ? 'Sopir Bertugas: ${booking.assignedDriver!.driverName}'
-                                  : 'Serah Terima: Staf Kantor MobilJuragan',
-                              style: const TextStyle(
+                              'Tunjukkan kode QR ini ke petugas atau sopir saat serah terima unit',
+                              style: TextStyle(
                                 fontSize: AppTypography.sizeTiny,
                                 color: AppColors.textSecondary,
                                 fontFamily: 'Inter',
@@ -2483,6 +2653,37 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFDCFCE7)),
           const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Kode Reservasi: ${booking.id}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: booking.id));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Kode reservasi berhasil disalin'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: const Padding(
+                  padding: EdgeInsets.all(2),
+                  child: Icon(Icons.copy_rounded, size: 14, color: AppColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
             'Masa sewa ${booking.vehicle.name} telah selesai dan unit telah diterima dalam kondisi baik oleh tim kantor operasional CV. Mobil Juragan Merauke. Terima kasih telah mempercayai layanan kami!',
             style: const TextStyle(
@@ -2593,6 +2794,37 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           ),
           const SizedBox(height: 14),
           const Divider(height: 1, color: AppColors.borderSubtle),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Kode Reservasi: ${booking.id}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: booking.id));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Kode reservasi berhasil disalin'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: const Padding(
+                  padding: EdgeInsets.all(2),
+                  child: Icon(Icons.copy_rounded, size: 14, color: AppColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
 
           // Baris Alasan Pembatalan (Layout Rapi & Profesional)
@@ -3473,27 +3705,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
     return Column(
       children: [
-        if (isWaitingPayment) ...[
-          SizedBox(
-            width: double.infinity,
-            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
-            child: ElevatedButton.icon(
-              onPressed: () => _showPaymentMethodPickerSheet(context, booking),
-              icon: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
-              label: Text(
-                'Bayar Sekarang • Rp ${_formatRupiah(booking.totalCost)}',
-                style: AppTypography.cardTitle,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryNavy,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ] else if (isPaid) ...[
+        if (isPaid) ...[
+          // Tahap 4: Sewa Berjalan
           SizedBox(
             width: double.infinity,
             height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
@@ -3518,43 +3731,25 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'E-Ticket resmi telah aktif. Diskusikan rincian penjemputan dengan tim lapangan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
           const SizedBox(height: 10),
-        ] else ...[
-          SizedBox(
-            width: double.infinity,
-            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
-            child: ElevatedButton.icon(
-              onPressed: _isRefreshing ? null : () => _manualRefreshStatus(booking),
-              icon: _isRefreshing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.sync_rounded, size: 20, color: Colors.white),
-              label: Text(
-                _isRefreshing ? 'Memeriksa ke Sistem...' : 'Periksa Status Terbaru',
-                style: AppTypography.cardTitle,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryNavy,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
+          Center(
+            child: TextButton.icon(
+              onPressed: () => _showCancellationBottomSheet(context, booking),
+              icon: const Icon(Icons.help_outline_rounded, size: 16, color: AppColors.textSecondary),
+              label: const Text(
+                'Butuh bantuan pembatalan atau perubahan jadwal? Ajukan di sini',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: AppColors.textSecondary,
+                  decoration: TextDecoration.underline,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 10),
+        ] else if (isWaitingPayment) ...[
+          // Tahap 3: Menunggu Pembayaran
+          // Tombol Bayar Sekarang telah berada langsung di dalam kartu tagihan atas
           SizedBox(
             width: double.infinity,
             height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
@@ -3582,62 +3777,66 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
-        ],
-        // 2. Tombol Pembatalan / Refund Berwarna Merah Tegas
-        if (booking.status != BookingStatus.selesai) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => _showCancellationBottomSheet(context, booking),
+              child: const Text(
+                'Batalkan Pesanan Ini',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: Color(0xFFDC2626),
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ),
+        ] else ...[
+          // Tahap 1 & 2: Permintaan Masuk / Menunggu Konfirmasi Tarif
           SizedBox(
             width: double.infinity,
             height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
             child: OutlinedButton.icon(
-              onPressed: () => _showCancellationBottomSheet(context, booking),
-              icon: Icon(
-                isPaid ? Icons.undo_rounded : Icons.close_rounded,
-                size: 18,
-                color: const Color(0xFFDC2626),
-              ),
-              label: Text(
-                isPaid ? 'Ajukan Pembatalan & Refund' : 'Batalkan Pesanan Ini',
-                style: const TextStyle(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatSupportScreen(booking: booking),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.support_agent, size: 18, color: AppColors.primaryTeal),
+              label: const Text(
+                'Hubungi CS MobilJuragan',
+                style: TextStyle(
                   fontSize: AppTypography.sizeBodyLarge,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFDC2626),
+                  color: AppColors.primaryTeal,
                   fontFamily: 'Inter',
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xFFFEF2F2),
-                side: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+                side: const BorderSide(color: AppColors.primaryTeal),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
               ),
             ),
           ),
-          const SizedBox(height: 10),
-        ],
-
-        // 3. Tombol Kembali ke Beranda
-        SizedBox(
-          width: double.infinity,
-          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-          child: OutlinedButton(
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-                (route) => false,
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: AppColors.borderSubtle),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text(
-              'Kembali ke Beranda',
-              style: AppTypography.bodyLargeStrong,
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => _showCancellationBottomSheet(context, booking),
+              child: const Text(
+                'Batalkan Pengajuan Sewa',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: Color(0xFFDC2626),
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Inter',
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -3647,7 +3846,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       case BookingStatus.permintaanDiterima:
       case BookingStatus.pemeriksaanArmada:
       case BookingStatus.menungguTarifFinal:
-        return const Color(0xFFEFF6FF);
+        return AppColors.tealLight;
       case BookingStatus.menungguPembayaran:
         return const Color(0xFFFFFBEB);
       case BookingStatus.pembayaranSelesai:
@@ -3665,7 +3864,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
       case BookingStatus.permintaanDiterima:
       case BookingStatus.pemeriksaanArmada:
       case BookingStatus.menungguTarifFinal:
-        return const Color(0xFF1D4ED8);
+        return AppColors.primaryTeal;
       case BookingStatus.menungguPembayaran:
         return const Color(0xFFB45309);
       case BookingStatus.pembayaranSelesai:

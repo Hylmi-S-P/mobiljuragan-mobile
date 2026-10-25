@@ -72,8 +72,101 @@ void main() {
       expect(find.text('Sewa Berjalan'), findsAtLeastNWidgets(1));
       expect(find.text('Penyewaan Selesai'), findsNothing);
 
+      // E-Ticket Reservasi tampil dengan format resmi
+      expect(find.text('E-TICKET RESERVASI MOBILJURAGAN'), findsOneWidget);
+
+      // Stepper menampilkan seluruh tahapan proses pesanan secara terbuka (tanpa toggle riwayat)
+      expect(find.text('Tahapan Proses Pesanan'), findsOneWidget);
+      expect(find.text('Permintaan Masuk'), findsOneWidget);
+      expect(find.text('Konfirmasi Tarif & Armada'), findsOneWidget);
+      expect(find.text('Pembayaran Diterima'), findsOneWidget);
+      expect(find.text('Sewa Berjalan'), findsAtLeastNWidgets(1));
+      expect(find.text('Selesai'), findsOneWidget);
+      expect(find.text('Lihat riwayat ▼'), findsNothing);
+      expect(find.text('Tutup riwayat ▲'), findsNothing);
+
       // Tombol koordinasi tim lapangan
       expect(find.text('Koordinasi Penjemputan via Chat CS'), findsOneWidget);
+
+      // Tombol pembatalan diubah menjadi tautan bantuan elegan, bukan tombol merah mencolok
+      expect(find.text('Butuh bantuan pembatalan atau perubahan jadwal? Ajukan di sini'), findsOneWidget);
+      expect(find.text('Batalkan Pesanan Ini'), findsNothing);
+    });
+
+    testWidgets('Merender ringkasan unit dan tombol batalkan saat status belum lunas / baru diajukan', (tester) async {
+      final requestedBooking = inProgressBooking.copyWith(
+        status: BookingStatus.permintaanDiterima,
+        isFinalTariffConfirmed: false,
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: requestedBooking));
+      await tester.pumpAndSettle();
+
+      // Unified Hero Card berada di bagian atas dengan judul peninjauan admin
+      expect(find.text('Pengajuan Sedang Ditinjau Admin'), findsOneWidget);
+      expect(find.text('Formulir pengajuan sewa berhasil dikirim'), findsOneWidget);
+
+      // Kartu ringkasan unit tetap muncul saat belum lunas dengan estimasi biaya
+      expect(find.text('Estimasi Total Biaya'), findsOneWidget);
+
+      // Tombol pembatalan berupa teks link Batalkan Pengajuan Sewa (bukan tombol merah raksasa)
+      expect(find.text('Batalkan Pengajuan Sewa'), findsOneWidget);
+      expect(find.text('Periksa Status Terbaru'), findsNothing);
+      expect(find.text('Kembali ke Beranda'), findsNothing);
+    });
+
+    testWidgets('Merender kartu Menunggu Pembayaran di atas dengan tombol Bayar Sekarang pada Tahap 3', (tester) async {
+      final waitingPaymentBooking = inProgressBooking.copyWith(
+        status: BookingStatus.menungguPembayaran,
+        isFinalTariffConfirmed: true,
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: waitingPaymentBooking));
+      await tester.pumpAndSettle();
+
+      // Unified Hero Card menampilkan ajakan pembayaran dan badge timer
+      expect(find.text('Selesaikan Pembayaran'), findsOneWidget);
+      expect(find.text('Menunggu Pembayaran'), findsAtLeastNWidgets(1));
+      expect(find.text('23:59:00'), findsOneWidget);
+      expect(find.text('Total Pembayaran'), findsAtLeastNWidgets(1));
+
+      // Tombol Bayar Sekarang bersih tanpa mengulang nominal harga di label
+      expect(find.text('Bayar Sekarang'), findsOneWidget);
+
+      // Stepper menampilkan batas waktu pelunasan
+      expect(find.text('Batas pelunasan hingga 24 jam ke depan'), findsOneWidget);
+
+      // Tombol bawah: Hubungi CS dan Batalkan Pesanan Ini (tanpa tumpukan tombol berlebih)
+      expect(find.text('Hubungi CS MobilJuragan'), findsOneWidget);
+      expect(find.text('Batalkan Pesanan Ini'), findsOneWidget);
+      expect(find.text('Periksa Status Terbaru'), findsNothing);
+      expect(find.text('Kembali ke Beranda'), findsNothing);
+    });
+
+    testWidgets('Tidak menampilkan card supir saat status permintaanDiterima (Tahap 1), dan menampilkannya setelah dikonfirmasi (Tahap 2 atau 3)', (tester) async {
+      final driverBookingTahap1 = inProgressBooking.copyWith(
+        withDriver: true,
+        status: BookingStatus.permintaanDiterima,
+        isFinalTariffConfirmed: false,
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: driverBookingTahap1));
+      await tester.pumpAndSettle();
+
+      // Card supir tidak boleh muncul pada Tahap 1
+      expect(find.text('Pengemudi Anda'), findsNothing);
+
+      final driverBookingTahap3 = inProgressBooking.copyWith(
+        withDriver: true,
+        status: BookingStatus.menungguPembayaran,
+        isFinalTariffConfirmed: true,
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: driverBookingTahap3));
+      await tester.pumpAndSettle();
+
+      // Card supir muncul pada Tahap 3 (setelah diterima atau dikonfirmasi)
+      expect(find.text('Pengemudi Anda'), findsOneWidget);
     });
   });
 }
