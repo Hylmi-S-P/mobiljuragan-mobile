@@ -4140,40 +4140,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     }
   }
 
-  Future<void> _simulatePaymentSuccess() async {
-    try {
-      await _apiService.simulateMutation(
-        bookingId: widget.booking.id,
-        amount: _totalAmount,
-      );
-    } catch (_) {
-      // offline fallback
-    }
-
-    if (!mounted) return;
-    Navigator.pop(context);
-    final controller = context.read<BookingController>();
-    controller.completeOnlinePayment(
-      bookingId: widget.booking.id,
-      paymentMethod: _selectedTab == 0
-          ? PaymentMethodType.qrisOtomatis
-          : PaymentMethodType.virtualAccount,
-      referenceCode: _payment?.id ?? 'SIM-${DateTime.now().millisecondsSinceEpoch}',
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: const Color(0xFF16A34A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Text(
-          'Simulasi pembayaran Rp ${_formatRupiah(_totalAmount)} berhasil! E-Ticket resmi telah terbit.',
-          style: AppTypography.bodyStrong,
-        ),
-      ),
-    );
-  }
-
   void _handlePaymentSuccess(PaymentModel payment) {
     if (!mounted) return;
     Navigator.pop(context);
@@ -4973,23 +4939,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
                     'Cek Status Pembayaran (Otomatis)',
                     style: AppTypography.cardTitle,
                   ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
-          child: OutlinedButton(
-            onPressed: _simulatePaymentSuccess,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primaryTeal,
-              side: const BorderSide(color: AppColors.primaryTeal),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text(
-              'Simulasikan Pembayaran Berhasil (Demo Sandbox)',
-              style: AppTypography.bodyBold,
-            ),
           ),
         ),
       ],

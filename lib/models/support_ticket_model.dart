@@ -110,6 +110,11 @@ class ChatMessageModel {
   final bool isAI;
   final String? conversationKey;
 
+  /// Menandai pesan yang gagal sampai ke server. Pesan tetap tampil di percakapan
+  /// supaya pelanggan tahu apa yang sudah ia tulis, tetapi diberi penanda gagal
+  /// agar tidak dikira sudah terkirim.
+  final bool isFailed;
+
   const ChatMessageModel({
     required this.id,
     required this.message,
@@ -118,5 +123,19 @@ class ChatMessageModel {
     required this.senderName,
     this.isAI = false,
     this.conversationKey,
+    this.isFailed = false,
   });
+
+  ChatMessageModel copyWith({bool? isFailed}) {
+    return ChatMessageModel(
+      id: id,
+      message: message,
+      timestamp: timestamp,
+      isFromUser: isFromUser,
+      senderName: senderName,
+      isAI: isAI,
+      conversationKey: conversationKey,
+      isFailed: isFailed ?? this.isFailed,
+    );
+  }
 }

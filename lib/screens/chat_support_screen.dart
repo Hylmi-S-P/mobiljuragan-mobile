@@ -320,6 +320,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       resizeToAvoidBottomInset: true,
       body: Column(
         children: [
+          // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
+          if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
+
           // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
           if (currentBooking != null)
             _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
@@ -487,6 +490,65 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
+  Widget _buildTicketSummaryBanner(SupportTicketModel ticket) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: AppColors.cardWhite,
+        border: Border(
+          bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.badgeNavyBg,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              ticket.id,
+              style: const TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ticket.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                Text(
+                  'Kategori: ${ticket.categoryLabel} • Status: ${ticket.status}',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _buildMessageItem(ChatMessageModel msg, SupportController controller, double maxBubbleWidth) {
     final isUser = msg.isFromUser;
     final isSystemNotice = msg.senderName == 'Sistem';
@@ -613,15 +675,41 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.bottomRight,
-                  child: Text(
-                    timeString,
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeMicro,
-                      color: isUser
-                          ? AppColors.textWhite.withValues(alpha: 0.7)
-                          : AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Pesan yang gagal sampai ke server diberi penanda supaya
+                      // pelanggan tidak menunggu balasan atas pesan yang tidak
+                      // pernah diterima tim.
+                      if (msg.isFailed) ...[
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 12,
+                          color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Gagal terkirim',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeMicro,
+                            fontWeight: FontWeight.w600,
+                            color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        timeString,
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeMicro,
+                          color: isUser
+                              ? AppColors.textWhite.withValues(alpha: 0.7)
+                              : AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

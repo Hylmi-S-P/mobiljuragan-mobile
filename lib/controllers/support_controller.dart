@@ -292,6 +292,33 @@ class SupportController extends ChangeNotifier {
     }
   }
 
+  /// Mengirim satu pesan tiket ke backend lalu menandai pesan lokal bila gagal.
+  ///
+  /// Dipisah dari [sendUserMessage] supaya pengiriman jaringan tidak menahan
+  /// pembaruan antarmuka: pesan sudah tampil lebih dulu, lalu statusnya diperbaiki
+  /// setelah server menjawab.
+  Future<void> _kirimPesanTiket({
+    required String ticketId,
+    required String pesan,
+    required ChatMessageModel pesanLokal,
+  }) async {
+    try {
+      await _ticketApiService.addMessage(ticketId: ticketId, message: pesan);
+    } catch (_) {
+      final key = pesanLokal.conversationKey;
+      if (key == null) return;
+
+      final daftar = _conversations[key];
+      if (daftar == null) return;
+
+      final posisi = daftar.indexWhere((m) => m.id == pesanLokal.id);
+      if (posisi == -1) return;
+
+      daftar[posisi] = daftar[posisi].copyWith(isFailed: true);
+      notifyListeners();
+    }
+  }
+
   /// Mengirim pesan dari pengguna ke sesi obrolan yang sedang aktif
   void sendUserMessage({
     required String text,
@@ -312,10 +339,16 @@ class SupportController extends ChangeNotifier {
     list.add(userMsg);
     notifyListeners();
 
-    // Jika percakapan merupakan tiket kendala, kirim pesan ke backend REST API
+    // Jika percakapan merupakan tiket kendala, kirim pesan ke backend REST API.
+    //
+    // Sebelumnya pengiriman dilepas dengan unawaited(), sehingga kegagalan jaringan
+    // tidak pernah terlihat: pesan tetap tampil seolah terkirim padahal server tidak
+    // menerimanya, dan pelanggan menunggu balasan yang tidak akan pernah datang.
+    // Sekarang hasilnya ditunggu, lalu pesan ditandai gagal bila server menolak.
     if (conversationKey.startsWith('ticket_')) {
       final ticketId = conversationKey.replaceFirst('ticket_', '');
-      unawaited(_ticketApiService.addMessage(ticketId: ticketId, message: text.trim()));
+
+      _kirimPesanTiket(ticketId: ticketId, pesan: text.trim(), pesanLokal: userMsg);
     }
 
     final isHandedOff = isAiHandoffToAdminFor(conversationKey);
