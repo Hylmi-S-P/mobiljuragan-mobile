@@ -199,7 +199,7 @@ class SupportController extends ChangeNotifier {
   ///
   /// Sebelumnya riwayat hanya hidup di memori aplikasi. Menutup layar bantuan atau
   /// memulai ulang aplikasi membuat percakapan hilang, padahal pesannya sudah
-  /// tersimpan di server — termasuk jawaban asisten AI dan balasan staf.
+  /// tersimpan di server â€” termasuk jawaban asisten AI dan balasan staf.
   ///
   /// Hasilnya menggantikan isi percakapan lokal, lalu status handoff ikut
   /// disesuaikan supaya tombol "Panggil Staf" tidak muncul lagi pada tiket yang
@@ -489,7 +489,7 @@ class SupportController extends ChangeNotifier {
   /// Mengalihkan percakapan sesi ke staf operasional manusia.
   ///
   /// Sebelumnya fungsi ini hanya mengubah flag di memori aplikasi, sehingga backend
-  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin — padahal pesan
+  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin â€” padahal pesan
   /// sistem yang tampil berbunyi "berhasil dialihkan". Sekarang server diberi tahu
   /// lebih dulu, dan penanda lokal baru dipasang setelah server membalas berhasil.
   Future<bool> handoffToAdmin({String conversationKey = 'general'}) async {
@@ -580,15 +580,15 @@ class SupportController extends ChangeNotifier {
     if (alreadySent) return;
 
     final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? '• Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n• Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        ? 'â€¢ Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\nâ€¢ Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
         : '';
 
     final invoiceText =
         'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
-        '• Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
-        '• Bank Transfer: Bank BRI Merauke\n'
-        '• No. Rekening: 0321-01-002847-53-1\n'
-        '• Atas Nama: MobilJuragan Merauke\n'
+        'â€¢ Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
+        'â€¢ Bank Transfer: Bank BRI Merauke\n'
+        'â€¢ No. Rekening: 0321-01-002847-53-1\n'
+        'â€¢ Atas Nama: MobilJuragan Merauke\n'
         '$driverDetail\n'
         'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
 
@@ -606,47 +606,51 @@ class SupportController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Konfirmasi pembayaran langsung dari ruang chat CS untuk pesanan terkait
-  void confirmPaymentFromChat({
+  /// Mencatat bahwa pelanggan mengaku sudah transfer, tanpa mengubah status apa pun.
+  ///
+  /// Sebelumnya method ini mengarang pesan "pembayaran berhasil diverifikasi lunas"
+  /// dan langsung memajukan status pesanan ke mobil siap digunakan, padahal backend
+  /// tidak pernah menerima bukti apa pun. Akibatnya pelanggan bisa melewati
+  /// pembayaran hanya dengan menekan satu tombol di ruang chat.
+  ///
+  /// Sekarang yang dikirim hanya pesan ke thread tiket. Status pembayaran tetap
+  /// menunggu admin memverifikasi bukti transfer lewat portal.
+  Future<void> confirmPaymentFromChat({
     required BookingModel booking,
-    required VoidCallback onAdvance,
-  }) {
-    onAdvance();
-
+  }) async {
     final convKey = 'booking_${booking.id}';
     final list = _conversations.putIfAbsent(convKey, () => []);
 
-    final userConfirmMsg = ChatMessageModel(
+    final pesan = ChatMessageModel(
       id: 'usr-pay-${DateTime.now().millisecondsSinceEpoch}',
-      message: 'Saya sudah melakukan transfer pembayaran sebesar Rp ${_formatRupiah(booking.totalCost)} untuk pesanan #${booking.id}.',
+      message:
+          'Saya sudah melakukan transfer pembayaran sebesar Rp ${_formatRupiah(booking.totalCost)} untuk pesanan #${booking.id}. Mohon diperiksa ya.',
       timestamp: DateTime.now(),
       isFromUser: true,
       senderName: 'Anda',
       conversationKey: convKey,
     );
-    list.add(userConfirmMsg);
+    list.add(pesan);
     notifyListeners();
 
-    Future.delayed(const Duration(milliseconds: 700), () {
-      final currentList = _conversations.putIfAbsent(convKey, () => []);
-
-      final driverReadyText = booking.withDriver && booking.assignedDriver != null
-          ? '\n\nStaf pengemudi kami, ${booking.assignedDriver!.driverName} (WhatsApp: ${booking.assignedDriver!.phoneNumber}), siap menjemput Anda di ${booking.pickupLocation}. Sopir akan menghubungi nomor Anda sebelum waktu penjemputan.'
-          : '\n\nUnit ${booking.vehicle.name} siap diserahterimakan di ${booking.pickupLocation}.';
-
-      final verifiedMsg = ChatMessageModel(
-        id: 'bot-paid-${DateTime.now().millisecondsSinceEpoch}',
-        message: 'Pembayaran pesanan #${booking.id} sebesar Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi lunas oleh sistem dan staf operasional Merauke!$driverReadyText',
-        timestamp: DateTime.now(),
-        isFromUser: false,
-        senderName: 'Customer Service MobilJuragan',
-        isAI: true,
-        conversationKey: convKey,
+    /* Pesan diteruskan ke backend supaya staf melihatnya di portal. Kalau gagal,
+       pesan tetap tampil di layar tetapi bendera di bawah memberi tahu bahwa
+       laporannya belum tersampaikan. */
+    try {
+      await _ticketApiService.addMessage(
+        ticketId: booking.id,
+        message: pesan.message,
       );
-      currentList.add(verifiedMsg);
-      notifyListeners();
-    });
+      _pesanBelumTerkirim = false;
+    } catch (_) {
+      _pesanBelumTerkirim = true;
+    }
+    notifyListeners();
   }
+
+  /// Benar kalau laporan pembayaran terakhir gagal terkirim ke server.
+  bool get pesanBelumTerkirim => _pesanBelumTerkirim;
+  bool _pesanBelumTerkirim = false;
 
   /// Mengirimkan pesan koordinasi penjemputan E-Ticket resmi ke thread pesanan terkait
   void sendPickupCoordinationMessage(BookingModel booking) {

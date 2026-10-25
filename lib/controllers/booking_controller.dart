@@ -298,14 +298,6 @@ class BookingController extends ChangeNotifier {
     }
   }
 
-  /// Simulasi konfirmasi pembayaran via WhatsApp admin (kompatibilitas alur manual)
-  void confirmPaymentAndAdvance(String bookingId) {
-    completeOnlinePayment(
-      bookingId: bookingId,
-      paymentMethod: PaymentMethodType.qrisOtomatis,
-    );
-  }
-
   /// Alias metode konfirmasi pemesanan untuk kompatibilitas alur terdahulu
   void confirmBooking() {
     submitBooking();
