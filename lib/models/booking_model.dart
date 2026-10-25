@@ -104,6 +104,7 @@ class BookingModel {
   final DateTime createdAt;
   final int dailyRate;
   final int serviceFee;
+  final int? quotedAmount;
   final String paymentBank;
   final String paymentAccountNumber;
   final List<BookingFeeAdjustment> adminAdjustments;
@@ -137,7 +138,8 @@ class BookingModel {
     required this.status,
     required this.createdAt,
     required this.dailyRate,
-    this.serviceFee = 25000,
+    this.serviceFee = 0,
+    this.quotedAmount,
     this.paymentBank = 'Bank BRI Merauke',
     this.paymentAccountNumber = '0087-01-002345-53-1',
     this.adminAdjustments = const [],
@@ -229,6 +231,7 @@ class BookingModel {
       createdAt: DateTime.fromMillisecondsSinceEpoch(entry.createdAt),
       dailyRate: entry.dailyRate,
       serviceFee: entry.serviceFee,
+      quotedAmount: entry.quotedAmount,
       paymentBank: entry.paymentBank,
       paymentAccountNumber: entry.paymentAccountNumber,
       adminAdjustments: adjustments,
@@ -260,6 +263,7 @@ class BookingModel {
       status: Value(status.name),
       dailyRate: Value(dailyRate),
       serviceFee: Value(serviceFee),
+      quotedAmount: Value(quotedAmount),
       paymentBank: Value(paymentBank),
       paymentAccountNumber: Value(paymentAccountNumber),
       isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
@@ -337,7 +341,8 @@ class BookingModel {
       status: mappedStatus,
       createdAt: createdAt,
       dailyRate: vehicle.pricePerDay,
-      serviceFee: 25000,
+      serviceFee: 0,
+      quotedAmount: quotedInt,
       adminAdjustments: adjustments,
       isFinalTariffConfirmed: isTariffConfirmed,
       assignedDriver: assignedDriver,
@@ -363,9 +368,15 @@ class BookingModel {
   int get adjustmentsTotal =>
       adminAdjustments.fold(0, (sum, item) => sum + item.amount);
 
-  /// Total tarif resmi: jika tarif final sudah dikonfirmasi admin, menggunakan total + penyesuaian; jika belum, menggunakan estimasi dasar
-  int get totalCost =>
-      isFinalTariffConfirmed ? (baseEstimatedCost + adjustmentsTotal) : baseEstimatedCost;
+  /// Total tarif resmi: jika tarif final sudah dikonfirmasi admin dan terdapat quotedAmount resmi, prioritaskan quotedAmount; jika belum, gunakan estimasi dasar
+  int get totalCost {
+    if (isFinalTariffConfirmed && quotedAmount != null && quotedAmount! > 0) {
+      return quotedAmount!;
+    }
+    return isFinalTariffConfirmed
+        ? (baseEstimatedCost + adjustmentsTotal)
+        : baseEstimatedCost;
+  }
 
   /// Label tampilan status pesanan
   String get statusLabel {
@@ -467,6 +478,7 @@ class BookingModel {
     DateTime? createdAt,
     int? dailyRate,
     int? serviceFee,
+    int? quotedAmount,
     String? paymentBank,
     String? paymentAccountNumber,
     List<BookingFeeAdjustment>? adminAdjustments,
@@ -498,6 +510,7 @@ class BookingModel {
       createdAt: createdAt ?? this.createdAt,
       dailyRate: dailyRate ?? this.dailyRate,
       serviceFee: serviceFee ?? this.serviceFee,
+      quotedAmount: quotedAmount ?? this.quotedAmount,
       paymentBank: paymentBank ?? this.paymentBank,
       paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
       adminAdjustments: adminAdjustments ?? this.adminAdjustments,

@@ -395,9 +395,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ] else if (isCompleted) ...[
                 _buildCompletedBannerCard(activeBooking),
                 const SizedBox(height: 16),
-                _buildFigmaStepper(activeBooking),
-                const SizedBox(height: 16),
                 _buildVehicleSummaryCard(activeBooking),
+                const SizedBox(height: 16),
+                _buildFigmaStepper(activeBooking),
                 const SizedBox(height: 16),
               ] else if (isPaid) ...[
                 // Tahap 4: Sewa Berjalan (E-Ticket sebagai Hero Card Mandiri)
@@ -416,9 +416,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 // Tahap 1, 2, & 3: Sebelum Lunas (Permintaan Masuk, Konfirmasi Tarif, Menunggu Pembayaran)
                 _buildUnifiedHeroStatusCard(context, activeBooking),
                 const SizedBox(height: 16),
-                _buildFigmaStepper(activeBooking),
-                const SizedBox(height: 16),
                 _buildVehicleSummaryCard(activeBooking),
+                const SizedBox(height: 16),
+                _buildFigmaStepper(activeBooking),
                 const SizedBox(height: 16),
                 if (activeBooking.withDriver) ...[
                   // Card sopir hanya ditampilkan setelah pengajuan diterima/diverifikasi (Tahap 2 ke atas)
@@ -457,18 +457,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isWaitingPayment ? const Color(0xFFFDE68A) : AppColors.borderSubtle,
-          width: isWaitingPayment ? 1.2 : 1.0,
+          color: AppColors.borderSubtle,
+          width: 1.0,
         ),
-        boxShadow: isWaitingPayment
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFD97706).withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,7 +510,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           InkWell(
                             onTap: () {
                               Clipboard.setData(ClipboardData(text: booking.id));
@@ -523,13 +521,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                 ),
                               );
                             },
-                            borderRadius: BorderRadius.circular(4),
-                            child: const Padding(
-                              padding: EdgeInsets.all(3),
-                              child: Icon(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryTeal.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
                                 Icons.copy_rounded,
-                                size: 15,
-                                color: AppColors.textSecondary,
+                                size: 14,
+                                color: AppColors.primaryTeal,
                               ),
                             ),
                           ),
@@ -538,42 +540,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: _getStatusBgColor(booking.status),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        booking.statusLabel,
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w700,
-                          color: _getStatusTextColor(booking.status),
-                          fontFamily: 'Inter',
-                        ),
-                      ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: _isRefreshing ? null : () => _manualRefreshStatus(booking),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 6),
-                    InkWell(
-                      onTap: _isRefreshing ? null : () => _manualRefreshStatus(booking),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: _isRefreshing
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryTeal),
-                              )
-                            : const Icon(Icons.sync_rounded, size: 18, color: AppColors.textSecondary),
-                      ),
-                    ),
-                  ],
+                    child: _isRefreshing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryTeal),
+                          )
+                        : const Icon(Icons.sync_rounded, size: 18, color: AppColors.textSecondary),
+                  ),
                 ),
               ],
             ),
@@ -647,61 +631,205 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.timer_outlined, size: 12, color: Color(0xFFB45309)),
-                  SizedBox(width: 4),
-                  Text(
-                    '23:59:00',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFB45309),
-                      fontFamily: 'Inter',
-                    ),
+            Builder(
+              builder: (ctx) {
+                final deadline = booking.createdAt.add(const Duration(hours: 12));
+                final remaining = deadline.difference(DateTime.now());
+                final isOverdue = remaining.isNegative;
+                final timerString = isOverdue
+                    ? 'Kedaluwarsa'
+                    : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}';
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isOverdue ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 12,
+                        color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFFB45309),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        timerString,
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFFB45309),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
         const SizedBox(height: 14),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderSubtle),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Total Pembayaran',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Total Pembayaran',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBody,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isTariffDetailsExpanded = !_isTariffDetailsExpanded;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _isTariffDetailsExpanded
+                                    ? 'Sembunyikan Rincian'
+                                    : 'Lihat Rincian Tarif',
+                                style: const TextStyle(
+                                  fontSize: AppTypography.sizeCaption,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryTeal,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(
+                                _isTariffDetailsExpanded
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                size: 16,
+                                color: AppColors.primaryTeal,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Rp ${_formatRupiah(booking.totalCost)}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeHeading,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryNavy,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                'Rp ${_formatRupiah(booking.totalCost)}',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeHeading,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primaryNavy,
-                  fontFamily: 'Inter',
+              if (_isTariffDetailsExpanded) ...[
+                const Divider(height: 1, color: AppColors.borderSubtle),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
+                      const SizedBox(height: 6),
+                      _buildTariffRow(
+                        'Layanan Sopir (${booking.durationDays} Hari)',
+                        booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
+                      ),
+                      if (booking.serviceFee > 0) ...[
+                        const SizedBox(height: 6),
+                        _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
+                      ],
+                      if (booking.adminAdjustments.isNotEmpty) ...[
+                        const Divider(height: 16, color: AppColors.borderSubtle),
+                        const Text(
+                          'Penyesuaian Biaya Operasional:',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryNavy,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...booking.adminAdjustments.map((adj) {
+                          final isNegative = adj.isDeduction;
+                          final prefix = isNegative ? '-Rp ' : '+Rp ';
+                          final absAmount = adj.amount.abs();
+                          final color = isNegative ? const Color(0xFF059669) : AppColors.primaryNavy;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        adj.title,
+                                        style: TextStyle(
+                                          fontSize: AppTypography.sizeBody,
+                                          fontWeight: FontWeight.w500,
+                                          color: color,
+                                          fontFamily: 'Inter',
+                                        ),
+                                      ),
+                                      if (adj.note != null)
+                                        Text(
+                                          adj.note!,
+                                          style: const TextStyle(
+                                            fontSize: AppTypography.sizeTiny,
+                                            color: AppColors.textSecondary,
+                                            fontFamily: 'Inter',
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '$prefix${_formatRupiah(absAmount)}',
+                                  style: TextStyle(
+                                    fontSize: AppTypography.sizeBody,
+                                    fontWeight: FontWeight.w700,
+                                    color: color,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -832,6 +960,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   Widget _buildVehicleSummaryCard(BookingModel booking) {
     final isCancelled = booking.status == BookingStatus.dibatalkan;
+    final isWaitingPayment = booking.status == BookingStatus.menungguPembayaran ||
+        (booking.isFinalTariffConfirmed &&
+            booking.status != BookingStatus.pembayaranSelesai &&
+            booking.status != BookingStatus.verifikasiKantor &&
+            booking.status != BookingStatus.mobilSiapDigunakan &&
+            booking.status != BookingStatus.selesai &&
+            booking.status != BookingStatus.dibatalkan);
 
     return Container(
       width: double.infinity,
@@ -926,183 +1061,238 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
           const Divider(height: 1, color: AppColors.borderSubtle),
 
-          // Baris Total Tarif dengan tombol interaktif buka/tutup rincian
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: isCancelled
-                  ? null
-                  : () {
-                      setState(() {
-                        _isTariffDetailsExpanded = !_isTariffDetailsExpanded;
-                      });
-                    },
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(_isTariffDetailsExpanded ? 0 : 14),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                // Wrap: nominal harga turun ke baris berikutnya saat ukuran
-                // teks sistem diperbesar, bukan menimpa label di sebelahnya.
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+          if (isWaitingPayment) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
                       children: [
-                        Text(
-                          isCancelled
-                              ? 'Total Nilai Sewa (Batal)'
-                              : (booking.isFinalTariffConfirmed
-                                  ? 'Total Pembayaran'
-                                  : 'Estimasi Total Biaya'),
-                          style: const TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
+                        const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.primaryTeal),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${booking.startDate.day}/${booking.startDate.month}/${booking.startDate.year} (${booking.startTime})',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Inter',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (!isCancelled) ...[
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _isTariffDetailsExpanded
-                                    ? 'Sembunyikan Rincian'
-                                    : 'Lihat Rincian Tarif',
-                                style: const TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryTeal,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              Icon(
-                                _isTariffDetailsExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                size: 16,
-                                color: AppColors.primaryTeal,
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
-                    Text(
-                      'Rp ${_formatRupiah(booking.totalCost)}',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeAmount,
-                        fontWeight: FontWeight.w800,
-                        color: isCancelled
-                            ? AppColors.textMuted
-                            : (booking.isFinalTariffConfirmed
-                                ? AppColors.primaryTeal
-                                : AppColors.primaryNavy),
-                        fontFamily: 'Inter',
-                        decoration: isCancelled ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Konten rincian biaya yang terbuka saat di-expand
-          if (_isTariffDetailsExpanded && !isCancelled) ...[
-            const Divider(height: 1, color: AppColors.borderSubtle),
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
-                  const SizedBox(height: 6),
-                  _buildTariffRow(
-                    'Layanan Sopir (${booking.durationDays} Hari)',
-                    booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
                   ),
-                  const SizedBox(height: 6),
-                  _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
-
-                  // Penyesuaian Biaya Operasional jika ada
-                  if (booking.adminAdjustments.isNotEmpty) ...[
-                    const Divider(height: 16, color: AppColors.borderSubtle),
-                    const Text(
-                      'Penyesuaian Biaya Operasional:',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryNavy,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...booking.adminAdjustments.map((adj) {
-                      final isNegative = adj.isDeduction;
-                      final prefix = isNegative ? '-Rp ' : '+Rp ';
-                      final absAmount = adj.amount.abs();
-                      final color = isNegative ? const Color(0xFF059669) : AppColors.primaryNavy;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    adj.title,
-                                    style: TextStyle(
-                                      fontSize: AppTypography.sizeBody,
-                                      fontWeight: FontWeight.w500,
-                                      color: color,
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                  if (adj.note != null)
-                                    Text(
-                                      adj.note!,
-                                      style: const TextStyle(
-                                        fontSize: AppTypography.sizeTiny,
-                                        color: AppColors.textSecondary,
-                                        fontFamily: 'Inter',
-                                      ),
-                                    ),
-                                ],
-                              ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 15, color: AppColors.primaryTeal),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            booking.pickupLocation,
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Inter',
                             ),
-                            Text(
-                              '$prefix${_formatRupiah(absAmount)}',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeBody,
-                                fontWeight: FontWeight.w700,
-                                color: color,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      );
-                    }),
-                  ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
+          ] else ...[
+            // Baris Total Tarif dengan tombol interaktif buka/tutup rincian (Tahap 1, 2, atau Batal)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isCancelled
+                    ? null
+                    : () {
+                        setState(() {
+                          _isTariffDetailsExpanded = !_isTariffDetailsExpanded;
+                        });
+                      },
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(_isTariffDetailsExpanded ? 0 : 14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  // Wrap: nominal harga turun ke baris berikutnya saat ukuran
+                  // teks sistem diperbesar, bukan menimpa label di sebelahnya.
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            isCancelled
+                                ? 'Total Nilai Sewa (Batal)'
+                                : (booking.isFinalTariffConfirmed
+                                    ? 'Total Pembayaran'
+                                    : 'Estimasi Total Biaya'),
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeBody,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                          if (!isCancelled) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _isTariffDetailsExpanded
+                                      ? 'Sembunyikan Rincian'
+                                      : 'Lihat Rincian Tarif',
+                                  style: const TextStyle(
+                                    fontSize: AppTypography.sizeCaption,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primaryTeal,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                Icon(
+                                  _isTariffDetailsExpanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color: AppColors.primaryTeal,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        'Rp ${_formatRupiah(booking.totalCost)}',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeAmount,
+                          fontWeight: FontWeight.w800,
+                          color: isCancelled
+                              ? AppColors.textMuted
+                              : (booking.isFinalTariffConfirmed
+                                  ? AppColors.primaryTeal
+                                  : AppColors.primaryNavy),
+                          fontFamily: 'Inter',
+                          decoration: isCancelled ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Konten rincian biaya yang terbuka saat di-expand
+            if (_isTariffDetailsExpanded && !isCancelled) ...[
+              const Divider(height: 1, color: AppColors.borderSubtle),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
+                    const SizedBox(height: 6),
+                    _buildTariffRow(
+                      'Layanan Sopir (${booking.durationDays} Hari)',
+                      booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
+                    ),
+                    if (booking.serviceFee > 0) ...[
+                      const SizedBox(height: 6),
+                      _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
+                    ],
+
+                    // Penyesuaian Biaya Operasional jika ada
+                    if (booking.adminAdjustments.isNotEmpty) ...[
+                      const Divider(height: 16, color: AppColors.borderSubtle),
+                      const Text(
+                        'Penyesuaian Biaya Operasional:',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryNavy,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...booking.adminAdjustments.map((adj) {
+                        final isNegative = adj.isDeduction;
+                        final prefix = isNegative ? '-Rp ' : '+Rp ';
+                        final absAmount = adj.amount.abs();
+                        final color = isNegative ? const Color(0xFF059669) : AppColors.primaryNavy;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      adj.title,
+                                      style: TextStyle(
+                                        fontSize: AppTypography.sizeBody,
+                                        fontWeight: FontWeight.w500,
+                                        color: color,
+                                        fontFamily: 'Inter',
+                                      ),
+                                    ),
+                                    if (adj.note != null)
+                                      Text(
+                                        adj.note!,
+                                        style: const TextStyle(
+                                          fontSize: AppTypography.sizeTiny,
+                                          color: AppColors.textSecondary,
+                                          fontFamily: 'Inter',
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '$prefix${_formatRupiah(absAmount)}',
+                                style: TextStyle(
+                                  fontSize: AppTypography.sizeBody,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -1221,7 +1411,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   : (step3Done
                       ? 'Pembayaran telah terverifikasi dan tercatat lunas'
                       : (step3Active
-                          ? 'Batas pelunasan hingga 24 jam ke depan'
+                          ? 'Batas pelunasan hingga 12 jam ke depan'
                           : 'Menunggu penetapan rincian tarif final')),
               isDone: step3Done,
               isActive: step3Active,
@@ -3841,42 +4031,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Color _getStatusBgColor(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.permintaanDiterima:
-      case BookingStatus.pemeriksaanArmada:
-      case BookingStatus.menungguTarifFinal:
-        return AppColors.tealLight;
-      case BookingStatus.menungguPembayaran:
-        return const Color(0xFFFFFBEB);
-      case BookingStatus.pembayaranSelesai:
-      case BookingStatus.verifikasiKantor:
-      case BookingStatus.mobilSiapDigunakan:
-      case BookingStatus.selesai:
-        return AppColors.badgeGreenBg;
-      case BookingStatus.dibatalkan:
-        return const Color(0xFFF1F5F9);
-    }
-  }
-
-  Color _getStatusTextColor(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.permintaanDiterima:
-      case BookingStatus.pemeriksaanArmada:
-      case BookingStatus.menungguTarifFinal:
-        return AppColors.primaryTeal;
-      case BookingStatus.menungguPembayaran:
-        return const Color(0xFFB45309);
-      case BookingStatus.pembayaranSelesai:
-      case BookingStatus.verifikasiKantor:
-      case BookingStatus.mobilSiapDigunakan:
-      case BookingStatus.selesai:
-        return AppColors.badgeGreenText;
-      case BookingStatus.dibatalkan:
-        return const Color(0xFF475569);
-    }
-  }
-
   String _formatRupiah(int number) {
     return number.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -3920,6 +4074,11 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
   late String _qrisPayload;
 
   final PaymentApiService _apiService = PaymentApiService();
+  final TextEditingController _senderNameController = TextEditingController();
+  String? _proofFileName;
+  String? _proofBase64;
+  bool _isSubmittingProof = false;
+  bool _isProofUploaded = false;
 
   @override
   void initState() {
@@ -3928,7 +4087,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     // Hitung alokasi kode unik 3 digit (50-949) untuk ketahanan offline
     _uniqueCode = (widget.booking.id.hashCode.abs() % 900) + 50;
     _totalAmount = _baseAmount + _uniqueCode;
-    _expiresAt = DateTime.now().add(const Duration(hours: 2));
+    _expiresAt = DateTime.now().add(const Duration(hours: 12));
     _qrisPayload = PaymentModel.generateDynamicQris(_totalAmount);
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -3960,6 +4119,16 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
           }
           if (active.qrisPayload != null && active.qrisPayload!.isNotEmpty) {
             _qrisPayload = active.qrisPayload!;
+          }
+          if (active.isPendingVerification ||
+              (active.proofImageUrl != null && active.proofImageUrl!.isNotEmpty)) {
+            _isProofUploaded = true;
+          }
+          if (active.method == PaymentMethod.bankTransfer) {
+            _selectedTab = 1;
+            if (active.bankName != null && active.bankName!.isNotEmpty) {
+              _selectedBank = active.bankName!;
+            }
           }
           _isLoadingPayment = false;
         });
@@ -4183,6 +4352,112 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     );
   }
 
+  Future<void> _submitPaymentProof() async {
+    if (_isSubmittingProof) return;
+    if (_proofBase64 == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Silakan lampirkan foto struk transfer terlebih dahulu.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    final senderName = _senderNameController.text.trim();
+    if (senderName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Silakan isi nama pemilik rekening pengirim.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmittingProof = true;
+    });
+
+    try {
+      PaymentModel? currentPayment = _payment;
+      currentPayment ??= await _apiService.createPayment(
+        bookingId: widget.booking.id,
+        method: PaymentMethod.bankTransfer,
+        notes: 'Transfer via $_selectedBank oleh $senderName',
+      );
+
+      final updatedPayment = await _apiService.uploadPaymentProof(
+        paymentId: currentPayment.id,
+        proofImageUrl: _proofBase64!,
+        senderAccount: senderName,
+        bankName: _selectedBank,
+      );
+
+      if (mounted) {
+        setState(() {
+          _payment = updatedPayment;
+          _isProofUploaded = true;
+          _isSubmittingProof = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryNavy,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: const Text(
+              'Bukti transfer berhasil dikirim. Menunggu verifikasi admin operasional.',
+              style: TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } on SocketException {
+      if (mounted) {
+        setState(() {
+          _isProofUploaded = true;
+          _isSubmittingProof = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryNavy,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: const Text(
+              'Mode Offline: Bukti transfer dicatat dan akan diverifikasi saat online.',
+              style: TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _isSubmittingProof = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text(e.message, style: const TextStyle(fontFamily: 'Inter')),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmittingProof = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text('Gagal mengirim bukti: $e', style: const TextStyle(fontFamily: 'Inter')),
+          ),
+        );
+      }
+    }
+  }
+
   String _getAccountNumber(String bank) {
     switch (bank) {
       case 'Bank BRI':
@@ -4201,6 +4476,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _senderNameController.dispose();
     super.dispose();
   }
 
@@ -4301,6 +4577,36 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
             ),
             const SizedBox(height: 16),
 
+            if (isExpired) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Batas waktu pembayaran 12 jam telah berakhir. Pesanan dibatalkan secara otomatis oleh sistem operasional.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          color: Color(0xFF991B1B),
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Segmented Tab Switcher (QRIS, Transfer Bank, Tunai COD)
             Container(
               height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
@@ -4323,9 +4629,9 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
             if (_selectedTab == 0) ...[
               _buildQrisContent(),
             ] else if (_selectedTab == 1) ...[
-              _buildBankTransferContent(),
+              _buildBankTransferContent(isExpired: isExpired),
             ] else ...[
-              _buildCodContent(),
+              _buildCodContent(isExpired: isExpired),
             ],
 
             const SizedBox(height: 16),
@@ -4334,7 +4640,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
             if (_selectedTab != 2) ...[
               _buildBreakdownCard(),
               const SizedBox(height: 18),
-              _buildActionButtons(),
+              _buildActionButtons(isExpired: isExpired),
             ],
           ],
         ),
@@ -4494,7 +4800,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     );
   }
 
-  Widget _buildBankTransferContent() {
+  Widget _buildBankTransferContent({bool isExpired = false}) {
     final accountNumber = _getAccountNumber(_selectedBank);
 
     return Column(
@@ -4613,11 +4919,196 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        if (_isProofUploaded) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFDE68A)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.hourglass_top_rounded, size: 18, color: Color(0xFFB45309)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Bukti Transfer Dalam Verifikasi',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF92400E),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Struk pembayaran Anda telah tercatat dan sedang diverifikasi oleh staf operasional Merauke.',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: Color(0xFF78350F),
+                    fontFamily: 'Inter',
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isProofUploaded = false;
+                      _proofFileName = null;
+                      _proofBase64 = null;
+                    });
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 14),
+                  label: const Text('Unggah Ulang Bukti Lain', style: TextStyle(fontSize: AppTypography.sizeCaption)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF92400E),
+                    side: const BorderSide(color: Color(0xFFFDE68A)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          const Text(
+            'Konfirmasi Bukti Transfer',
+            style: AppTypography.bodyBold,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _senderNameController,
+            style: const TextStyle(fontSize: AppTypography.sizeBody, fontFamily: 'Inter'),
+            decoration: InputDecoration(
+              labelText: 'Nama Pemilik Rekening Pengirim',
+              labelStyle: const TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary),
+              hintText: 'Contoh: Budi Santoso',
+              hintStyle: const TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textMuted),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.primaryNavy),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _proofFileName = 'struk_transfer_${_selectedBank.replaceAll(' ', '_').toLowerCase()}.jpg';
+                _proofBase64 = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...';
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Foto struk transfer $_selectedBank dipilih.'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _proofFileName != null ? AppColors.primaryTeal : AppColors.borderSubtle,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _proofFileName != null ? Icons.receipt_long_rounded : Icons.add_photo_alternate_outlined,
+                    size: 20,
+                    color: _proofFileName != null ? AppColors.primaryTeal : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _proofFileName ?? 'Pilih Foto Struk Transfer',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            fontWeight: FontWeight.w600,
+                            color: _proofFileName != null ? AppColors.textPrimary : AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _proofFileName != null ? 'Ukuran berkas 245 KB (Siap diunggah)' : 'Format JPG atau PNG (Maksimal 5MB)',
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeMicro,
+                            color: AppColors.textMuted,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_proofFileName != null)
+                    const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.primaryTeal),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
+            child: ElevatedButton.icon(
+              onPressed: (_isSubmittingProof || isExpired) ? null : _submitPaymentProof,
+              icon: _isSubmittingProof
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.cloud_upload_outlined, size: 18),
+              label: Text(
+                _isSubmittingProof
+                    ? 'Mengirimkan Bukti...'
+                    : (isExpired ? 'Batas Waktu Pembayaran Berakhir' : 'Kirim Bukti Pembayaran'),
+                style: const TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryNavy,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildCodContent() {
+  Widget _buildCodContent({bool isExpired = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -4700,10 +5191,18 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
             width: double.infinity,
             height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
             child: ElevatedButton.icon(
-              onPressed: () {
+              onPressed: isExpired
+                  ? null
+                  : () {
+                final bookingId = widget.booking.id;
                 Navigator.pop(context);
                 final controller = context.read<BookingController>();
-                controller.confirmCodPayment(widget.booking.id);
+                controller.confirmCodPayment(bookingId);
+                _apiService.createPayment(
+                  bookingId: bookingId,
+                  method: PaymentMethod.cash,
+                  notes: 'Pelunasan tunai saat serah terima unit di Merauke',
+                ).ignore();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: const Color(0xFF16A34A),
@@ -4908,7 +5407,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons({bool isExpired = false}) {
     return Column(
       children: [
         SizedBox(
@@ -4917,7 +5416,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
           child: ElevatedButton(
             onPressed: _isCheckingStatus ? null : _checkPaymentStatus,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
+              backgroundColor: isExpired ? const Color(0xFFDC2626) : AppColors.primaryNavy,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               elevation: 0,
@@ -4935,8 +5434,10 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
                       Text('Memverifikasi Transaksi...', style: TextStyle(fontSize: AppTypography.sizeBody)),
                     ],
                   )
-                : const Text(
-                    'Cek Status Pembayaran (Otomatis)',
+                : Text(
+                    isExpired
+                        ? 'Perbarui Status Pesanan'
+                        : 'Cek Status Pembayaran (Otomatis)',
                     style: AppTypography.cardTitle,
                   ),
           ),

@@ -1,4 +1,4 @@
-﻿import '../core/network/api_client.dart';
+import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -46,32 +46,34 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         title: 'Tinjau Pesanan',
         stepSubtitle: 'Langkah 4 dari 4',
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeaderSection(),
-                  const SizedBox(height: 16),
-                  _buildVehicleSummaryCard(context, vehicle),
-                  const SizedBox(height: 14),
-                  _buildScheduleSummaryCard(context, booking),
-                  const SizedBox(height: 14),
-                  _buildRentalOptionsSummaryCard(context, booking),
-                  const SizedBox(height: 14),
-                  _buildCostBreakdownCard(booking),
-                  const SizedBox(height: 16),
-                  _buildAgreementCheckbox(booking),
-                  const SizedBox(height: 24),
-                ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeaderSection(),
+                    const SizedBox(height: 16),
+                    _buildVehicleSummaryCard(context, vehicle),
+                    const SizedBox(height: 14),
+                    _buildScheduleSummaryCard(context, booking),
+                    const SizedBox(height: 14),
+                    _buildRentalOptionsSummaryCard(context, booking),
+                    const SizedBox(height: 14),
+                    _buildCostBreakdownCard(booking),
+                    const SizedBox(height: 16),
+                    _buildAgreementCheckbox(booking),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
-          ),
-          _buildStickyCTA(context, booking, vehicle),
-        ],
+            _buildStickyCTA(context, booking, vehicle),
+          ],
+        ),
       ),
     );
   }
@@ -474,11 +476,13 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             'Layanan Sopir (${booking.durationDays} Hari)',
             booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
           ),
-          const SizedBox(height: 6),
-          _buildInfoRow(
-            'Biaya Layanan',
-            'Rp ${_formatRupiah(booking.serviceFee)}',
-          ),
+          if (booking.serviceFee > 0) ...[
+            const SizedBox(height: 6),
+            _buildInfoRow(
+              'Biaya Layanan',
+              'Rp ${_formatRupiah(booking.serviceFee)}',
+            ),
+          ],
           const Divider(height: 20, color: AppColors.borderSubtle),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -593,35 +597,32 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         color: AppColors.cardWhite,
         border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
       ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          width: double.infinity,
-          // Tinggi ikut skala teks sistem agar label tidak terpotong.
-          height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
-          child: ElevatedButton(
-            onPressed: isEnabled
-                ? () {
-                    if (!auth.isLoggedIn) {
-                      _showLoginRequiredSheet(context, auth, booking, vehicle);
-                      return;
-                    }
-                    _processOrderSubmission(context, booking, vehicle);
+      child: SizedBox(
+        width: double.infinity,
+        // Tinggi ikut skala teks sistem agar label tidak terpotong.
+        height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
+        child: ElevatedButton(
+          onPressed: isEnabled
+              ? () {
+                  if (!auth.isLoggedIn) {
+                    _showLoginRequiredSheet(context, auth, booking, vehicle);
+                    return;
                   }
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              foregroundColor: AppColors.textWhite,
-              disabledBackgroundColor: AppColors.borderSubtle,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
+                  _processOrderSubmission(context, booking, vehicle);
+                }
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryNavy,
+            foregroundColor: AppColors.textWhite,
+            disabledBackgroundColor: AppColors.borderSubtle,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text(
-              'Kirim Pengajuan Sewa',
-              style: AppTypography.sectionTitle,
-            ),
+            elevation: 0,
+          ),
+          child: const Text(
+            'Kirim Pengajuan Sewa',
+            style: AppTypography.sectionTitle,
           ),
         ),
       ),

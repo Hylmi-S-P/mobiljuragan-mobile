@@ -34,6 +34,11 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
     return (select(bookings)..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)])).get();
   }
 
+  /// Mengambil satu data pemesanan berdasarkan ID atau kode pesanan
+  Future<Booking?> getBookingById(String id) {
+    return (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
+
   /// Menghitung jumlah pesanan yang tersimpan
   Future<int> countBookings() async {
     final countExp = bookings.id.count();

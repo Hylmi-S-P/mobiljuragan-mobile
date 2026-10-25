@@ -1163,6 +1163,17 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _quotedAmountMeta = const VerificationMeta(
+    'quotedAmount',
+  );
+  @override
+  late final GeneratedColumn<int> quotedAmount = GeneratedColumn<int>(
+    'quoted_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _serviceFeeMeta = const VerificationMeta(
     'serviceFee',
   );
@@ -1269,6 +1280,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     customerNote,
     status,
     dailyRate,
+    quotedAmount,
     serviceFee,
     paymentBank,
     paymentAccountNumber,
@@ -1389,6 +1401,15 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
       );
     } else if (isInserting) {
       context.missing(_dailyRateMeta);
+    }
+    if (data.containsKey('quoted_amount')) {
+      context.handle(
+        _quotedAmountMeta,
+        quotedAmount.isAcceptableOrUnknown(
+          data['quoted_amount']!,
+          _quotedAmountMeta,
+        ),
+      );
     }
     if (data.containsKey('service_fee')) {
       context.handle(
@@ -1520,6 +1541,10 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         DriftSqlType.int,
         data['${effectivePrefix}daily_rate'],
       )!,
+      quotedAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quoted_amount'],
+      ),
       serviceFee: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}service_fee'],
@@ -1598,6 +1623,9 @@ class Booking extends DataClass implements Insertable<Booking> {
   /// Tarif harian unit mobil saat dipesan
   final int dailyRate;
 
+  /// Nominal tarif sewa resmi yang disahkan admin (quotedAmount backend)
+  final int? quotedAmount;
+
   /// Biaya layanan pemesanan
   final int serviceFee;
 
@@ -1634,6 +1662,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     this.customerNote,
     required this.status,
     required this.dailyRate,
+    this.quotedAmount,
     required this.serviceFee,
     required this.paymentBank,
     required this.paymentAccountNumber,
@@ -1664,6 +1693,9 @@ class Booking extends DataClass implements Insertable<Booking> {
     }
     map['status'] = Variable<String>(status);
     map['daily_rate'] = Variable<int>(dailyRate);
+    if (!nullToAbsent || quotedAmount != null) {
+      map['quoted_amount'] = Variable<int>(quotedAmount);
+    }
     map['service_fee'] = Variable<int>(serviceFee);
     map['payment_bank'] = Variable<String>(paymentBank);
     map['payment_account_number'] = Variable<String>(paymentAccountNumber);
@@ -1699,6 +1731,9 @@ class Booking extends DataClass implements Insertable<Booking> {
           : Value(customerNote),
       status: Value(status),
       dailyRate: Value(dailyRate),
+      quotedAmount: quotedAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quotedAmount),
       serviceFee: Value(serviceFee),
       paymentBank: Value(paymentBank),
       paymentAccountNumber: Value(paymentAccountNumber),
@@ -1732,6 +1767,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       customerNote: serializer.fromJson<String?>(json['customerNote']),
       status: serializer.fromJson<String>(json['status']),
       dailyRate: serializer.fromJson<int>(json['dailyRate']),
+      quotedAmount: serializer.fromJson<int?>(json['quotedAmount']),
       serviceFee: serializer.fromJson<int>(json['serviceFee']),
       paymentBank: serializer.fromJson<String>(json['paymentBank']),
       paymentAccountNumber: serializer.fromJson<String>(
@@ -1764,6 +1800,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       'customerNote': serializer.toJson<String?>(customerNote),
       'status': serializer.toJson<String>(status),
       'dailyRate': serializer.toJson<int>(dailyRate),
+      'quotedAmount': serializer.toJson<int?>(quotedAmount),
       'serviceFee': serializer.toJson<int>(serviceFee),
       'paymentBank': serializer.toJson<String>(paymentBank),
       'paymentAccountNumber': serializer.toJson<String>(paymentAccountNumber),
@@ -1788,6 +1825,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     Value<String?> customerNote = const Value.absent(),
     String? status,
     int? dailyRate,
+    Value<int?> quotedAmount = const Value.absent(),
     int? serviceFee,
     String? paymentBank,
     String? paymentAccountNumber,
@@ -1813,6 +1851,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     customerNote: customerNote.present ? customerNote.value : this.customerNote,
     status: status ?? this.status,
     dailyRate: dailyRate ?? this.dailyRate,
+    quotedAmount: quotedAmount.present ? quotedAmount.value : this.quotedAmount,
     serviceFee: serviceFee ?? this.serviceFee,
     paymentBank: paymentBank ?? this.paymentBank,
     paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
@@ -1851,6 +1890,9 @@ class Booking extends DataClass implements Insertable<Booking> {
           : this.customerNote,
       status: data.status.present ? data.status.value : this.status,
       dailyRate: data.dailyRate.present ? data.dailyRate.value : this.dailyRate,
+      quotedAmount: data.quotedAmount.present
+          ? data.quotedAmount.value
+          : this.quotedAmount,
       serviceFee: data.serviceFee.present
           ? data.serviceFee.value
           : this.serviceFee,
@@ -1891,6 +1933,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           ..write('customerNote: $customerNote, ')
           ..write('status: $status, ')
           ..write('dailyRate: $dailyRate, ')
+          ..write('quotedAmount: $quotedAmount, ')
           ..write('serviceFee: $serviceFee, ')
           ..write('paymentBank: $paymentBank, ')
           ..write('paymentAccountNumber: $paymentAccountNumber, ')
@@ -1904,7 +1947,7 @@ class Booking extends DataClass implements Insertable<Booking> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     vehicleId,
     startDate,
@@ -1917,6 +1960,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     customerNote,
     status,
     dailyRate,
+    quotedAmount,
     serviceFee,
     paymentBank,
     paymentAccountNumber,
@@ -1925,7 +1969,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     driverJson,
     createdAt,
     lastFetched,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1942,6 +1986,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           other.customerNote == this.customerNote &&
           other.status == this.status &&
           other.dailyRate == this.dailyRate &&
+          other.quotedAmount == this.quotedAmount &&
           other.serviceFee == this.serviceFee &&
           other.paymentBank == this.paymentBank &&
           other.paymentAccountNumber == this.paymentAccountNumber &&
@@ -1965,6 +2010,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<String?> customerNote;
   final Value<String> status;
   final Value<int> dailyRate;
+  final Value<int?> quotedAmount;
   final Value<int> serviceFee;
   final Value<String> paymentBank;
   final Value<String> paymentAccountNumber;
@@ -1987,6 +2033,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.customerNote = const Value.absent(),
     this.status = const Value.absent(),
     this.dailyRate = const Value.absent(),
+    this.quotedAmount = const Value.absent(),
     this.serviceFee = const Value.absent(),
     this.paymentBank = const Value.absent(),
     this.paymentAccountNumber = const Value.absent(),
@@ -2010,6 +2057,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.customerNote = const Value.absent(),
     required String status,
     required int dailyRate,
+    this.quotedAmount = const Value.absent(),
     required int serviceFee,
     required String paymentBank,
     required String paymentAccountNumber,
@@ -2045,6 +2093,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Expression<String>? customerNote,
     Expression<String>? status,
     Expression<int>? dailyRate,
+    Expression<int>? quotedAmount,
     Expression<int>? serviceFee,
     Expression<String>? paymentBank,
     Expression<String>? paymentAccountNumber,
@@ -2068,6 +2117,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
       if (customerNote != null) 'customer_note': customerNote,
       if (status != null) 'status': status,
       if (dailyRate != null) 'daily_rate': dailyRate,
+      if (quotedAmount != null) 'quoted_amount': quotedAmount,
       if (serviceFee != null) 'service_fee': serviceFee,
       if (paymentBank != null) 'payment_bank': paymentBank,
       if (paymentAccountNumber != null)
@@ -2096,6 +2146,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Value<String?>? customerNote,
     Value<String>? status,
     Value<int>? dailyRate,
+    Value<int?>? quotedAmount,
     Value<int>? serviceFee,
     Value<String>? paymentBank,
     Value<String>? paymentAccountNumber,
@@ -2119,6 +2170,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
       customerNote: customerNote ?? this.customerNote,
       status: status ?? this.status,
       dailyRate: dailyRate ?? this.dailyRate,
+      quotedAmount: quotedAmount ?? this.quotedAmount,
       serviceFee: serviceFee ?? this.serviceFee,
       paymentBank: paymentBank ?? this.paymentBank,
       paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
@@ -2171,6 +2223,9 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     if (dailyRate.present) {
       map['daily_rate'] = Variable<int>(dailyRate.value);
     }
+    if (quotedAmount.present) {
+      map['quoted_amount'] = Variable<int>(quotedAmount.value);
+    }
     if (serviceFee.present) {
       map['service_fee'] = Variable<int>(serviceFee.value);
     }
@@ -2222,6 +2277,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
           ..write('customerNote: $customerNote, ')
           ..write('status: $status, ')
           ..write('dailyRate: $dailyRate, ')
+          ..write('quotedAmount: $quotedAmount, ')
           ..write('serviceFee: $serviceFee, ')
           ..write('paymentBank: $paymentBank, ')
           ..write('paymentAccountNumber: $paymentAccountNumber, ')
@@ -2710,6 +2766,7 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   Value<String?> customerNote,
   required String status,
   required int dailyRate,
+  Value<int?> quotedAmount,
   required int serviceFee,
   required String paymentBank,
   required String paymentAccountNumber,
@@ -2733,6 +2790,7 @@ typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<String?> customerNote,
   Value<String> status,
   Value<int> dailyRate,
+  Value<int?> quotedAmount,
   Value<int> serviceFee,
   Value<String> paymentBank,
   Value<String> paymentAccountNumber,
@@ -2810,6 +2868,11 @@ class $$BookingsTableFilterComposer
 
   ColumnFilters<int> get dailyRate => $composableBuilder(
     column: $table.dailyRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quotedAmount => $composableBuilder(
+    column: $table.quotedAmount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2923,6 +2986,11 @@ class $$BookingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get quotedAmount => $composableBuilder(
+    column: $table.quotedAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get serviceFee => $composableBuilder(
     column: $table.serviceFee,
     builder: (column) => ColumnOrderings(column),
@@ -3021,6 +3089,11 @@ class $$BookingsTableAnnotationComposer
   GeneratedColumn<int> get dailyRate =>
       $composableBuilder(column: $table.dailyRate, builder: (column) => column);
 
+  GeneratedColumn<int> get quotedAmount => $composableBuilder(
+    column: $table.quotedAmount,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get serviceFee => $composableBuilder(
     column: $table.serviceFee,
     builder: (column) => column,
@@ -3100,6 +3173,7 @@ class $$BookingsTableTableManager
                 Value<String?> customerNote = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> dailyRate = const Value.absent(),
+                Value<int?> quotedAmount = const Value.absent(),
                 Value<int> serviceFee = const Value.absent(),
                 Value<String> paymentBank = const Value.absent(),
                 Value<String> paymentAccountNumber = const Value.absent(),
@@ -3122,6 +3196,7 @@ class $$BookingsTableTableManager
                 customerNote: customerNote,
                 status: status,
                 dailyRate: dailyRate,
+                quotedAmount: quotedAmount,
                 serviceFee: serviceFee,
                 paymentBank: paymentBank,
                 paymentAccountNumber: paymentAccountNumber,
@@ -3146,6 +3221,7 @@ class $$BookingsTableTableManager
                 Value<String?> customerNote = const Value.absent(),
                 required String status,
                 required int dailyRate,
+                Value<int?> quotedAmount = const Value.absent(),
                 required int serviceFee,
                 required String paymentBank,
                 required String paymentAccountNumber,
@@ -3168,6 +3244,7 @@ class $$BookingsTableTableManager
                 customerNote: customerNote,
                 status: status,
                 dailyRate: dailyRate,
+                quotedAmount: quotedAmount,
                 serviceFee: serviceFee,
                 paymentBank: paymentBank,
                 paymentAccountNumber: paymentAccountNumber,

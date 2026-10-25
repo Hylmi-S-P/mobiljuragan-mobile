@@ -38,6 +38,9 @@ class Bookings extends Table {
   /// Tarif harian unit mobil saat dipesan
   IntColumn get dailyRate => integer()();
 
+  /// Nominal tarif sewa resmi yang disahkan admin (quotedAmount backend)
+  IntColumn get quotedAmount => integer().nullable()();
+
   /// Biaya layanan pemesanan
   IntColumn get serviceFee => integer()();
 

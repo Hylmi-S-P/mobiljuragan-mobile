@@ -68,13 +68,39 @@ class ApiClient {
   }
 
   /// Request POST terstandar
-  Future<dynamic> post(String path, {Map<String, dynamic>? body, bool requiresAuth = false}) async {
+  Future<dynamic> post(
+    String path, {
+    Map<String, dynamic>? body,
+    bool requiresAuth = false,
+    Duration? timeout,
+  }) async {
     try {
       final uri = Uri.parse('${ApiConstants.baseUrl}$path');
       final headers = await _buildHeaders(requiresAuth: requiresAuth);
 
       final response = await _client
           .post(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
+          .timeout(timeout ?? ApiConstants.timeoutDuration);
+
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
+    } on TimeoutException {
+      throw ApiException('Koneksi waktu habis (Timeout).');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Terjadi kesalahan jaringan: $e');
+    }
+  }
+
+  /// Request PATCH terstandar
+  Future<dynamic> patch(String path, {Map<String, dynamic>? body, bool requiresAuth = false}) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$path');
+      final headers = await _buildHeaders(requiresAuth: requiresAuth);
+
+      final response = await _client
+          .patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(ApiConstants.timeoutDuration);
 
       return _handleResponse(response);

@@ -19,7 +19,7 @@ class PaymentApiService {
       body: {
         'bookingId': bookingId,
         'method': method.toBackendString(),
-        'notes': ?notes,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
       },
     );
 
@@ -74,13 +74,17 @@ class PaymentApiService {
     String? senderAccount,
     String? bankName,
   }) async {
+    final payload = <String, dynamic>{
+      'proofImageUrl': proofImageUrl,
+      if (senderAccount != null && senderAccount.trim().isNotEmpty)
+        'senderAccount': senderAccount.trim(),
+      if (bankName != null && bankName.trim().isNotEmpty)
+        'bankName': bankName.trim(),
+    };
+
     final response = await _client.post(
       '${ApiConstants.paymentsEndpoint}/$paymentId/proof',
-      body: {
-        'proofImageUrl': proofImageUrl,
-        'senderAccount': ?senderAccount,
-        'bankName': ?bankName,
-      },
+      body: payload,
     );
 
     if (response is Map) {

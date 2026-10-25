@@ -7,11 +7,14 @@ class VehicleApiService {
 
   VehicleApiService([ApiClient? client]) : _client = client ?? ApiClient();
 
-  /// Mengambil daftar katalog armada kendaraan dari backend
+  /// Mengambil daftar katalog armada kendaraan dari backend dengan filter ketersediaan jadwal
   Future<List<Map<String, dynamic>>> fetchCatalog({
     String? category,
     String? search,
     String? operationalStatus,
+    String? transmission,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final query = <String, dynamic>{};
     if (category != null && category.isNotEmpty && category.toLowerCase() != 'semua' && category.toLowerCase() != 'favorit') {
@@ -22,6 +25,13 @@ class VehicleApiService {
     }
     if (operationalStatus != null) {
       query['operationalStatus'] = operationalStatus;
+    }
+    if (transmission != null && transmission.isNotEmpty) {
+      query['transmission'] = transmission;
+    }
+    if (startDate != null && endDate != null) {
+      query['startDate'] = startDate.toUtc().toIso8601String();
+      query['endDate'] = endDate.toUtc().toIso8601String();
     }
 
     final response = await _client.get(

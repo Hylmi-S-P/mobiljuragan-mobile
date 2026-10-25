@@ -119,22 +119,24 @@ void main() {
       final waitingPaymentBooking = inProgressBooking.copyWith(
         status: BookingStatus.menungguPembayaran,
         isFinalTariffConfirmed: true,
+        createdAt: DateTime.now(),
       );
 
       await tester.pumpWidget(createTestWidget(booking: waitingPaymentBooking));
       await tester.pumpAndSettle();
 
-      // Unified Hero Card menampilkan ajakan pembayaran dan badge timer
+      // Unified Hero Card menampilkan ajakan pembayaran, kode reservasi utuh, dan rincian tarif
       expect(find.text('Selesaikan Pembayaran'), findsOneWidget);
-      expect(find.text('Menunggu Pembayaran'), findsAtLeastNWidgets(1));
-      expect(find.text('23:59:00'), findsOneWidget);
+      expect(find.text(waitingPaymentBooking.id), findsOneWidget);
+      expect(find.byIcon(Icons.timer_outlined), findsAtLeastNWidgets(1));
       expect(find.text('Total Pembayaran'), findsAtLeastNWidgets(1));
+      expect(find.text('Lihat Rincian Tarif'), findsOneWidget);
 
       // Tombol Bayar Sekarang bersih tanpa mengulang nominal harga di label
       expect(find.text('Bayar Sekarang'), findsOneWidget);
 
       // Stepper menampilkan batas waktu pelunasan
-      expect(find.text('Batas pelunasan hingga 24 jam ke depan'), findsOneWidget);
+      expect(find.text('Batas pelunasan hingga 12 jam ke depan'), findsOneWidget);
 
       // Tombol bawah: Hubungi CS dan Batalkan Pesanan Ini (tanpa tumpukan tombol berlebih)
       expect(find.text('Hubungi CS MobilJuragan'), findsOneWidget);

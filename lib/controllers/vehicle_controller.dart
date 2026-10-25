@@ -23,6 +23,7 @@ class VehicleController extends ChangeNotifier {
     'MPV',
     'SUV',
     'Pickup',
+    'Commercial',
   ];
 
   VehicleController({

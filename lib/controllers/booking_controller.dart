@@ -22,7 +22,7 @@ class BookingController extends ChangeNotifier {
 
   // Tarif layanan tetap sistem operasional MobilJuragan
   static const int driverCostPerDay = 150000;
-  static const int standardServiceFee = 25000;
+  static const int standardServiceFee = 0;
 
   // Status pesanan aktif dan daftar riwayat pesanan
   BookingModel? _activeBooking;

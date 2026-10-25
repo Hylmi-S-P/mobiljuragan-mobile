@@ -7,15 +7,21 @@ class AuthApiService {
 
   AuthApiService([ApiClient? client]) : _client = client ?? ApiClient();
 
+  /// Membersihkan format nomor telepon agar sesuai dengan regex indonesianPhoneRegex di backend
+  static String sanitizePhoneNumber(String raw) {
+    return raw.replaceAll(RegExp(r'[\s\-]'), '');
+  }
+
   /// Mengirim permintaan kode OTP ke nomor telepon pelanggan
   Future<Map<String, dynamic>> requestOtp({
     required String phoneNumber,
     String? fullName,
   }) async {
+    final cleanPhone = sanitizePhoneNumber(phoneNumber);
     final response = await _client.post(
       ApiConstants.requestOtpEndpoint,
       body: {
-        'phoneNumber': phoneNumber,
+        'phoneNumber': cleanPhone,
         if (fullName != null && fullName.isNotEmpty) 'fullName': fullName,
         'purpose': 'CUSTOMER_LOGIN',
       },
@@ -32,10 +38,11 @@ class AuthApiService {
     required String phoneNumber,
     required String otp,
   }) async {
+    final cleanPhone = sanitizePhoneNumber(phoneNumber);
     final response = await _client.post(
       ApiConstants.verifyOtpEndpoint,
       body: {
-        'phoneNumber': phoneNumber,
+        'phoneNumber': cleanPhone,
         'otp': otp,
         'purpose': 'CUSTOMER_LOGIN',
       },

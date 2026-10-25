@@ -20,7 +20,7 @@ class VehicleSelectionScreen extends StatefulWidget {
 }
 
 class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
-  String _selectedVehicleId = 'avanza-g-putih';
+  String _selectedVehicleId = 'avanza-g-putih-ps1692b';
 
   @override
   void initState() {

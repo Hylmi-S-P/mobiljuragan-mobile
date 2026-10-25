@@ -196,7 +196,7 @@ class BookingRepository {
       status: BookingStatus.menungguTarifFinal,
       createdAt: DateTime.now(),
       dailyRate: vehicle.pricePerDay,
-      serviceFee: 25000,
+      serviceFee: 0,
       adminAdjustments: const [],
       isFinalTariffConfirmed: false,
     );
@@ -263,22 +263,28 @@ class BookingRepository {
     return [];
   }
 
-  /// Menyimpan pesanan baru atau pembaruan status ke dalam SQLite lokal dan sinkronisasi ke backend jika online
+  /// Menyimpan pesanan atau pembaruan status ke dalam SQLite lokal (Offline-First)
+  /// Hanya mengirimkan createBooking ke remote jika pesanan belum ada di database lokal,
+  /// guna mencegah duplikasi pesanan saat pembaruan status (seperti pembatalan atau konfirmasi COD).
   Future<void> saveBooking(BookingModel booking) async {
+    final existing = await _bookingDao.getBookingById(booking.id);
     await _bookingDao.insertOrUpdateBooking(booking.toCompanion());
-    try {
-      final start = booking.startDate;
-      final end = start.add(Duration(days: booking.durationDays > 0 ? booking.durationDays : 1));
-      await _apiService.createBooking(
-        vehicleId: booking.vehicle.id,
-        startDateTime: start,
-        endDateTime: end,
-        withDriver: booking.withDriver,
-        pickupLocation: booking.pickupLocation,
-        customerRequest: booking.note,
-      );
-    } catch (_) {
-      // Offline-first fallback: pesanan tetap tersimpan di database SQLite lokal
+
+    if (existing == null) {
+      try {
+        final start = booking.startDate;
+        final end = start.add(Duration(days: booking.durationDays > 0 ? booking.durationDays : 1));
+        await _apiService.createBooking(
+          vehicleId: booking.vehicle.id,
+          startDateTime: start,
+          endDateTime: end,
+          withDriver: booking.withDriver,
+          pickupLocation: booking.pickupLocation,
+          customerRequest: booking.note,
+        );
+      } catch (_) {
+        // Offline-first fallback: pesanan tetap tersimpan di database SQLite lokal
+      }
     }
   }
 

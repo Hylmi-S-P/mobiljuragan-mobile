@@ -42,10 +42,16 @@ class ApiConstants {
   // Endpoints Tiket Bantuan Pelanggan
   static const String ticketsEndpoint = '/tickets';
 
+  // Endpoint Asisten AI RAG Gateway
+  static const String aiChatEndpoint = '/ai/chat';
+
   // Endpoints Pembayaran
   static const String paymentsEndpoint = '/payments';
   static const String paymentsBookingEndpoint = '/payments/booking';
 
-  // Durasi timeout HTTP request
+  // Durasi timeout HTTP request umum
   static const Duration timeoutDuration = Duration(seconds: 8);
+
+  // Durasi timeout khusus pemrosesan Asisten AI (RAG Gateway & inferensi LLM)
+  static const Duration aiTimeoutDuration = Duration(seconds: 45);
 }
