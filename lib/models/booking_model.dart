@@ -69,6 +69,11 @@ class BookingModel {
   final BookingStatus status;
   final DateTime createdAt;
   final int dailyRate;
+
+  /* Tarif final yang ditetapkan admin di portal, dibaca dari server.
+     Null berarti admin belum menetapkan tarif, jadi yang ditampilkan hanya
+     estimasi. Sebelumnya nilai ini tidak pernah dibaca sama sekali. */
+  final int? quotedAmount;
   final int serviceFee;
   final String paymentBank;
   final String paymentAccountNumber;
@@ -103,6 +108,7 @@ class BookingModel {
     required this.status,
     required this.createdAt,
     required this.dailyRate,
+    this.quotedAmount,
     this.serviceFee = 25000,
     this.paymentBank = 'Bank BRI Merauke',
     this.paymentAccountNumber = '0087-01-002345-53-1',
@@ -156,9 +162,7 @@ class BookingModel {
       serviceFee: entry.serviceFee,
       paymentBank: entry.paymentBank,
       paymentAccountNumber: entry.paymentAccountNumber,
-      adminAdjustments: entry.isFinalTariffConfirmed
-          ? BookingModel.standardAdminAdjustments
-          : const [],
+      adminAdjustments: const [],
       isFinalTariffConfirmed: entry.isFinalTariffConfirmed,
     );
   }
@@ -207,9 +211,18 @@ class BookingModel {
   int get adjustmentsTotal =>
       adminAdjustments.fold(0, (sum, item) => sum + item.amount);
 
-  /// Total tarif resmi: jika tarif final sudah dikonfirmasi admin, menggunakan total + penyesuaian; jika belum, menggunakan estimasi dasar
-  int get totalCost =>
-      isFinalTariffConfirmed ? (baseEstimatedCost + adjustmentsTotal) : baseEstimatedCost;
+  /// Apakah admin sudah menetapkan tarif final untuk pesanan ini.
+  bool get tarifFinalAda => quotedAmount != null && quotedAmount! > 0;
+
+  /// Total yang harus dibayar.
+  ///
+  /// Kalau admin sudah menetapkan tarif, angka itulah yang dipakai â€” sama persis
+  /// dengan yang ditagihkan backend. Kalau belum, yang ditampilkan hanya estimasi
+  /// dari tarif kendaraan, biaya supir, dan biaya layanan.
+  ///
+  /// Sebelumnya angka ini selalu dihitung sendiri oleh aplikasi, sehingga tidak
+  /// pernah cocok dengan tagihan sebenarnya.
+  int get totalCost => tarifFinalAda ? quotedAmount! : baseEstimatedCost;
 
   /// Label tampilan status pesanan
   String get statusLabel {
@@ -310,6 +323,7 @@ class BookingModel {
     BookingStatus? status,
     DateTime? createdAt,
     int? dailyRate,
+    int? quotedAmount,
     int? serviceFee,
     String? paymentBank,
     String? paymentAccountNumber,
@@ -341,6 +355,7 @@ class BookingModel {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       dailyRate: dailyRate ?? this.dailyRate,
+      quotedAmount: quotedAmount ?? this.quotedAmount,
       serviceFee: serviceFee ?? this.serviceFee,
       paymentBank: paymentBank ?? this.paymentBank,
       paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
@@ -364,24 +379,6 @@ class BookingModel {
     );
   }
 
-  /// Contoh rincian penyesuaian biaya standar dari dashboard admin website
-  static const List<BookingFeeAdjustment> standardAdminAdjustments = [
-    BookingFeeAdjustment(
-      title: 'Layanan Luar Jam Operasional',
-      amount: 50000,
-      note: 'Penjemputan di luar jadwal operasional kantor',
-    ),
-    BookingFeeAdjustment(
-      title: 'Deposit Jaminan (Refundable)',
-      amount: 500000,
-      note: 'Akan dikembalikan utuh setelah unit selesai sewa',
-    ),
-    BookingFeeAdjustment(
-      title: 'Diskon Promo Pengguna Baru',
-      amount: -50000,
-      note: 'Potongan sewa perdana pelanggan Merauke',
-    ),
-  ];
 
   /// Data dummy riwayat pesanan awal (dikosongkan agar riwayat selesai bernilai 0 di awal aplikasi)
   static List<BookingModel> get initialSampleBookings => const [];
