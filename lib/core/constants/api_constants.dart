@@ -42,10 +42,20 @@ class ApiConstants {
   // Endpoints Tiket Bantuan Pelanggan
   static const String ticketsEndpoint = '/tickets';
 
+  // Endpoint Asisten AI Pelanggan
+  static const String aiChatEndpoint = '/ai/chat';
+
   // Endpoints Pembayaran
   static const String paymentsEndpoint = '/payments';
   static const String paymentsBookingEndpoint = '/payments/booking';
 
   // Durasi timeout HTTP request
   static const Duration timeoutDuration = Duration(seconds: 8);
+
+  /// Timeout khusus asisten AI.
+  ///
+  /// Lebih panjang dari [timeoutDuration] karena backend menunggu model sampai
+  /// 45 detik sebelum memberi teks cadangan. Kalau klien menyerah lebih dulu,
+  /// pelanggan melihat galat padahal jawabannya sebenarnya sedang dibuat.
+  static const Duration aiTimeoutDuration = Duration(seconds: 60);
 }
