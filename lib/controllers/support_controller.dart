@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../data/remote/ai_api_service.dart';
 import '../data/remote/faq_api_service.dart';
 import '../data/remote/ticket_api_service.dart';
+import '../data/remote/ticket_event_stream.dart';
 import '../models/booking_model.dart';
 import '../models/faq_model.dart';
 import '../models/support_ticket_model.dart';
@@ -12,6 +13,9 @@ class SupportController extends ChangeNotifier {
   final FaqApiService _faqApiService;
   final TicketApiService _ticketApiService;
   final AiApiService _aiApiService;
+
+  /// Pendengar peristiwa tiket. Satu sambungan per tiket yang sedang dibuka.
+  final Map<String, TicketEventStream> _aliranPeristiwa = {};
   final List<SupportTicketModel> _tickets = [];
 
   /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
@@ -35,6 +39,69 @@ class SupportController extends ChangeNotifier {
     _initData();
   }
 
+
+  /// Mulai mendengarkan peristiwa satu tiket.
+  ///
+  /// Tanpa ini, balasan staf baru terlihat setelah layar dimuat ulang manual.
+  /// Backend sudah mengirim peristiwanya sejak lama; yang tidak ada adalah
+  /// pendengarnya.
+  ///
+  /// [onPesanBaru] dipanggil saat jumlah pesan bertambah, [onStatusBerubah] saat
+  /// status tiket berubah. Keduanya menerima data mentah supaya layar yang
+  /// memutuskan cara memuat ulang.
+  Future<void> dengarkanTiket({
+    required String ticketId,
+    required void Function() onPesanBaru,
+    void Function(String status)? onStatusBerubah,
+    void Function(String pesan)? onGalat,
+  }) async {
+    if (ticketId.isEmpty) return;
+
+    /* Satu tiket hanya boleh punya satu sambungan. Kalau layar dibuka ulang,
+       sambungan lama ditutup lebih dulu supaya tidak menumpuk. */
+    _aliranPeristiwa[ticketId]?.berhenti();
+
+    final aliran = TicketEventStream();
+    _aliranPeristiwa[ticketId] = aliran;
+
+    await aliran.mulai(
+      ticketId: ticketId,
+      onEvent: (peristiwa) {
+        switch (peristiwa.jenis) {
+          case 'pesan':
+            onPesanBaru();
+          case 'status':
+            final status = peristiwa.status;
+            if (status != null) onStatusBerubah?.call(status);
+          case 'handover':
+            onPesanBaru();
+          default:
+            /* `siap` hanya penanda sambungan terbentuk. */
+            break;
+        }
+      },
+      onError: onGalat,
+    );
+  }
+
+  /// Menghentikan pendengar satu tiket.
+  void berhentiDengarkanTiket(String ticketId) {
+    _aliranPeristiwa.remove(ticketId)?.berhenti();
+  }
+
+  /// Menghentikan semua pendengar. Dipanggil saat controller dibuang.
+  void berhentiSemuaDengarkan() {
+    for (final aliran in _aliranPeristiwa.values) {
+      aliran.berhenti();
+    }
+    _aliranPeristiwa.clear();
+  }
+
+  @override
+  void dispose() {
+    berhentiSemuaDengarkan();
+    super.dispose();
+  }
   /// Membuat key sesi percakapan unik agar riwayat obrolan tidak bocor antar transaksi/tiket
   static String buildConversationKey({String? bookingId, String? ticketId}) {
     if (bookingId != null && bookingId.isNotEmpty) {
@@ -199,7 +266,7 @@ class SupportController extends ChangeNotifier {
   ///
   /// Sebelumnya riwayat hanya hidup di memori aplikasi. Menutup layar bantuan atau
   /// memulai ulang aplikasi membuat percakapan hilang, padahal pesannya sudah
-  /// tersimpan di server â€” termasuk jawaban asisten AI dan balasan staf.
+  /// tersimpan di server Ã¢â‚¬â€ termasuk jawaban asisten AI dan balasan staf.
   ///
   /// Hasilnya menggantikan isi percakapan lokal, lalu status handoff ikut
   /// disesuaikan supaya tombol "Panggil Staf" tidak muncul lagi pada tiket yang
@@ -489,7 +556,7 @@ class SupportController extends ChangeNotifier {
   /// Mengalihkan percakapan sesi ke staf operasional manusia.
   ///
   /// Sebelumnya fungsi ini hanya mengubah flag di memori aplikasi, sehingga backend
-  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin â€” padahal pesan
+  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin Ã¢â‚¬â€ padahal pesan
   /// sistem yang tampil berbunyi "berhasil dialihkan". Sekarang server diberi tahu
   /// lebih dulu, dan penanda lokal baru dipasang setelah server membalas berhasil.
   Future<bool> handoffToAdmin({String conversationKey = 'general'}) async {
@@ -580,15 +647,15 @@ class SupportController extends ChangeNotifier {
     if (alreadySent) return;
 
     final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? 'â€¢ Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\nâ€¢ Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        ? 'Ã¢â‚¬Â¢ Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\nÃ¢â‚¬Â¢ Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
         : '';
 
     final invoiceText =
         'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
-        'â€¢ Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
-        'â€¢ Bank Transfer: Bank BRI Merauke\n'
-        'â€¢ No. Rekening: 0321-01-002847-53-1\n'
-        'â€¢ Atas Nama: MobilJuragan Merauke\n'
+        'Ã¢â‚¬Â¢ Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
+        'Ã¢â‚¬Â¢ Bank Transfer: Bank BRI Merauke\n'
+        'Ã¢â‚¬Â¢ No. Rekening: 0321-01-002847-53-1\n'
+        'Ã¢â‚¬Â¢ Atas Nama: MobilJuragan Merauke\n'
         '$driverDetail\n'
         'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
 
