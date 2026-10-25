@@ -25,7 +25,11 @@ class SupportController extends ChangeNotifier {
   final Map<String, bool> _handoffStatus = {};
 
   /// Daftar FAQ aktif dengan fallback awal untuk ketahanan saat offline
-  List<FaqModel> _faqs = FaqModel.fallbackFaqs;
+  /* Mulai dari daftar kosong. Sebelumnya diisi FAQ karangan yang ditulis tangan
+     dan tampil seolah-olah resmi saat server tidak terjangkau. Kalau data belum
+     ada, lebih baik layar mengatakannya daripada menampilkan jawaban yang tidak
+     pernah disetujui siapa pun. */
+  List<FaqModel> _faqs = const [];
   bool _isLoadingFaqs = false;
   String? _faqError;
 

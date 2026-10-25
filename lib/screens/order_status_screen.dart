@@ -57,38 +57,60 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     });
   }
 
+  /* Memantau apakah admin sudah menetapkan tarif final.
+   *
+   * Sebelumnya fungsi ini memakai timer 10 detik lalu MENGARANG tarif sendiri
+   * beserta biaya tambahan yang ditulis di kode. Pelanggan melihat angka yang
+   * tidak pernah ditetapkan admin, dan tidak cocok dengan tagihan backend.
+   *
+   * Sekarang yang dipantau hanya satu hal: apakah server sudah mengisi tarif.
+   * Kalau sudah, pemberitahuan muncul dengan angka dari server. Kalau belum,
+   * pemantauan berhenti dan pelanggan tetap melihat estimasi.
+   */
   void _startAdminCalculationTimer() {
     _calculationTimer?.cancel();
     _notificationShown = false;
 
-    // Timer berjalan hening 10 detik di latar belakang tanpa hitung mundur visual
-    _calculationTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted) {
-        _onAdminCalculationCompleted();
+    /* Diperiksa berkala, bukan sekali tunggu. Tarif bisa ditetapkan kapan saja
+       selama admin membuka pesanannya. */
+    _calculationTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      final controller = context.read<BookingController>();
+      final idPesanan = widget.booking?.id ?? controller.activeBooking?.id;
+      if (idPesanan == null) {
+        timer.cancel();
+        return;
+      }
+
+      final tarif = await controller.ambilTarifTerbaru(idPesanan);
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      /* Berhenti kalau tarif sudah ada atau server tidak menjawab. Tanpa batas,
+         aplikasi terus menanyakan server sepanjang layar terbuka. */
+      if (tarif == null || tarif.tarifFinalAda) {
+        timer.cancel();
+        if (tarif != null && tarif.tarifFinalAda) {
+          _onAdminCalculationCompleted(tarif);
+        }
       }
     });
   }
 
-  void _onAdminCalculationCompleted() {
+  void _onAdminCalculationCompleted(BookingModel tarif) {
     if (!mounted) return;
-    final controller = context.read<BookingController>();
-    controller.confirmFinalTariffFromAdmin();
 
-    final currentBooking = widget.booking != null
-        ? (controller.bookingHistory.firstWhere(
-            (b) => b.id == widget.booking!.id,
-            orElse: () => widget.booking!,
-          ))
-        : controller.activeBooking;
-
-    // Memicu notifikasi native sistem perangkat (terlihat di luar aplikasi)
-    if (currentBooking != null) {
-      NotificationService().showTariffReadyNotification(
-        bookingId: currentBooking.id,
-        vehicleName: currentBooking.vehicle.name,
-        totalCost: currentBooking.totalCost,
-      );
-    }
+    NotificationService().showTariffReadyNotification(
+      bookingId: tarif.id,
+      vehicleName: tarif.vehicle.name,
+      totalCost: tarif.totalCost,
+    );
 
     if (!_notificationShown) {
       _notificationShown = true;
@@ -98,14 +120,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           duration: const Duration(seconds: 4),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.notifications_active, color: Color(0xFFFDE68A), size: 20),
-              SizedBox(width: 10),
+              const Icon(Icons.notifications_active, color: Color(0xFFFDE68A), size: 20),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Biaya final sudah tersedia dari admin! Status masuk ke Menunggu Pembayaran.',
-                  style: TextStyle(
+                  // Angkanya dari server, bukan dihitung aplikasi.
+                  'Tarif final sudah ditetapkan admin: Rp ${tarif.totalCost}',
+                  style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w600,

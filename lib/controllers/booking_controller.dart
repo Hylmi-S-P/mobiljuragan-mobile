@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../data/remote/booking_api_service.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
 import '../models/vehicle_model.dart';
@@ -7,6 +8,7 @@ import '../models/vehicle_model.dart';
 /// Controller terpusat untuk mengelola seluruh siklus pemesanan kendaraan pelanggan
 class BookingController extends ChangeNotifier {
   final BookingRepository? repository;
+  final BookingApiService _apiService = BookingApiService();
 
   // Data formulir wizard pemesanan
   VehicleModel? _selectedVehicle = VehicleModel.sampleVehicles.first;
@@ -39,6 +41,41 @@ class BookingController extends ChangeNotifier {
     final samples = BookingModel.initialSampleBookings;
     _bookingHistory.addAll(samples);
     _activeBooking = null;
+  }
+
+  /* Mengambil tarif terbaru satu pesanan dari server.
+   *
+   * Mengembalikan null kalau server tidak bisa dihubungi, supaya pemanggil bisa
+   * berhenti memantau tanpa menampilkan galat yang mengganggu. Yang penting:
+   * angka yang ditampilkan berasal dari server, bukan dihitung sendiri.
+   */
+  Future<BookingModel?> ambilTarifTerbaru(String bookingId) async {
+    try {
+      final daftar = await _apiService.fetchBookings();
+      for (final item in daftar) {
+        if (item is! Map) continue;
+        final json = Map<String, dynamic>.from(item);
+        if (json['id'] != bookingId) continue;
+
+        final quoted = json['quotedAmount'];
+        final tarif = quoted == null ? null : int.tryParse(quoted.toString());
+
+        /* Ambil model yang sudah ada di riwayat supaya data kendaraan dan jadwal
+           tetap utuh; yang diperbarui hanya angka tarifnya. */
+        final indeks = _bookingHistory.indexWhere((b) => b.id == bookingId);
+        if (indeks == -1) return null;
+
+        final diperbarui = _bookingHistory[indeks].copyWith(quotedAmount: tarif);
+        _bookingHistory[indeks] = diperbarui;
+        if (_activeBooking?.id == bookingId) _activeBooking = diperbarui;
+
+        notifyListeners();
+        return diperbarui;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _init() async {
@@ -233,26 +270,6 @@ class BookingController extends ChangeNotifier {
     return newBooking;
   }
 
-  /// Simulasi konfirmasi rincian tarif final oleh admin dari dashboard website
-  /// Menambahkan penyesuaian biaya operasional, deposit, dan diskon serta memindahkan status ke menungguPembayaran
-  void confirmFinalTariffFromAdmin([List<BookingFeeAdjustment>? customAdjustments]) {
-    if (_activeBooking == null) return;
-    final adjustments = customAdjustments ?? BookingModel.standardAdminAdjustments;
-    final updated = _activeBooking!.copyWith(
-      status: BookingStatus.menungguPembayaran,
-      adminAdjustments: adjustments,
-      isFinalTariffConfirmed: true,
-    );
-    _activeBooking = updated;
-
-    final index = _bookingHistory.indexWhere((b) => b.id == updated.id);
-    if (index != -1) {
-      _bookingHistory[index] = updated;
-    }
-    repository?.saveBooking(updated);
-
-    notifyListeners();
-  }
 
   /// Memproses pemilihan metode pembayaran Tunai di Tempat (COD)
   /// Status langsung beralih ke mobilSiapDigunakan dan E-Ticket terbit dengan tanda COD
