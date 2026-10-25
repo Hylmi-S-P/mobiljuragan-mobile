@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
@@ -255,8 +255,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         actions: [
           if (!isHandedOff)
             TextButton.icon(
-              onPressed: () {
-                support.handoffToAdmin(conversationKey: conversationKey);
+              onPressed: () async {
+                /* Penyerahan ke staf kini menunggu jawaban server. Kalau gagal,
+                   pesan sistem sudah menjelaskan sebabnya di dalam percakapan,
+                   jadi pengguna tidak dibiarkan mengira sudah terhubung. */
+                await support.handoffToAdmin(conversationKey: conversationKey);
                 _scrollToBottom();
               },
               icon: const Icon(Icons.support_agent, color: AppColors.primaryTeal, size: 18),
@@ -732,7 +735,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     fontFamily: 'Inter',
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
                     controller.confirmPaymentFromChat(
                       booking: booking,
@@ -753,7 +756,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     );
                   } else if (suggestion == 'Panggil Staf Lapangan' ||
                       suggestion == 'Panggil Staf Admin') {
-                    controller.handoffToAdmin(conversationKey: conversationKey);
+                    await controller.handoffToAdmin(conversationKey: conversationKey);
                   } else {
                     controller.sendUserMessage(
                       text: suggestion,

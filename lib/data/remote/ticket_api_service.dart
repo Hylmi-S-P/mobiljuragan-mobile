@@ -62,4 +62,23 @@ class TicketApiService {
     }
     return {};
   }
+
+  /// Menyerahkan tiket dari asisten AI ke staf admin.
+  ///
+  /// Sebelumnya perpindahan ini hanya ditandai dengan flag di memori aplikasi,
+  /// sehingga backend tidak pernah tahu dan tiket tidak pernah muncul di antrean
+  /// admin. Fungsi ini yang memberi tahu server.
+  Future<bool> handover({required String ticketId}) async {
+    final response = await _client.post(
+      '${ApiConstants.ticketsEndpoint}/$ticketId/handover',
+      requiresAuth: true,
+    );
+    if (response is Map) {
+      final data = response['data'];
+      if (data is Map) {
+        return data['handledBy'] == 'HUMAN';
+      }
+    }
+    return false;
+  }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../data/remote/ai_api_service.dart';
 import '../data/remote/faq_api_service.dart';
 import '../data/remote/ticket_api_service.dart';
 import '../models/booking_model.dart';
@@ -10,6 +11,7 @@ import '../models/support_ticket_model.dart';
 class SupportController extends ChangeNotifier {
   final FaqApiService _faqApiService;
   final TicketApiService _ticketApiService;
+  final AiApiService _aiApiService;
   final List<SupportTicketModel> _tickets = [];
 
   /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
@@ -26,8 +28,10 @@ class SupportController extends ChangeNotifier {
   SupportController({
     FaqApiService? faqApiService,
     TicketApiService? ticketApiService,
+    AiApiService? aiApiService,
   })  : _faqApiService = faqApiService ?? FaqApiService(),
-        _ticketApiService = ticketApiService ?? TicketApiService() {
+        _ticketApiService = ticketApiService ?? TicketApiService(),
+        _aiApiService = aiApiService ?? AiApiService() {
     _initData();
   }
 
@@ -352,52 +356,141 @@ class SupportController extends ChangeNotifier {
 
     final isHandedOff = isAiHandoffToAdminFor(conversationKey);
 
-    // Simulasi respons otomatis AI atau staf operasional untuk sesi tersebut
-    Future.delayed(const Duration(milliseconds: 900), () {
-      final currentList = _conversations.putIfAbsent(conversationKey, () => []);
+    /* Balasan AI diambil dari backend sungguhan.
+     *
+     * Sebelumnya blok ini berisi `Future.delayed` yang menempelkan kalimat tetap di
+     * dalam aplikasi. Pelanggan melihat "jawaban AI" yang tidak pernah berasal dari
+     * model dan tidak pernah tersimpan di server, sehingga admin yang mengambil alih
+     * tiket tidak melihat percakapan sebelumnya sama sekali.
+     *
+     * Sekarang permintaan dikirim ke POST /ai/chat beserta id tiketnya, sehingga
+     * backend menyimpan pertanyaan dan jawaban ke tiket yang sama. */
+    if (!isHandedOff && conversationKey.startsWith('ticket_')) {
+      final ticketId = conversationKey.replaceFirst('ticket_', '');
+      unawaited(
+        _mintaBalasanAi(
+          ticketId: ticketId,
+          pesan: text.trim(),
+          conversationKey: conversationKey,
+        ),
+      );
+    }
+  }
 
-      if (!isHandedOff) {
-        final reply = ChatMessageModel(
-          id: 'msg-reply-${DateTime.now().millisecondsSinceEpoch}',
-          message: 'Pesan Anda telah kami terima. Jika Anda membutuhkan bantuan langsung dari tim operasional Merauke, silakan tekan tombol "Panggil Staf" di atas.',
+  /// Meminta balasan asisten AI dari backend lalu menampilkannya di percakapan.
+  ///
+  /// Kegagalan jaringan ditampilkan apa adanya, bukan disembunyikan dengan balasan
+  /// palsu. Pelanggan perlu tahu kapan pesannya tidak terkirim.
+  Future<void> _mintaBalasanAi({
+    required String ticketId,
+    required String pesan,
+    required String conversationKey,
+  }) async {
+    try {
+      final hasil = await _aiApiService.kirimPesan(pesan: pesan, ticketId: ticketId);
+
+      if (hasil.kosong) return;
+
+      final daftar = _conversations.putIfAbsent(conversationKey, () => []);
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-ai-${DateTime.now().microsecondsSinceEpoch}',
+          message: hasil.balasan,
           timestamp: DateTime.now(),
           isFromUser: false,
           senderName: 'Asisten AI MobilJuragan',
           isAI: true,
           conversationKey: conversationKey,
-        );
-        currentList.add(reply);
-      } else {
-        final reply = ChatMessageModel(
-          id: 'msg-admin-${DateTime.now().millisecondsSinceEpoch}',
-          message: 'Halo, saya staf operasional MobilJuragan Merauke. Kami sedang memproses permohonan Anda.',
+        ),
+      );
+      notifyListeners();
+    } catch (_) {
+      final daftar = _conversations[conversationKey];
+      if (daftar == null) return;
+
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
+          message:
+              'Asisten AI sedang tidak bisa dihubungi. Pesan Anda tetap tersimpan; '
+              'silakan tekan "Panggil Staf" agar dibantu tim operasional.',
           timestamp: DateTime.now(),
           isFromUser: false,
-          senderName: 'Admin Operasional Merauke',
+          senderName: 'Sistem',
           isAI: false,
           conversationKey: conversationKey,
-        );
-        currentList.add(reply);
-      }
+        ),
+      );
       notifyListeners();
-    });
+    }
   }
 
-  /// Mengalihkan percakapan sesi ke staf operasional manusia
-  void handoffToAdmin({String conversationKey = 'general'}) {
-    _handoffStatus[conversationKey] = true;
-    final list = _conversations.putIfAbsent(conversationKey, () => []);
+  /// Mengalihkan percakapan sesi ke staf operasional manusia.
+  ///
+  /// Sebelumnya fungsi ini hanya mengubah flag di memori aplikasi, sehingga backend
+  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin — padahal pesan
+  /// sistem yang tampil berbunyi "berhasil dialihkan". Sekarang server diberi tahu
+  /// lebih dulu, dan penanda lokal baru dipasang setelah server membalas berhasil.
+  Future<bool> handoffToAdmin({String conversationKey = 'general'}) async {
+    if (!conversationKey.startsWith('ticket_')) {
+      // Percakapan tanpa tiket belum punya wadah di backend. Penanda lokal tetap
+      // dipasang supaya perilaku lamanya tidak hilang.
+      _handoffStatus[conversationKey] = true;
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan: 'Percakapan dialihkan ke staf operasional.',
+      );
+      return true;
+    }
 
-    final systemNotice = ChatMessageModel(
-      id: 'sys-${DateTime.now().millisecondsSinceEpoch}',
-      message: 'Percakapan berhasil dialihkan ke staf admin operasional MobilJuragan Merauke.',
-      timestamp: DateTime.now(),
-      isFromUser: false,
-      senderName: 'Sistem',
-      isAI: false,
-      conversationKey: conversationKey,
+    final ticketId = conversationKey.replaceFirst('ticket_', '');
+
+    try {
+      final berhasil = await _ticketApiService.handover(ticketId: ticketId);
+
+      if (!berhasil) {
+        _tambahPesanSistem(
+          conversationKey: conversationKey,
+          pesan:
+              'Gagal mengalihkan ke staf: tiket belum berstatus ditangani staf. '
+              'Silakan coba lagi sebentar.',
+        );
+        return false;
+      }
+
+      _handoffStatus[conversationKey] = true;
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan:
+            'Percakapan berhasil dialihkan ke staf admin operasional MobilJuragan Merauke. '
+            'Balasan staf akan muncul di layar ini.',
+      );
+      return true;
+    } catch (_) {
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan:
+            'Gagal mengalihkan ke staf karena koneksi bermasalah. '
+            'Pesan Anda tetap tersimpan; silakan coba lagi.',
+      );
+      return false;
+    }
+  }
+
+  /// Menambahkan pesan pemberitahuan dari sistem ke sebuah percakapan.
+  void _tambahPesanSistem({required String conversationKey, required String pesan}) {
+    final list = _conversations.putIfAbsent(conversationKey, () => []);
+    list.add(
+      ChatMessageModel(
+        id: 'sys-${DateTime.now().microsecondsSinceEpoch}',
+        message: pesan,
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Sistem',
+        isAI: false,
+        conversationKey: conversationKey,
+      ),
     );
-    list.add(systemNotice);
     notifyListeners();
   }
 
