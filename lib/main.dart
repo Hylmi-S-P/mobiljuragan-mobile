@@ -86,7 +86,9 @@ void main() async {
           )..initSession(),
         ),
         ChangeNotifierProvider(
-          create: (_) => SupportController()..fetchFaqs(),
+          create: (_) => SupportController()
+            ..fetchFaqs()
+            ..fetchTickets(),
         ),
       ],
       child: const MobilJuraganApp(),

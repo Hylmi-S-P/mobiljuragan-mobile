@@ -45,7 +45,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -61,12 +61,14 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
         ? 'Ref Booking: $bookingId\n$description'
         : description;
 
-    support.createTicket(
+    final newTicket = await support.createTicket(
       title: title,
       category: _selectedCategory,
       description: fullDesc,
       attachmentName: _attachedFileName,
     );
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -76,7 +78,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Tiket bantuan berhasil diajukan! Membuka ruang chat...',
+                'Tiket bantuan berhasil diajukan. Membuka ruang obrolan...',
                 style: TextStyle(fontFamily: 'Inter'),
               ),
             ),
@@ -91,7 +93,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
     // Navigasi langsung ke ruang chat bantuan dengan tiket yang baru dibuat
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => ChatSupportScreen(ticket: support.tickets.first),
+        builder: (_) => ChatSupportScreen(ticket: newTicket),
       ),
     );
   }

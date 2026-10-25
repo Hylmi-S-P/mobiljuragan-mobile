@@ -8,13 +8,28 @@ import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
 
 /// Layar Arsip dan Riwayat Tiket Bantuan Pelanggan
-class TicketHistoryScreen extends StatelessWidget {
+class TicketHistoryScreen extends StatefulWidget {
   const TicketHistoryScreen({super.key});
+
+  @override
+  State<TicketHistoryScreen> createState() => _TicketHistoryScreenState();
+}
+
+class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<SupportController>().fetchTickets();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final support = context.watch<SupportController>();
-    final historyTickets = support.tickets.where((t) => t.status == 'Selesai').toList();
+    final historyTickets = support.tickets.where((t) => t.isFinished).toList();
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -24,17 +39,30 @@ class TicketHistoryScreen extends StatelessWidget {
         showBackButton: true,
       ),
       body: SafeArea(
-        child: historyTickets.isEmpty
-            ? _buildEmptyState(context)
-            : ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                itemCount: historyTickets.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final ticket = historyTickets[index];
-                  return _buildHistoryCard(context, ticket);
-                },
-              ),
+        child: RefreshIndicator(
+          onRefresh: () => context.read<SupportController>().fetchTickets(force: true),
+          color: AppColors.primaryNavy,
+          child: historyTickets.isEmpty
+              ? LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: _buildEmptyState(context),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  itemCount: historyTickets.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final ticket = historyTickets[index];
+                    return _buildHistoryCard(context, ticket);
+                  },
+                ),
+        ),
       ),
     );
   }
@@ -111,14 +139,21 @@ class TicketHistoryScreen extends StatelessWidget {
   Widget _buildHistoryCard(BuildContext context, SupportTicketModel ticket) {
     final formattedDate =
         '${ticket.createdAt.day.toString().padLeft(2, '0')}/${ticket.createdAt.month.toString().padLeft(2, '0')}/${ticket.createdAt.year}';
+    final isClosed = ticket.isClosed;
 
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
+        Navigator.of(context)
+            .push(
           MaterialPageRoute(
             builder: (_) => ChatSupportScreen(ticket: ticket),
           ),
-        );
+        )
+            .then((_) {
+          if (context.mounted) {
+            context.read<SupportController>().fetchTickets();
+          }
+        });
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -145,20 +180,27 @@ class TicketHistoryScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
+                    color: isClosed ? const Color(0xFFF1F5F9) : const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isClosed ? const Color(0xFFCBD5E1) : const Color(0xFFBBF7D0),
+                    ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF15803D)),
-                      SizedBox(width: 4),
+                      Icon(
+                        isClosed ? Icons.lock_outline_rounded : Icons.check_circle_rounded,
+                        size: 12,
+                        color: isClosed ? const Color(0xFF475569) : const Color(0xFF15803D),
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        'Selesai',
+                        isClosed ? 'Ditutup' : 'Selesai',
                         style: TextStyle(
                           fontSize: AppTypography.sizeTiny,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF15803D),
+                          color: isClosed ? const Color(0xFF475569) : const Color(0xFF15803D),
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -212,7 +254,7 @@ class TicketHistoryScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'ID: ${ticket.id} • ${ticket.categoryLabel}',
+                  'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     color: AppColors.textSecondary,

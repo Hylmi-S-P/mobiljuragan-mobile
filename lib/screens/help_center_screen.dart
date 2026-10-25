@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/support_controller.dart';
@@ -20,15 +21,31 @@ class HelpCenterScreen extends StatefulWidget {
 class _HelpCenterScreenState extends State<HelpCenterScreen> {
   String _selectedCategory = 'Semua';
   int? _expandedFaqIndex;
+  Timer? _ticketsPollingTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<SupportController>().fetchFaqs();
+        final support = context.read<SupportController>();
+        support.fetchFaqs();
+        support.fetchTickets();
       }
     });
+
+    // Polling periodik 5 detik agar perubahan status tiket di dashboard otomatis tersinkron
+    _ticketsPollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        context.read<SupportController>().fetchTickets();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticketsPollingTimer?.cancel();
+    super.dispose();
   }
 
   List<FaqModel> _filterFaqs(List<FaqModel> allFaqs) {
@@ -55,7 +72,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => context.read<SupportController>().fetchFaqs(force: true),
+          onRefresh: () async {
+            final supportCtrl = context.read<SupportController>();
+            await Future.wait([
+              supportCtrl.fetchFaqs(force: true),
+              supportCtrl.fetchTickets(force: true),
+            ]);
+          },
           color: AppColors.primaryNavy,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -242,7 +265,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           child: _buildActionCardItem(
             icon: Icons.chat_bubble_outline,
             label: 'Tanya Cepat',
-            subtitle: 'Konsultasi Instan',
+            tag: 'Bot AI',
+            subtitle: 'Asisten AI 24 Jam',
             color: AppColors.primaryNavy,
             bgColor: const Color(0xFFEFF6FF),
             onTap: () {
@@ -280,6 +304,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     required Color color,
     required Color bgColor,
     required VoidCallback onTap,
+    String? tag,
   }) {
     return InkWell(
       onTap: onTap,
@@ -312,15 +337,41 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                if (tag != null) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFBAE6FD), width: 0.8),
+                    ),
+                    child: Text(
+                      tag,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0369A1),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             const SizedBox(height: 2),
             Text(
@@ -467,7 +518,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Widget _buildUserTicketsSection(SupportController support) {
-    final activeTickets = support.tickets.where((t) => t.status != 'Selesai').toList();
+    final activeTickets = support.tickets.where((t) => !t.isFinished).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +566,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const TicketHistoryScreen()),
-                );
+                ).then((_) {
+                  if (mounted) {
+                    context.read<SupportController>().fetchTickets();
+                  }
+                });
               },
               child: const Text(
                 'Riwayat Tiket ›',
@@ -571,11 +626,17 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               final ticket = activeTickets[index];
               return InkWell(
                 onTap: () {
-                  Navigator.of(context).push(
+                  Navigator.of(context)
+                      .push(
                     MaterialPageRoute(
                       builder: (_) => ChatSupportScreen(ticket: ticket),
                     ),
-                  );
+                  )
+                      .then((_) {
+                    if (context.mounted) {
+                      context.read<SupportController>().fetchTickets();
+                    }
+                  });
                 },
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
@@ -636,7 +697,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'ID: ${ticket.id} • ${ticket.categoryLabel}',
+                              'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeTiny,
                                 color: AppColors.textSecondary,
