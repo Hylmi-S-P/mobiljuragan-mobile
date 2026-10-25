@@ -266,7 +266,7 @@ class SupportController extends ChangeNotifier {
   ///
   /// Sebelumnya riwayat hanya hidup di memori aplikasi. Menutup layar bantuan atau
   /// memulai ulang aplikasi membuat percakapan hilang, padahal pesannya sudah
-  /// tersimpan di server Ã¢â‚¬â€ termasuk jawaban asisten AI dan balasan staf.
+  /// tersimpan di server — termasuk jawaban asisten AI dan balasan staf.
   ///
   /// Hasilnya menggantikan isi percakapan lokal, lalu status handoff ikut
   /// disesuaikan supaya tombol "Panggil Staf" tidak muncul lagi pada tiket yang
@@ -556,7 +556,7 @@ class SupportController extends ChangeNotifier {
   /// Mengalihkan percakapan sesi ke staf operasional manusia.
   ///
   /// Sebelumnya fungsi ini hanya mengubah flag di memori aplikasi, sehingga backend
-  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin Ã¢â‚¬â€ padahal pesan
+  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin — padahal pesan
   /// sistem yang tampil berbunyi "berhasil dialihkan". Sekarang server diberi tahu
   /// lebih dulu, dan penanda lokal baru dipasang setelah server membalas berhasil.
   Future<bool> handoffToAdmin({String conversationKey = 'general'}) async {
@@ -647,15 +647,15 @@ class SupportController extends ChangeNotifier {
     if (alreadySent) return;
 
     final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? 'Ã¢â‚¬Â¢ Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\nÃ¢â‚¬Â¢ Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
         : '';
 
     final invoiceText =
         'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
-        'Ã¢â‚¬Â¢ Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
-        'Ã¢â‚¬Â¢ Bank Transfer: Bank BRI Merauke\n'
-        'Ã¢â‚¬Â¢ No. Rekening: 0321-01-002847-53-1\n'
-        'Ã¢â‚¬Â¢ Atas Nama: MobilJuragan Merauke\n'
+        '· Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
+        '· Bank Transfer: Bank BRI Merauke\n'
+        '· No. Rekening: 0321-01-002847-53-1\n'
+        '· Atas Nama: MobilJuragan Merauke\n'
         '$driverDetail\n'
         'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
 
