@@ -164,30 +164,7 @@ class SupportTicketModel {
     }
   }
 
-  static List<SupportTicketModel> get sampleTickets {
-    return [
-      SupportTicketModel(
-        id: 'TCK-2026-081',
-        ticketNumber: 'TKT-20261022-0081',
-        title: 'Konfirmasi penjemputan kedatangan Bandara Mopah',
-        category: TicketCategory.reservasi,
-        description: 'Pesawat saya mengalami penyesuaian waktu, mohon konfirmasi serah terima armada di area parkir bandara.',
-        status: 'Diproses',
-        handledBy: 'HUMAN',
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      ),
-      SupportTicketModel(
-        id: 'TCK-2026-074',
-        ticketNumber: 'TKT-20261020-0074',
-        title: 'Panduan pembayaran via QRIS Dinamis Merauke',
-        category: TicketCategory.pembayaran,
-        description: 'Verifikasi konfirmasi transaksi pembayaran sewa harian menggunakan QRIS Dinamis berhasil terbit.',
-        status: 'Selesai',
-        handledBy: 'HUMAN',
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-    ];
-  }
+  static List<SupportTicketModel> get sampleTickets => const [];
 }
 
 /// Entitas pesan percakapan chat bantuan (AI Handoff & CS Admin)

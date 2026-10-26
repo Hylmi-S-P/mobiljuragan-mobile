@@ -143,7 +143,41 @@ class SupportController extends ChangeNotifier {
   }
 
   void _initData() {
-    _tickets.addAll(SupportTicketModel.sampleTickets);
+    if (SupportTicketModel.sampleTickets.isNotEmpty) {
+      _tickets.addAll(SupportTicketModel.sampleTickets);
+
+      final sampleTicket = SupportTicketModel.sampleTickets.first;
+      final ticketKey = 'ticket_${sampleTicket.id}';
+      _conversations[ticketKey] = [
+        ChatMessageModel(
+          id: 'tck-sys-${sampleTicket.id}',
+          message: 'Tiket kendala #${sampleTicket.id} (${sampleTicket.title}) telah terdaftar dengan status Diproses.',
+          timestamp: sampleTicket.createdAt,
+          isFromUser: false,
+          senderName: 'Sistem',
+          isAI: false,
+          conversationKey: ticketKey,
+        ),
+        ChatMessageModel(
+          id: 'tck-usr-${sampleTicket.id}',
+          message: sampleTicket.description,
+          timestamp: sampleTicket.createdAt.add(const Duration(minutes: 1)),
+          isFromUser: true,
+          senderName: 'Anda',
+          conversationKey: ticketKey,
+        ),
+        ChatMessageModel(
+          id: 'tck-resp-${sampleTicket.id}',
+          message: 'Halo, laporan penyesuaian jadwal penjemputan Bandara Mopah Anda sudah kami teruskan ke tim driver lapangan. Driver kami akan standby di area parkir bandara sesuai waktu kedatangan baru Anda.',
+          timestamp: sampleTicket.createdAt.add(const Duration(minutes: 15)),
+          isFromUser: false,
+          senderName: 'Admin Operasional Merauke',
+          isAI: false,
+          conversationKey: ticketKey,
+        ),
+      ];
+      _handoffStatus[ticketKey] = true;
+    }
 
     // Percakapan Bantuan Umum (General Help Desk)
     _conversations['general'] = [
@@ -157,39 +191,6 @@ class SupportController extends ChangeNotifier {
         conversationKey: 'general',
       ),
     ];
-
-    // Percakapan Sampel untuk Tiket Keluhan TCK-2026-081
-    final sampleTicket = SupportTicketModel.sampleTickets.first;
-    final ticketKey = 'ticket_${sampleTicket.id}';
-    _conversations[ticketKey] = [
-      ChatMessageModel(
-        id: 'tck-sys-${sampleTicket.id}',
-        message: 'Tiket kendala #${sampleTicket.id} (${sampleTicket.title}) telah terdaftar dengan status Diproses.',
-        timestamp: sampleTicket.createdAt,
-        isFromUser: false,
-        senderName: 'Sistem',
-        isAI: false,
-        conversationKey: ticketKey,
-      ),
-      ChatMessageModel(
-        id: 'tck-usr-${sampleTicket.id}',
-        message: sampleTicket.description,
-        timestamp: sampleTicket.createdAt.add(const Duration(minutes: 1)),
-        isFromUser: true,
-        senderName: 'Anda',
-        conversationKey: ticketKey,
-      ),
-      ChatMessageModel(
-        id: 'tck-resp-${sampleTicket.id}',
-        message: 'Halo, laporan penyesuaian jadwal penjemputan Bandara Mopah Anda sudah kami teruskan ke tim driver lapangan. Driver kami akan standby di area parkir bandara sesuai waktu kedatangan baru Anda.',
-        timestamp: sampleTicket.createdAt.add(const Duration(minutes: 15)),
-        isFromUser: false,
-        senderName: 'Admin Operasional Merauke',
-        isAI: false,
-        conversationKey: ticketKey,
-      ),
-    ];
-    _handoffStatus[ticketKey] = true;
   }
 
   List<SupportTicketModel> get tickets => List.unmodifiable(_tickets);
@@ -846,8 +847,11 @@ class SupportController extends ChangeNotifier {
     final alreadySent = list.any((m) => m.id == invoiceMsgId);
     if (alreadySent) return;
 
+    final driverPhoneText = booking.assignedDriver != null && booking.assignedDriver!.phoneNumber.isNotEmpty
+        ? '· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        : '';
     final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n$driverPhoneText'
         : '';
 
     final invoiceText =
@@ -928,9 +932,14 @@ class SupportController extends ChangeNotifier {
     final alreadySent = list.any((m) => m.id == ticketMsgId);
     if (alreadySent) return;
 
+    final driverPhoneSuffix = booking.assignedDriver != null && booking.assignedDriver!.phoneNumber.isNotEmpty
+        ? ' (HP/WA: ${booking.assignedDriver!.phoneNumber}).'
+        : '.';
     final driverInfo = booking.withDriver && booking.assignedDriver != null
-        ? 'Staf pengemudi tetap: ${booking.assignedDriver!.driverName} (HP/WA: ${booking.assignedDriver!.phoneNumber}).'
-        : 'Pengambilan armada mandiri di ${booking.pickupLocation}. Tim staf kami siap menyambut serah terima kunci.';
+        ? 'Staf pengemudi tetap: ${booking.assignedDriver!.driverName}$driverPhoneSuffix'
+        : (booking.withDriver
+            ? 'Staf pengemudi sedang disiapkan oleh tim operasional MobilJuragan.'
+            : 'Pengambilan armada mandiri di ${booking.pickupLocation}. Tim staf kami siap menyambut serah terima kunci.');
 
     final paymentStatusText = booking.isCodPayment
         ? 'Metode: Bayar Tunai di Tempat (COD Rp ${_formatRupiah(booking.totalCost)} disiapkan saat serah terima unit).'

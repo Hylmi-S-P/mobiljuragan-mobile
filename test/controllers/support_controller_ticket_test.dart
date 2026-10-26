@@ -99,6 +99,11 @@ class FakeTicketApiService extends TicketApiService {
           'status': 'CLOSED',
         };
   }
+
+  @override
+  Future<bool> handover({required String ticketId}) async {
+    return true;
+  }
 }
 
 void main() {
@@ -267,6 +272,8 @@ void main() {
       final controller = SupportController(ticketApiService: fakeService);
 
       const ticketKey = 'ticket_TCK-2026-081';
+      await controller.handoffToAdmin(conversationKey: ticketKey);
+
       final initialMessageCount = controller.getMessages(ticketKey).length;
 
       controller.sendUserMessage(
@@ -317,7 +324,13 @@ void main() {
       final fakeService = FakeTicketApiService();
       final controller = SupportController(ticketApiService: fakeService);
 
-      const targetTicketId = 'TCK-2026-081';
+      final created = await controller.createTicket(
+        title: 'Konfirmasi penjemputan',
+        category: TicketCategory.reservasi,
+        description: 'Serah terima di bandara',
+      );
+      final targetTicketId = created.id;
+
       final ticketBefore = controller.tickets.firstWhere((t) => t.id == targetTicketId);
       expect(ticketBefore.status, isNot(equals('Ditutup')));
 
