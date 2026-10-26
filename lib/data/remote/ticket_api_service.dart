@@ -9,19 +9,15 @@ class TicketApiService {
 
   /// Mengambil daftar tiket milik pelanggan yang sedang login
   Future<List<dynamic>> fetchCustomerTickets({String? status}) async {
-    try {
-      final response = await _client.get(
-        ApiConstants.ticketsEndpoint,
-        queryParams: status != null ? {'status': status} : null,
-        requiresAuth: true,
-      );
-      if (response is List) {
-        return response;
-      }
-      return [];
-    } catch (_) {
-      return [];
+    final response = await _client.get(
+      ApiConstants.ticketsEndpoint,
+      queryParams: status != null ? {'status': status} : null,
+      requiresAuth: true,
+    );
+    if (response is List) {
+      return response;
     }
+    return [];
   }
 
   /// Membuat tiket kendala/bantuan baru
@@ -43,6 +39,29 @@ class TicketApiService {
       return Map<String, dynamic>.from(response);
     }
     return {};
+  }
+
+  /// Membuat atau menyinkronkan sesi tiket asisten AI
+  Future<Map<String, dynamic>> createAiSession({
+    String? title,
+    String? category,
+  }) async {
+    try {
+      final response = await _client.post(
+        '${ApiConstants.ticketsEndpoint}/ai-session',
+        requiresAuth: true,
+        body: {
+          if (title != null && title.isNotEmpty) 'title': title,
+          if (category != null && category.isNotEmpty) 'category': category,
+        },
+      );
+      if (response is Map) {
+        return Map<String, dynamic>.from(response);
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
   }
 
   /// Mengirim pesan balasan pelanggan pada thread tiket
@@ -68,7 +87,10 @@ class TicketApiService {
   /// Sebelumnya perpindahan ini hanya ditandai dengan flag di memori aplikasi,
   /// sehingga backend tidak pernah tahu dan tiket tidak pernah muncul di antrean
   /// admin. Fungsi ini yang memberi tahu server.
-  Future<bool> handover({required String ticketId}) async {
+  Future<bool> handover({required String ticketId}) => handoverTicket(ticketId);
+
+  /// Alias handoverTicket untuk kompatibilitas
+  Future<bool> handoverTicket(String ticketId) async {
     final response = await _client.post(
       '${ApiConstants.ticketsEndpoint}/$ticketId/handover',
       requiresAuth: true,
@@ -79,7 +101,23 @@ class TicketApiService {
         return data['handledBy'] == 'HUMAN';
       }
     }
-    return false;
+    return response != null;
+  }
+
+  /// Menutup tiket bantuan oleh pelanggan
+  Future<Map<String, dynamic>> closeTicket(String ticketId) async {
+    try {
+      final response = await _client.patch(
+        '${ApiConstants.ticketsEndpoint}/$ticketId/close',
+        requiresAuth: true,
+      );
+      if (response is Map) {
+        return Map<String, dynamic>.from(response);
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
   }
 
   /// Mengambil satu tiket beserta seluruh riwayat pesannya.
@@ -98,6 +136,7 @@ class TicketApiService {
       if (data is Map) {
         return Map<String, dynamic>.from(data);
       }
+      return Map<String, dynamic>.from(response);
     }
     return {};
   }

@@ -238,6 +238,7 @@ class BookingRepository {
     final map = vehicleMap ?? _defaultVehicleMap;
     try {
       final list = await _apiService.fetchBookings();
+      await _bookingDao.clearAllBookings();
       if (list.isNotEmpty) {
         final List<BookingModel> synced = [];
         for (final item in list) {
@@ -259,8 +260,14 @@ class BookingRepository {
         }
         return synced;
       }
+      return [];
     } catch (_) {}
     return [];
+  }
+
+  /// Menghapus seluruh data pemesanan lokal di Drift
+  Future<void> clearLocalBookings() async {
+    await _bookingDao.clearAllBookings();
   }
 
   /// Menyimpan pesanan atau pembaruan status ke dalam SQLite lokal (Offline-First)

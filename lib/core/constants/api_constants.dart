@@ -49,6 +49,12 @@ class ApiConstants {
   static const String paymentsEndpoint = '/payments';
   static const String paymentsBookingEndpoint = '/payments/booking';
 
+  // Endpoints Dokumen Persyaratan Lepas Kunci
+  static const String documentTemplateTextEndpoint =
+      '/documents/template/surat-pernyataan-lepas-kunci/text';
+  static const String documentTemplatePdfEndpoint =
+      '/documents/template/surat-pernyataan-lepas-kunci.pdf';
+
   // Durasi timeout HTTP request umum
   static const Duration timeoutDuration = Duration(seconds: 8);
 

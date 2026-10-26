@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/support_controller.dart';
@@ -20,15 +21,31 @@ class HelpCenterScreen extends StatefulWidget {
 class _HelpCenterScreenState extends State<HelpCenterScreen> {
   String _selectedCategory = 'Semua';
   int? _expandedFaqIndex;
+  Timer? _ticketsPollingTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<SupportController>().fetchFaqs();
+        final support = context.read<SupportController>();
+        support.fetchFaqs();
+        support.fetchTickets();
       }
     });
+
+    // Polling periodik 5 detik agar perubahan status tiket di dashboard otomatis tersinkron
+    _ticketsPollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        context.read<SupportController>().fetchTickets();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticketsPollingTimer?.cancel();
+    super.dispose();
   }
 
   List<FaqModel> _filterFaqs(List<FaqModel> allFaqs) {
@@ -55,7 +72,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => context.read<SupportController>().fetchFaqs(force: true),
+          onRefresh: () async {
+            final supportCtrl = context.read<SupportController>();
+            await Future.wait([
+              supportCtrl.fetchFaqs(force: true),
+              supportCtrl.fetchTickets(force: true),
+            ]);
+          },
           color: AppColors.primaryNavy,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -168,59 +191,145 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Widget _buildCsInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.tealLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.support_agent_rounded,
+                size: 20,
+                color: AppColors.primaryTeal,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Layanan Bantuan Terpadu',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Setiap tiket bantuan dijawab otomatis oleh asisten virtual dan dapat dialihkan ke staf operasional Merauke.',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCards() {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ChatSupportScreen()),
+          MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
         );
       },
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
+          color: AppColors.cardWhite,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.borderSubtle),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: AppColors.tealLight,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: const Center(
                 child: Icon(
-                  Icons.support_agent_rounded,
-                  size: 20,
+                  Icons.assignment_late_outlined,
                   color: AppColors.primaryTeal,
+                  size: 24,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            const Expanded(
+            const SizedBox(width: 14),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Layanan Bantuan 24 Jam',
+                  Row(
+                    children: [
+                      const Text(
+                        'Buat Tiket Bantuan',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBodyLarge,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: const Text(
+                          'Respon AI',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1D4ED8),
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Sampaikan pertanyaan atau kendala sewa armada untuk ditangani',
                     style: TextStyle(
                       fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  SizedBox(height: 3),
-                  Text(
-                    'Tim operasional dan asisten respon cepat siap melayani kendala sewa armada Anda kapan saja.',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      height: 1.35,
                       color: AppColors.textSecondary,
                       fontFamily: 'Inter',
                     ),
@@ -228,111 +337,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionCards() {
-    return Row(
-      children: [
-        // Action 1: Tanya Cepat (Live Chat umum)
-        Expanded(
-          child: _buildActionCardItem(
-            icon: Icons.chat_bubble_outline,
-            label: 'Tanya Cepat',
-            subtitle: 'Konsultasi Instan',
-            color: AppColors.primaryNavy,
-            bgColor: const Color(0xFFEFF6FF),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ChatSupportScreen()),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
-
-        // Action 2: Lapor Kendala (Tiket Resmi)
-        Expanded(
-          child: _buildActionCardItem(
-            icon: Icons.assignment_late_outlined,
-            label: 'Lapor Kendala',
-            subtitle: 'Form Tiket Resmi',
-            color: AppColors.primaryTeal,
-            bgColor: AppColors.tealLight,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionCardItem({
-    required IconData icon,
-    required String label,
-    required String subtitle,
-    required Color color,
-    required Color bgColor,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.cardWhite,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderSubtle),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Icon(icon, color: color, size: 20),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeMicro,
-                color: AppColors.textSecondary,
-                fontFamily: 'Inter',
-              ),
+            const Icon(
+              Icons.chevron_right,
+              color: AppColors.textSecondary,
+              size: 20,
             ),
           ],
         ),
@@ -467,7 +475,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Widget _buildUserTicketsSection(SupportController support) {
-    final activeTickets = support.tickets.where((t) => t.status != 'Selesai').toList();
+    final activeTickets = support.tickets.where((t) => !t.isFinished).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +523,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const TicketHistoryScreen()),
-                );
+                ).then((_) {
+                  if (mounted) {
+                    context.read<SupportController>().fetchTickets();
+                  }
+                });
               },
               child: const Text(
                 'Riwayat Tiket ›',
@@ -571,11 +583,17 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               final ticket = activeTickets[index];
               return InkWell(
                 onTap: () {
-                  Navigator.of(context).push(
+                  Navigator.of(context)
+                      .push(
                     MaterialPageRoute(
                       builder: (_) => ChatSupportScreen(ticket: ticket),
                     ),
-                  );
+                  )
+                      .then((_) {
+                    if (context.mounted) {
+                      context.read<SupportController>().fetchTickets();
+                    }
+                  });
                 },
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
@@ -636,7 +654,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'ID: ${ticket.id} • ${ticket.categoryLabel}',
+                              'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeTiny,
                                 color: AppColors.textSecondary,

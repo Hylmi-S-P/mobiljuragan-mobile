@@ -41,6 +41,21 @@ class VehicleModel {
     this.updatedAt,
   });
 
+  /// Penanda ketersediaan unit untuk reservasi baru
+  bool get isAvailable {
+    final tag = availabilityTag.toLowerCase();
+    if (tag.contains('sedang disewa') || tag.contains('tersewa') || tag.contains('perawatan') || tag.contains('tidak tersedia')) {
+      return false;
+    }
+    return tag.contains('tersedia');
+  }
+
+  /// Penanda unit sedang terkunci karena telah dibayar atau digunakan penyewa lain
+  bool get isBooked {
+    final tag = availabilityTag.toLowerCase();
+    return tag.contains('sedang disewa') || tag.contains('tersewa');
+  }
+
   /// Konversi dari entitas tabel Drift (Vehicle) ke domain model VehicleModel
   factory VehicleModel.fromDrift(Vehicle entry) {
     return VehicleModel(
@@ -164,6 +179,20 @@ class VehicleModel {
       detailImg = 'assets/images/hilux_card.png';
     }
 
+    // Evaluasi status ketersediaan armada
+    final opStatus = json['operationalStatus']?.toString().toUpperCase() ?? 'AVAILABLE';
+    final bookingsList = json['bookings'] as List<dynamic>?;
+    final bool hasActiveBooking = bookingsList != null && bookingsList.isNotEmpty;
+
+    String calculatedAvailability = 'Tersedia • Lepas Kunci';
+    if (opStatus == 'BOOKED' || hasActiveBooking) {
+      calculatedAvailability = 'Tersewa';
+    } else if (opStatus == 'MAINTENANCE') {
+      calculatedAvailability = 'Perawatan';
+    } else if (opStatus == 'UNAVAILABLE') {
+      calculatedAvailability = 'Tidak Tersedia';
+    }
+
     return VehicleModel(
       id: extId,
       name: rawName,
@@ -172,8 +201,8 @@ class VehicleModel {
       seatCapacity: seating,
       transmission: trans == 'AUTOMATIC' || trans == 'Matic' ? 'Matic' : 'Manual',
       bodyType: bodyType,
-      condition: 'Siap Pakai & Terawat',
-      availabilityTag: 'Tersedia • Lepas Kunci',
+      condition: hasActiveBooking ? 'Sedang Digunakan' : 'Siap Pakai & Terawat',
+      availabilityTag: calculatedAvailability,
       isPopular: rawName.toUpperCase().contains('AVANZA'),
       pricePerDay: rate,
       imageUrl: json['imageUrl']?.toString() ?? cardImg,
@@ -299,8 +328,8 @@ class VehicleModel {
       seatCapacity: '7 Penumpang',
       transmission: 'Manual',
       bodyType: 'MPV Keluarga',
-      condition: 'Siap & Nyaman',
-      availabilityTag: 'Tersedia • Lepas Kunci/Supir',
+      condition: 'Sedang Beroperasi',
+      availabilityTag: 'Sedang Disewa',
       isPopular: false,
       pricePerDay: 550000,
       imageUrl: 'assets/images/innova_card.png',

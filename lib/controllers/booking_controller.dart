@@ -83,35 +83,42 @@ class BookingController extends ChangeNotifier {
     if (repo != null) {
       try {
         final saved = await repo.getAllBookings();
-        if (saved.isNotEmpty) {
-          _bookingHistory.clear();
-          _bookingHistory.addAll(saved);
-          final actives = _bookingHistory
-              .where((b) =>
-                  b.status != BookingStatus.selesai &&
-                  b.status != BookingStatus.dibatalkan)
-              .toList();
-          _activeBooking = actives.isNotEmpty ? actives.first : null;
-          notifyListeners();
-        }
+        _bookingHistory.clear();
+        _bookingHistory.addAll(saved);
+        final actives = _bookingHistory
+            .where((b) =>
+                b.status != BookingStatus.selesai &&
+                b.status != BookingStatus.dibatalkan)
+            .toList();
+        _activeBooking = actives.isNotEmpty ? actives.first : null;
+        notifyListeners();
       } catch (_) {}
 
       _bookingsSubscription = repo.watchAllBookings().listen((updatedList) {
-        if (updatedList.isNotEmpty) {
-          _bookingHistory.clear();
-          _bookingHistory.addAll(updatedList);
-          final actives = _bookingHistory
-              .where((b) =>
-                  b.status != BookingStatus.selesai &&
-                  b.status != BookingStatus.dibatalkan)
-              .toList();
-          _activeBooking = actives.isNotEmpty ? actives.first : null;
-          notifyListeners();
-        }
+        _bookingHistory.clear();
+        _bookingHistory.addAll(updatedList);
+        final actives = _bookingHistory
+            .where((b) =>
+                b.status != BookingStatus.selesai &&
+                b.status != BookingStatus.dibatalkan)
+            .toList();
+        _activeBooking = actives.isNotEmpty ? actives.first : null;
+        notifyListeners();
       });
 
       // Lakukan sinkronisasi pesanan dari remote REST API ke Drift SQLite
       unawaited(repo.syncAllBookingsFromRemote());
+    }
+  }
+
+  /// Menghapus seluruh data pemesanan di controller dan basis data lokal Drift
+  Future<void> clearAllBookings() async {
+    _bookingHistory.clear();
+    _activeBooking = null;
+    notifyListeners();
+    final repo = repository;
+    if (repo != null) {
+      await repo.clearLocalBookings();
     }
   }
 

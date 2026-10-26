@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
@@ -458,8 +458,8 @@ class _HomeScreenState extends State<HomeScreen> {
         label = 'SIAP PAKAI';
         break;
       case BookingStatus.menungguPembayaran:
-        bg = const Color(0xFFFEF2F2);
-        text = const Color(0xFFB91C1C);
+        bg = AppColors.badgeAmberBg;
+        text = AppColors.badgeAmberText;
         label = 'MENUNGGU BAYAR';
         break;
       case BookingStatus.menungguTarifFinal:

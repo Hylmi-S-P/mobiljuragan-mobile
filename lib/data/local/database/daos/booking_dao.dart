@@ -69,4 +69,9 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
       ),
     );
   }
+
+  /// Menghapus seluruh data pemesanan lokal
+  Future<int> clearAllBookings() async {
+    return delete(bookings).go();
+  }
 }

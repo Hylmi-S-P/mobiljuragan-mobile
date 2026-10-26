@@ -26,6 +26,9 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<VehicleController>().refreshCatalog(force: true);
+      }
       final currentVehicle = context.read<BookingController>().selectedVehicle;
       if (currentVehicle != null && mounted) {
         setState(() {
@@ -345,10 +348,11 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               'Lanjutkan: ${selectedVehicle.name}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: AppTypography.sizeBodyLarge,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',
+                color: Colors.white,
               ),
             ),
           ),

@@ -78,9 +78,9 @@ class DriverAssignment {
 
   factory DriverAssignment.fromJson(Map<String, dynamic> json) {
     return DriverAssignment(
-      driverName: json['driverName']?.toString() ?? 'Staf Sopir Resmi',
-      staffId: json['staffId']?.toString() ?? 'STF-DRV',
-      phoneNumber: json['phoneNumber']?.toString() ?? '0812-4822-9901',
+      driverName: json['driverName']?.toString() ?? '',
+      staffId: json['staffId']?.toString() ?? '',
+      phoneNumber: json['phoneNumber']?.toString() ?? '',
       operationalRole: json['operationalRole']?.toString() ??
           'Staf Pengemudi Tetap MobilJuragan Merauke',
     );
@@ -123,9 +123,15 @@ class BookingModel {
   final PaymentMethodType? _paymentMethodType;
   final DateTime? paidAt;
   final String? paymentReference;
+  final String? documentStatus;
+  final String? documentRejectionReason;
+  final String? paymentStatus;
 
   PaymentMethodType get paymentMethodType =>
       _paymentMethodType ?? PaymentMethodType.belumDipilih;
+
+  bool get isDocumentRejected => documentStatus == 'REJECTED';
+  bool get isPaymentRejected => paymentStatus == 'REJECTED';
 
   const BookingModel({
     required this.id,
@@ -158,6 +164,9 @@ class BookingModel {
     PaymentMethodType? paymentMethodType = PaymentMethodType.belumDipilih,
     this.paidAt,
     this.paymentReference,
+    this.documentStatus,
+    this.documentRejectionReason,
+    this.paymentStatus,
   }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
 
   /// Pemetaan status dari respons backend Prisma ke BookingStatus aplikasi mobile
@@ -197,14 +206,11 @@ class BookingModel {
     if (entry.driverJson != null && entry.driverJson!.isNotEmpty) {
       try {
         final decoded = jsonDecode(entry.driverJson!) as Map<String, dynamic>;
-        assignedDriver = DriverAssignment.fromJson(decoded);
+        final parsed = DriverAssignment.fromJson(decoded);
+        if (parsed.driverName.isNotEmpty) {
+          assignedDriver = parsed;
+        }
       } catch (_) {}
-    } else if (entry.withDriver) {
-      assignedDriver = const DriverAssignment(
-        driverName: 'Staf Sopir Ditugaskan',
-        staffId: 'STF-DRV',
-        phoneNumber: '0812-4822-9901',
-      );
     }
 
     List<BookingFeeAdjustment> adjustments = [];
@@ -316,21 +322,31 @@ class BookingModel {
     DriverAssignment? assignedDriver;
     if (json['driver'] is Map) {
       final d = Map<String, dynamic>.from(json['driver'] as Map);
-      assignedDriver = DriverAssignment(
-        driverName: d['fullName']?.toString() ?? 'Staf Sopir Resmi',
-        staffId: d['externalId']?.toString() ?? d['id']?.toString() ?? 'STF-DRV',
-        phoneNumber: d['phoneNumber']?.toString() ?? '0812-4822-9901',
-      );
-    } else if (withDriver) {
-      assignedDriver = const DriverAssignment(
-        driverName: 'Staf Sopir Ditugaskan',
-        staffId: 'STF-DRV',
-        phoneNumber: '0812-4822-9901',
-      );
+      final fullName = d['fullName']?.toString().trim();
+      if (fullName != null && fullName.isNotEmpty) {
+        final phone = d['phoneNumber']?.toString().trim() ?? '';
+        final staffId = d['externalId']?.toString() ?? d['id']?.toString() ?? '';
+        final routeScope = d['routeScope']?.toString();
+        final role = routeScope == 'LUAR_KOTA'
+            ? 'Staf Pengemudi Rute Luar Kota Merauke'
+            : 'Staf Pengemudi Area Merauke';
+        assignedDriver = DriverAssignment(
+          driverName: fullName,
+          staffId: staffId,
+          phoneNumber: phone,
+          operationalRole: role,
+        );
+      }
     }
 
     final createdAt =
         DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+
+    final doc = json['document'];
+    final String? docStatus = doc is Map ? doc['status']?.toString() : null;
+    final String? docRejectionReason = doc is Map ? doc['rejectionReason']?.toString() : null;
+    final pay = json['payment'];
+    final String? payStatus = pay is Map ? pay['status']?.toString() : null;
 
     return BookingModel(
       id: rawId,
@@ -350,6 +366,9 @@ class BookingModel {
       adminAdjustments: adjustments,
       isFinalTariffConfirmed: isTariffConfirmed,
       assignedDriver: assignedDriver,
+      documentStatus: docStatus,
+      documentRejectionReason: docRejectionReason,
+      paymentStatus: payStatus,
     );
   }
 
@@ -501,6 +520,9 @@ class BookingModel {
     PaymentMethodType? paymentMethodType,
     DateTime? paidAt,
     String? paymentReference,
+    String? documentStatus,
+    String? documentRejectionReason,
+    String? paymentStatus,
   }) {
     return BookingModel(
       id: id ?? this.id,
@@ -538,6 +560,10 @@ class BookingModel {
       paymentMethodType: paymentMethodType ?? this.paymentMethodType,
       paidAt: paidAt ?? this.paidAt,
       paymentReference: paymentReference ?? this.paymentReference,
+      documentStatus: documentStatus ?? this.documentStatus,
+      documentRejectionReason:
+          documentRejectionReason ?? this.documentRejectionReason,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
     );
   }
 

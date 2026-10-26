@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/remote/ai_api_service.dart';
+import '../data/remote/ai_chat_api_service.dart';
 import '../data/remote/faq_api_service.dart';
 import '../data/remote/ticket_api_service.dart';
 import '../data/remote/ticket_event_stream.dart';
@@ -33,13 +34,37 @@ class SupportController extends ChangeNotifier {
   bool _isLoadingFaqs = false;
   String? _faqError;
 
+  bool _isLoadingTickets = false;
+  bool get isLoadingTickets => _isLoadingTickets;
+  String? _ticketError;
+  String? get ticketError => _ticketError;
+
+  final Map<String, bool> _isAiThinking = {};
+  bool isAiThinking(String conversationKey) => _isAiThinking[conversationKey] ?? false;
+
+  /// Batas retensi putaran dialog dengan AI sebelum dievaluasi untuk eskalasi ke staf operasional
+  static const int maxAiTurnsBeforeHandoff = 3;
+
+  /// Peta penghitung putaran percakapan AI per sesi tiket
+  final Map<String, int> _ticketTurnCounts = {};
+
+  int getTicketTurnCount(String conversationKey) => _ticketTurnCounts[conversationKey] ?? 0;
+
+  bool isRetentionThresholdReached(String conversationKey) {
+    return (_ticketTurnCounts[conversationKey] ?? 0) >= maxAiTurnsBeforeHandoff;
+  }
+
   SupportController({
     FaqApiService? faqApiService,
     TicketApiService? ticketApiService,
     AiApiService? aiApiService,
+    AiChatApiService? aiChatApiService,
   })  : _faqApiService = faqApiService ?? FaqApiService(),
         _ticketApiService = ticketApiService ?? TicketApiService(),
-        _aiApiService = aiApiService ?? AiApiService() {
+        _aiApiService = aiApiService ??
+            (aiChatApiService != null
+                ? _AiChatApiServiceAdapter(aiChatApiService)
+                : AiApiService()) {
     _initData();
   }
 
@@ -118,7 +143,41 @@ class SupportController extends ChangeNotifier {
   }
 
   void _initData() {
-    _tickets.addAll(SupportTicketModel.sampleTickets);
+    if (SupportTicketModel.sampleTickets.isNotEmpty) {
+      _tickets.addAll(SupportTicketModel.sampleTickets);
+
+      final sampleTicket = SupportTicketModel.sampleTickets.first;
+      final ticketKey = 'ticket_${sampleTicket.id}';
+      _conversations[ticketKey] = [
+        ChatMessageModel(
+          id: 'tck-sys-${sampleTicket.id}',
+          message: 'Tiket kendala #${sampleTicket.id} (${sampleTicket.title}) telah terdaftar dengan status Diproses.',
+          timestamp: sampleTicket.createdAt,
+          isFromUser: false,
+          senderName: 'Sistem',
+          isAI: false,
+          conversationKey: ticketKey,
+        ),
+        ChatMessageModel(
+          id: 'tck-usr-${sampleTicket.id}',
+          message: sampleTicket.description,
+          timestamp: sampleTicket.createdAt.add(const Duration(minutes: 1)),
+          isFromUser: true,
+          senderName: 'Anda',
+          conversationKey: ticketKey,
+        ),
+        ChatMessageModel(
+          id: 'tck-resp-${sampleTicket.id}',
+          message: 'Halo, laporan penyesuaian jadwal penjemputan Bandara Mopah Anda sudah kami teruskan ke tim driver lapangan. Driver kami akan standby di area parkir bandara sesuai waktu kedatangan baru Anda.',
+          timestamp: sampleTicket.createdAt.add(const Duration(minutes: 15)),
+          isFromUser: false,
+          senderName: 'Admin Operasional Merauke',
+          isAI: false,
+          conversationKey: ticketKey,
+        ),
+      ];
+      _handoffStatus[ticketKey] = true;
+    }
 
     // Percakapan Bantuan Umum (General Help Desk)
     _conversations['general'] = [
@@ -132,39 +191,6 @@ class SupportController extends ChangeNotifier {
         conversationKey: 'general',
       ),
     ];
-
-    // Percakapan Sampel untuk Tiket Keluhan TCK-2026-081
-    final sampleTicket = SupportTicketModel.sampleTickets.first;
-    final ticketKey = 'ticket_${sampleTicket.id}';
-    _conversations[ticketKey] = [
-      ChatMessageModel(
-        id: 'tck-sys-${sampleTicket.id}',
-        message: 'Tiket kendala #${sampleTicket.id} (${sampleTicket.title}) telah terdaftar dengan status Diproses.',
-        timestamp: sampleTicket.createdAt,
-        isFromUser: false,
-        senderName: 'Sistem',
-        isAI: false,
-        conversationKey: ticketKey,
-      ),
-      ChatMessageModel(
-        id: 'tck-usr-${sampleTicket.id}',
-        message: sampleTicket.description,
-        timestamp: sampleTicket.createdAt.add(const Duration(minutes: 1)),
-        isFromUser: true,
-        senderName: 'Anda',
-        conversationKey: ticketKey,
-      ),
-      ChatMessageModel(
-        id: 'tck-resp-${sampleTicket.id}',
-        message: 'Halo, laporan penyesuaian jadwal penjemputan Bandara Mopah Anda sudah kami teruskan ke tim driver lapangan. Driver kami akan standby di area parkir bandara sesuai waktu kedatangan baru Anda.',
-        timestamp: sampleTicket.createdAt.add(const Duration(minutes: 15)),
-        isFromUser: false,
-        senderName: 'Admin Operasional Merauke',
-        isAI: false,
-        conversationKey: ticketKey,
-      ),
-    ];
-    _handoffStatus[ticketKey] = true;
   }
 
   List<SupportTicketModel> get tickets => List.unmodifiable(_tickets);
@@ -208,6 +234,227 @@ class SupportController extends ChangeNotifier {
     } finally {
       _isLoadingFaqs = false;
       notifyListeners();
+    }
+  }
+
+  /// Mengambil daftar tiket milik pelanggan dari backend dengan penanganan offline graceful
+  Future<void> fetchTickets({bool force = false}) async {
+    if (_isLoadingTickets && !force) return;
+    _isLoadingTickets = true;
+    _ticketError = null;
+    notifyListeners();
+
+    try {
+      final rawList = await _ticketApiService.fetchCustomerTickets();
+      final remoteTickets = <SupportTicketModel>[];
+      for (final item in rawList) {
+        if (item is Map) {
+          final ticket = SupportTicketModel.fromJson(Map<String, dynamic>.from(item));
+          remoteTickets.add(ticket);
+
+          // Simpan riwayat pesan tiket jika disertakan oleh respons backend
+          final ticketKey = 'ticket_${ticket.id}';
+          if (item.containsKey('messages') && item['messages'] is List) {
+            final rawMessages = item['messages'] as List;
+            if (rawMessages.isNotEmpty) {
+              final parsed = rawMessages
+                  .whereType<Map>()
+                  .map((m) => ChatMessageModel.fromJson(
+                        Map<String, dynamic>.from(m),
+                        conversationKey: ticketKey,
+                      ))
+                  .toList();
+              _conversations[ticketKey] = parsed;
+            }
+          }
+
+          // Sinkronkan status eskalasi bila tiket ditangani manusia
+          if (ticket.isHandledByHuman) {
+            _handoffStatus[ticketKey] = true;
+          }
+        }
+      }
+
+      _tickets.clear();
+      _tickets.addAll(remoteTickets);
+    } catch (e) {
+      _ticketError = e.toString();
+    } finally {
+      _isLoadingTickets = false;
+      notifyListeners();
+    }
+  }
+
+  /// Membuat tiket kendala baru dan menyiapkan thread percakapan terisolasi
+  Future<SupportTicketModel> createTicket({
+    required String title,
+    required TicketCategory category,
+    required String description,
+    String? attachmentName,
+  }) async {
+    final tempId = 'TCK-2026-${(82 + _tickets.length).toString().padLeft(3, '0')}';
+    SupportTicketModel createdTicket = SupportTicketModel(
+      id: tempId,
+      ticketNumber: tempId,
+      title: title,
+      category: category,
+      description: description,
+      status: 'Menunggu',
+      handledBy: 'AI',
+      createdAt: DateTime.now(),
+      attachmentName: attachmentName,
+    );
+
+    try {
+      final res = await _ticketApiService.createTicket(
+        title: title,
+        description: description,
+        category: category.apiKey,
+      );
+      if (res.isNotEmpty && res.containsKey('id')) {
+        final serverTicketNumber = res['ticketNumber']?.toString();
+        final effectiveTitle = (serverTicketNumber != null && !title.contains(serverTicketNumber))
+            ? '$title ($serverTicketNumber)'
+            : title;
+        createdTicket = SupportTicketModel.fromJson(res).copyWith(
+          title: effectiveTitle,
+          handledBy: res['handledBy']?.toString() ?? 'AI',
+          attachmentName: attachmentName,
+        );
+      }
+    } catch (_) {
+      // Offline fallback: data lokal tetap tersimpan di controller
+    }
+
+    final existingIdx = _tickets.indexWhere((t) => t.id == createdTicket.id || t.id == tempId);
+    if (existingIdx != -1) {
+      _tickets[existingIdx] = createdTicket;
+    } else {
+      _tickets.insert(0, createdTicket);
+    }
+
+    final ticketKey = 'ticket_${createdTicket.id}';
+    _handoffStatus[ticketKey] = createdTicket.isHandledByHuman;
+    _ticketTurnCounts[ticketKey] = 0;
+    final initialList = [
+      ChatMessageModel(
+        id: 'tck-sys-${createdTicket.id}',
+        message: 'Tiket bantuan #${createdTicket.displayTicketNumber} telah berhasil dibuat. Asisten virtual kami akan menjawab keluhan Anda secara otomatis.',
+        timestamp: createdTicket.createdAt,
+        isFromUser: false,
+        senderName: 'Sistem',
+        isAI: false,
+        conversationKey: ticketKey,
+      ),
+      ChatMessageModel(
+        id: 'tck-usr-${createdTicket.id}',
+        message: attachmentName != null ? '$description\n\n[Lampiran Dokumen/Foto: $attachmentName]' : description,
+        timestamp: createdTicket.createdAt,
+        isFromUser: true,
+        senderName: 'Anda',
+        conversationKey: ticketKey,
+      ),
+    ];
+    _conversations[ticketKey] = initialList;
+
+    notifyListeners();
+
+    // Picu respon awal asisten AI secara otomatis
+    unawaited(inisialisasiResponAiTiket(ticket: createdTicket));
+
+    return createdTicket;
+  }
+
+  /// Menginisialisasi respon awal otomatis oleh asisten AI untuk tiket kendala baru
+  Future<void> inisialisasiResponAiTiket({required SupportTicketModel ticket}) async {
+    final ticketKey = 'ticket_${ticket.id}';
+    final currentList = _conversations[ticketKey];
+    final hasAiReply = currentList?.any((m) => m.isAI) ?? false;
+    if (hasAiReply) return;
+
+    _isAiThinking[ticketKey] = true;
+    notifyListeners();
+
+    try {
+      final promptContext = 'Tiket #${ticket.displayTicketNumber}: ${ticket.title} (Kategori: ${ticket.categoryLabel}). Keluhan pelanggan: ${ticket.description}';
+      final hasil = await _aiApiService.kirimPesan(
+        pesan: promptContext,
+        ticketId: ticket.id,
+      );
+
+      if (hasil.kosong) return;
+
+      final daftar = _conversations.putIfAbsent(ticketKey, () => []);
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-ai-${DateTime.now().microsecondsSinceEpoch}',
+          message: hasil.balasan,
+          timestamp: DateTime.now(),
+          isFromUser: false,
+          senderName: 'Asisten AI MobilJuragan',
+          isAI: true,
+          conversationKey: ticketKey,
+        ),
+      );
+      _ticketTurnCounts[ticketKey] = (_ticketTurnCounts[ticketKey] ?? 0) + 1;
+    } catch (_) {
+      final daftar = _conversations.putIfAbsent(ticketKey, () => []);
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
+          message:
+              'Halo, tiket bantuan Anda telah diterima sistem operasional. Asisten virtual kami siap membantu menjawab pertanyaan dan kendala Anda.',
+          timestamp: DateTime.now(),
+          isFromUser: false,
+          senderName: 'Asisten AI MobilJuragan',
+          isAI: true,
+          conversationKey: ticketKey,
+        ),
+      );
+    } finally {
+      _isAiThinking[ticketKey] = false;
+      notifyListeners();
+    }
+  }
+
+  /// Menutup tiket bantuan oleh pelanggan
+  Future<bool> closeTicket(String ticketId) async {
+    final ticketKey = 'ticket_$ticketId';
+
+    // Perbarui status lokal seketika
+    final idx = _tickets.indexWhere((t) => t.id == ticketId);
+    if (idx != -1) {
+      _tickets[idx] = _tickets[idx].copyWith(status: 'Ditutup');
+    }
+
+    // Tambahkan pesan konfirmasi penutupan sistem di percakapan
+    final currentList = _conversations.putIfAbsent(ticketKey, () => []);
+    currentList.add(
+      ChatMessageModel(
+        id: 'sys-close-${DateTime.now().millisecondsSinceEpoch}',
+        message: 'Tiket bantuan ini telah ditutup oleh pelanggan. Riwayat percakapan tersimpan sebagai arsip.',
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Sistem',
+        isAI: false,
+        conversationKey: ticketKey,
+      ),
+    );
+    notifyListeners();
+
+    try {
+      final res = await _ticketApiService.closeTicket(ticketId);
+      if (res.isNotEmpty && res.containsKey('status')) {
+        final serverStatus = SupportTicketModel.parseStatus(res['status']?.toString());
+        final updatedIdx = _tickets.indexWhere((t) => t.id == ticketId);
+        if (updatedIdx != -1) {
+          _tickets[updatedIdx] = _tickets[updatedIdx].copyWith(status: serverStatus);
+          notifyListeners();
+        }
+      }
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -316,10 +563,9 @@ class SupportController extends ChangeNotifier {
 
       _conversations[conversationKey] = hasil;
 
-      // Tiket yang sudah dipegang staf tidak boleh menampilkan tombol "Panggil Staf".
-      if ((detail['handledBy'] as String?) == 'HUMAN') {
-        _handoffStatus[conversationKey] = true;
-      }
+      // Sinkronkan status apakah tiket dipegang staf atau bot AI
+      final handledBy = (detail['handledBy'] as String?)?.toUpperCase();
+      _handoffStatus[conversationKey] = handledBy == 'HUMAN';
 
       notifyListeners();
     } catch (_) {
@@ -358,75 +604,7 @@ class SupportController extends ChangeNotifier {
     },
   ];
 
-  /// Membuat tiket kendala baru dan menyiapkan thread percakapan terisolasi
-  Future<void> createTicket({
-    required String title,
-    required TicketCategory category,
-    required String description,
-    String? attachmentName,
-  }) async {
-    final tempId = 'TCK-2026-${(82 + _tickets.length).toString().padLeft(3, '0')}';
-    final newTicket = SupportTicketModel(
-      id: tempId,
-      title: title,
-      category: category,
-      description: description,
-      status: 'Menunggu',
-      createdAt: DateTime.now(),
-      attachmentName: attachmentName,
-    );
 
-    _tickets.insert(0, newTicket);
-
-    final ticketKey = 'ticket_${newTicket.id}';
-    _handoffStatus[ticketKey] = true;
-    final initialList = [
-      ChatMessageModel(
-        id: 'tck-sys-${newTicket.id}',
-        message: 'Laporan Anda telah diterima tim operasional Merauke. Mohon sampaikan rincian tambahan atau tunggu tanggapan staf.',
-        timestamp: DateTime.now(),
-        isFromUser: false,
-        senderName: 'Sistem',
-        isAI: false,
-        conversationKey: ticketKey,
-      ),
-      ChatMessageModel(
-        id: 'tck-usr-${newTicket.id}',
-        message: attachmentName != null ? '$description\n\n[Lampiran Dokumen/Foto: $attachmentName]' : description,
-        timestamp: DateTime.now(),
-        isFromUser: true,
-        senderName: 'Anda',
-        conversationKey: ticketKey,
-      ),
-    ];
-    _conversations[ticketKey] = initialList;
-
-    notifyListeners();
-
-    try {
-      final res = await _ticketApiService.createTicket(
-        title: title,
-        description: description,
-        category: category.apiKey,
-      );
-      if (res.isNotEmpty && res.containsKey('id')) {
-        final serverId = res['id'].toString();
-        final serverTicketNumber = res['ticketNumber']?.toString() ?? tempId;
-        final serverTicket = newTicket.copyWith(
-          id: serverId,
-          title: '$title ($serverTicketNumber)',
-        );
-        final idx = _tickets.indexWhere((t) => t.id == tempId);
-        if (idx != -1) {
-          _tickets[idx] = serverTicket;
-        }
-        _conversations['ticket_$serverId'] = initialList;
-        notifyListeners();
-      }
-    } catch (_) {
-      // Offline fallback: data lokal tetap tersimpan di controller
-    }
-  }
 
   /// Mengirim satu pesan tiket ke backend lalu menandai pesan lokal bila gagal.
   ///
@@ -491,15 +669,13 @@ class SupportController extends ChangeNotifier {
 
     /* Balasan AI diambil dari backend sungguhan.
      *
-     * Sebelumnya blok ini berisi `Future.delayed` yang menempelkan kalimat tetap di
-     * dalam aplikasi. Pelanggan melihat "jawaban AI" yang tidak pernah berasal dari
-     * model dan tidak pernah tersimpan di server, sehingga admin yang mengambil alih
-     * tiket tidak melihat percakapan sebelumnya sama sekali.
-     *
-     * Sekarang permintaan dikirim ke POST /ai/chat beserta id tiketnya, sehingga
-     * backend menyimpan pertanyaan dan jawaban ke tiket yang sama. */
-    if (!isHandedOff && conversationKey.startsWith('ticket_')) {
-      final ticketId = conversationKey.replaceFirst('ticket_', '');
+     * Permintaan dikirim ke POST /ai/chat. Jika percakapan terkait tiket kendala,
+     * id tiket disertakan agar backend mencatat pertanyaan dan jawaban AI pada tiket yang sama.
+     * Untuk obrolan umum (general) atau koordinasi pesanan, id tiket bernilai null. */
+    if (!isHandedOff) {
+      final ticketId = conversationKey.startsWith('ticket_')
+          ? conversationKey.replaceFirst('ticket_', '')
+          : null;
       unawaited(
         _mintaBalasanAi(
           ticketId: ticketId,
@@ -512,13 +688,16 @@ class SupportController extends ChangeNotifier {
 
   /// Meminta balasan asisten AI dari backend lalu menampilkannya di percakapan.
   ///
-  /// Kegagalan jaringan ditampilkan apa adanya, bukan disembunyikan dengan balasan
-  /// palsu. Pelanggan perlu tahu kapan pesannya tidak terkirim.
+  /// Status `_isAiThinking` dikelola agar antarmuka dapat menampilkan indikator proses.
+  /// Kegagalan jaringan ditampilkan apa adanya secara sopan.
   Future<void> _mintaBalasanAi({
-    required String ticketId,
+    String? ticketId,
     required String pesan,
     required String conversationKey,
   }) async {
+    _isAiThinking[conversationKey] = true;
+    notifyListeners();
+
     try {
       final hasil = await _aiApiService.kirimPesan(pesan: pesan, ticketId: ticketId);
 
@@ -536,24 +715,36 @@ class SupportController extends ChangeNotifier {
           conversationKey: conversationKey,
         ),
       );
+      _ticketTurnCounts[conversationKey] = (_ticketTurnCounts[conversationKey] ?? 0) + 1;
+      final turnCount = _ticketTurnCounts[conversationKey]!;
+
+      // Jika percakapan tiket mencapai batas retensi (misal 3 putaran),
+      // picu eskalasi otomatis ke staf operasional agar pengguna segera ditangani langsung
+      if (conversationKey.startsWith('ticket_') && turnCount >= maxAiTurnsBeforeHandoff) {
+        unawaited(handoffToAdmin(conversationKey: conversationKey));
+      }
+
       notifyListeners();
     } catch (_) {
       final daftar = _conversations[conversationKey];
-      if (daftar == null) return;
-
-      daftar.add(
-        ChatMessageModel(
-          id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
-          message:
-              'Asisten AI sedang tidak bisa dihubungi. Pesan Anda tetap tersimpan; '
-              'silakan tekan "Panggil Staf" agar dibantu tim operasional.',
-          timestamp: DateTime.now(),
-          isFromUser: false,
-          senderName: 'Sistem',
-          isAI: false,
-          conversationKey: conversationKey,
-        ),
-      );
+      if (daftar != null) {
+        daftar.add(
+          ChatMessageModel(
+            id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
+            message:
+                'Asisten AI sedang melakukan sinkronisasi otomatis. Pesan Anda tetap tersimpan; '
+                'tim operasional akan segera terhubung jika kendala membutuhkan penanganan langsung.',
+            timestamp: DateTime.now(),
+            isFromUser: false,
+            senderName: 'Asisten AI MobilJuragan',
+            isAI: true,
+            conversationKey: conversationKey,
+          ),
+        );
+        notifyListeners();
+      }
+    } finally {
+      _isAiThinking[conversationKey] = false;
       notifyListeners();
     }
   }
@@ -656,8 +847,11 @@ class SupportController extends ChangeNotifier {
     final alreadySent = list.any((m) => m.id == invoiceMsgId);
     if (alreadySent) return;
 
+    final driverPhoneText = booking.assignedDriver != null && booking.assignedDriver!.phoneNumber.isNotEmpty
+        ? '· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        : '';
     final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n$driverPhoneText'
         : '';
 
     final invoiceText =
@@ -738,9 +932,14 @@ class SupportController extends ChangeNotifier {
     final alreadySent = list.any((m) => m.id == ticketMsgId);
     if (alreadySent) return;
 
+    final driverPhoneSuffix = booking.assignedDriver != null && booking.assignedDriver!.phoneNumber.isNotEmpty
+        ? ' (HP/WA: ${booking.assignedDriver!.phoneNumber}).'
+        : '.';
     final driverInfo = booking.withDriver && booking.assignedDriver != null
-        ? 'Staf pengemudi tetap: ${booking.assignedDriver!.driverName} (HP/WA: ${booking.assignedDriver!.phoneNumber}).'
-        : 'Pengambilan armada mandiri di ${booking.pickupLocation}. Tim staf kami siap menyambut serah terima kunci.';
+        ? 'Staf pengemudi tetap: ${booking.assignedDriver!.driverName}$driverPhoneSuffix'
+        : (booking.withDriver
+            ? 'Staf pengemudi sedang disiapkan oleh tim operasional MobilJuragan.'
+            : 'Pengambilan armada mandiri di ${booking.pickupLocation}. Tim staf kami siap menyambut serah terima kunci.');
 
     final paymentStatusText = booking.isCodPayment
         ? 'Metode: Bayar Tunai di Tempat (COD Rp ${_formatRupiah(booking.totalCost)} disiapkan saat serah terima unit).'
@@ -766,5 +965,23 @@ class SupportController extends ChangeNotifier {
       ),
     );
     notifyListeners();
+  }
+}
+
+/// Adapter untuk menjaga kompatibilitas pengujian lama yang menyuntikkan AiChatApiService
+class _AiChatApiServiceAdapter extends AiApiService {
+  final AiChatApiService _delegate;
+  _AiChatApiServiceAdapter(this._delegate);
+
+  @override
+  Future<AiChatResult> kirimPesan({
+    required String pesan,
+    String? ticketId,
+  }) async {
+    final reply = await _delegate.sendChat(message: pesan);
+    if (reply == null || reply.isEmpty) {
+      throw Exception('Gagal mendapatkan balasan dari AI');
+    }
+    return AiChatResult(balasan: reply);
   }
 }

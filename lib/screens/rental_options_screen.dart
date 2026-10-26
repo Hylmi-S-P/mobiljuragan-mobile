@@ -675,18 +675,176 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
           ),
           const SizedBox(height: 10),
           if (!isDriver) ...[
-            _buildPolicyRow('Wajib menunjukkan fisik e-KTP dan SIM A asli saat serah terima unit.'),
-            _buildPolicyRow('Serah terima unit dilakukan di pool kantor atau diantar ke bandara/hotel.'),
-            _buildPolicyRow('Deposit jaminan sewa (refundable) dikonfirmasi admin pada tarif final.'),
+            _buildPolicyRow('Wajib mengunggah foto asli e-KTP dan SIM A aktif pada halaman status pesanan setelah pengajuan dikirim.'),
+            _buildPolicyRow('Wajib mengunduh, menandatangani, dan mengunggah Surat Pernyataan Penyewa (bebas alkohol/narkoba & tanggung jawab unit) sebelum pengambilan kunci.'),
+            _buildPolicyRow('Penyewa wajib menunjukkan fisik e-KTP dan SIM A asli saat serah terima unit.'),
             _buildPolicyRow('Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () => _showStatementPreviewModal(context),
+              borderRadius: BorderRadius.circular(6),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 15, color: AppColors.primaryTeal),
+                    SizedBox(width: 6),
+                    Text(
+                      'Lihat Pratinjau Surat Pernyataan',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryTeal,
+                        fontFamily: 'Inter',
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ] else ...[
             _buildPolicyRow('Pengemudi adalah staf tetap MobilJuragan yang terikat SOP perusahaan.'),
             _buildPolicyRow('Jam kerja operasional harian sopir adalah 12 jam per hari.'),
-            _buildPolicyRow('Bebas uang deposit jaminan armada dan tanpa syarat SIM A penyewa.'),
+            _buildPolicyRow('Tanpa kewajiban menyetir sendiri dan tanpa syarat SIM A penyewa.'),
             _buildPolicyRow('Koordinasi nomor WhatsApp sopir dilakukan langsung melalui Chat CS.'),
           ],
         ],
       ),
+    );
+  }
+
+  void _showStatementPreviewModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            MediaQuery.of(ctx).padding.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderMedium,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.tealLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.description_outlined, size: 20, color: AppColors.primaryTeal),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pratinjau Surat Pernyataan',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBodyLarge,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        Text(
+                          'Klausul Hukum Sewa Lepas Kunci',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close, size: 20, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.borderSubtle),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Poin-poin pernyataan yang wajib disetujui:',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryNavy,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '1. Bebas Narkoba & Minuman Keras: Penyewa menyatakan sehat dan tidak akan mengemudikan unit dalam pengaruh alkohol, narkotika, atau zat adiktif.\n\n'
+                      '2. Integritas Pengemudi: Armada hanya dikemudikan oleh nama penyewa sah ber-SIM A aktif, serta dilarang digadaikan atau dipindahtangankan ke pihak ketiga.\n\n'
+                      '3. Wilayah Operasional: Armada digunakan di wilayah Merauke dan sekitarnya sesuai rute yang disepakati.\n\n'
+                      '4. Tanggung Jawab Kerusakan: Penyewa bertanggung jawab penuh secara hukum dan biaya perbaikan bila terjadi kelalaian selama masa sewa.',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        height: 1.4,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text(
+                    'Saya Mengerti',
+                    style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

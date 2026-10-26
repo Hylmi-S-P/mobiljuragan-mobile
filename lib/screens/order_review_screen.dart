@@ -1,9 +1,11 @@
+import 'dart:async';
 import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
+import '../controllers/vehicle_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -11,7 +13,6 @@ import '../widgets/merauke_location_map_picker.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
-import 'rental_options_screen.dart';
 import '../theme/app_typography.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
@@ -331,12 +332,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               const SizedBox(width: 8),
               InkWell(
                 onTap: () {
-                  final vehicle = booking.selectedVehicle ?? widget.vehicle;
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RentalOptionsScreen(vehicle: vehicle),
-                    ),
-                  );
+                  int count = 0;
+                  Navigator.of(context).popUntil((_) => count++ >= 2);
                 },
                 borderRadius: BorderRadius.circular(4),
                 child: const Padding(
@@ -409,7 +406,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               children: [
                 Text(
                   isDriver
-                      ? 'Sopir Resmi & Bebas Deposit'
+                      ? 'Sopir Resmi MobilJuragan'
                       : 'Verifikasi Dokumen Fisik',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeCaption,
@@ -421,8 +418,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 const SizedBox(height: 3),
                 Text(
                   isDriver
-                      ? 'Armada dikemudikan staf resmi MobilJuragan. Bebas uang jaminan dan tanpa syarat SIM A.'
-                      : 'KTP asli dan SIM A penyewa ditunjukkan kepada staf saat penyerahan unit kendaraan di Merauke.',
+                      ? 'Armada dikemudikan staf profesional MobilJuragan. Bebas repot berkendara dan tanpa syarat SIM A pemesan.'
+                      : 'Surat pernyataan bebas narkoba dan anti penggelapan dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w400,
@@ -526,7 +523,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   child: Text(
                     booking.withDriver
                         ? 'Biaya final (termasuk rute luar kota, durasi sewa >12 jam/hari, atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.'
-                        : 'Biaya final (termasuk deposit jaminan refundable atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.',
+                        : 'Biaya final (termasuk penyesuaian rute atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.',
                     style: const TextStyle(
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w400,
@@ -546,11 +543,21 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
 
 
   Widget _buildAgreementCheckbox(BookingController booking) {
-    return InkWell(
-      onTap: () => booking.setAgreementChecked(!booking.agreementChecked),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+    final isDriver = booking.withDriver;
+    final agreementText = isDriver
+        ? 'Saya menyetujui syarat & ketentuan rental MobilJuragan serta bersedia mematuhi tata tertib perjalanan bersama sopir resmi.'
+        : 'Saya menyatakan bebas pengaruh alkohol/narkoba serta bersedia melengkapi unggahan e-KTP, SIM A, dan Surat Pernyataan setelah pesanan diajukan.';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: InkWell(
+        onTap: () => booking.setAgreementChecked(!booking.agreementChecked),
+        borderRadius: BorderRadius.circular(8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -566,13 +573,14 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Saya menyetujui syarat & ketentuan rental MobilJuragan serta bersedia menunjukkan dokumen fisik asli saat serah terima unit di Merauke.',
-                style: TextStyle(
+                agreementText,
+                style: const TextStyle(
                   fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
+                  height: 1.4,
+                  color: AppColors.textPrimary,
                   fontFamily: 'Inter',
                 ),
               ),
@@ -650,6 +658,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     try {
       final newBooking = await booking.submitBooking();
       if (!context.mounted) return;
+      unawaited(context.read<VehicleController>().refreshCatalog(force: true));
       Navigator.of(context).pop(); // Tutup dialog loading
 
       Navigator.of(context).pushAndRemoveUntil(

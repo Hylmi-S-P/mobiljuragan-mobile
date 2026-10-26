@@ -305,7 +305,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildStatusBadge(booking.status),
+                    _buildStatusBadge(booking),
                     Text(
                       booking.id,
                       style: const TextStyle(
@@ -410,7 +410,39 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                if (booking.isDocumentRejected) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 15, color: Color(0xFFDC2626)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            booking.documentRejectionReason != null && booking.documentRejectionReason!.isNotEmpty
+                                ? 'Dokumen ditolak: ${booking.documentRejectionReason}'
+                                : 'Dokumen wajib lepas kunci ditolak admin. Silakan unggah dokumen perbaikan.',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF991B1B),
+                              fontFamily: 'Inter',
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
                 if (booking.status == BookingStatus.dibatalkan) ...[
                   Container(
@@ -539,13 +571,17 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             );
                           },
                           iconAlignment: IconAlignment.end,
-                          icon: const Icon(Icons.chevron_right, size: 16, color: AppColors.primaryTeal),
-                          label: const Text(
-                            'Lihat Detail',
+                          icon: Icon(
+                            booking.isDocumentRejected ? Icons.upload_file_outlined : Icons.chevron_right,
+                            size: 16,
+                            color: booking.isDocumentRejected ? const Color(0xFFDC2626) : AppColors.primaryTeal,
+                          ),
+                          label: Text(
+                            booking.isDocumentRejected ? 'Unggah Revisi' : 'Lihat Detail',
                             style: TextStyle(
                               fontSize: AppTypography.sizeBody,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primaryTeal,
+                              color: booking.isDocumentRejected ? const Color(0xFFDC2626) : AppColors.primaryTeal,
                               fontFamily: 'Inter',
                             ),
                           ),
@@ -594,67 +630,79 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  Widget _buildStatusBadge(BookingStatus status) {
+  Widget _buildStatusBadge(BookingModel booking) {
     Color bg;
     Color text;
     String label;
     IconData icon;
 
-    switch (status) {
-      case BookingStatus.permintaanDiterima:
-        bg = const Color(0xFFF1F5F9);
-        text = const Color(0xFF475569);
-        label = 'Menunggu Konfirmasi';
-        icon = Icons.hourglass_empty_rounded;
-        break;
-      case BookingStatus.pemeriksaanArmada:
-        bg = const Color(0xFFF1F5F9);
-        text = const Color(0xFF475569);
-        label = 'Pemeriksaan Armada';
-        icon = Icons.fact_check_outlined;
-        break;
-      case BookingStatus.menungguTarifFinal:
-        bg = const Color(0xFFFEF3C7);
-        text = const Color(0xFFB45309);
-        label = 'Hitung Tarif Final';
-        icon = Icons.calculate_outlined;
-        break;
-      case BookingStatus.menungguPembayaran:
-        bg = const Color(0xFFFEF3C7);
-        text = const Color(0xFFD97706);
-        label = 'Menunggu Pembayaran';
-        icon = Icons.schedule_rounded;
-        break;
-      case BookingStatus.pembayaranSelesai:
-        bg = const Color(0xFFECFDF5);
-        text = const Color(0xFF047857);
-        label = 'Pembayaran Terkonfirmasi';
-        icon = Icons.verified_outlined;
-        break;
-      case BookingStatus.verifikasiKantor:
-        bg = const Color(0xFFF5F3FF);
-        text = const Color(0xFF6D28D9);
-        label = 'Verifikasi Kantor';
-        icon = Icons.business_outlined;
-        break;
-      case BookingStatus.mobilSiapDigunakan:
-        bg = const Color(0xFFECFDF5);
-        text = const Color(0xFF047857);
-        label = 'Mobil Siap Digunakan';
-        icon = Icons.directions_car_outlined;
-        break;
-      case BookingStatus.selesai:
-        bg = const Color(0xFFF1F5F9);
-        text = const Color(0xFF334155);
-        label = 'Selesai';
-        icon = Icons.task_alt;
-        break;
-      case BookingStatus.dibatalkan:
-        bg = const Color(0xFFFEF2F2);
-        text = const Color(0xFF991B1B);
-        label = 'Dibatalkan';
-        icon = Icons.cancel_outlined;
-        break;
+    if (booking.isDocumentRejected) {
+      bg = const Color(0xFFFEF2F2);
+      text = const Color(0xFFDC2626);
+      label = 'Perlu Revisi Dokumen';
+      icon = Icons.warning_amber_rounded;
+    } else if (booking.isPaymentRejected) {
+      bg = const Color(0xFFFEF2F2);
+      text = const Color(0xFFDC2626);
+      label = 'Bukti Bayar Ditolak';
+      icon = Icons.error_outline_rounded;
+    } else {
+      switch (booking.status) {
+        case BookingStatus.permintaanDiterima:
+          bg = const Color(0xFFF1F5F9);
+          text = const Color(0xFF475569);
+          label = 'Menunggu Konfirmasi';
+          icon = Icons.hourglass_empty_rounded;
+          break;
+        case BookingStatus.pemeriksaanArmada:
+          bg = const Color(0xFFF1F5F9);
+          text = const Color(0xFF475569);
+          label = 'Pemeriksaan Armada';
+          icon = Icons.fact_check_outlined;
+          break;
+        case BookingStatus.menungguTarifFinal:
+          bg = const Color(0xFFFEF3C7);
+          text = const Color(0xFFB45309);
+          label = 'Hitung Tarif Final';
+          icon = Icons.calculate_outlined;
+          break;
+        case BookingStatus.menungguPembayaran:
+          bg = const Color(0xFFFEF3C7);
+          text = const Color(0xFFD97706);
+          label = 'Menunggu Pembayaran';
+          icon = Icons.schedule_rounded;
+          break;
+        case BookingStatus.pembayaranSelesai:
+          bg = const Color(0xFFECFDF5);
+          text = const Color(0xFF047857);
+          label = 'Pembayaran Terkonfirmasi';
+          icon = Icons.verified_outlined;
+          break;
+        case BookingStatus.verifikasiKantor:
+          bg = const Color(0xFFF5F3FF);
+          text = const Color(0xFF6D28D9);
+          label = 'Verifikasi Kantor';
+          icon = Icons.business_outlined;
+          break;
+        case BookingStatus.mobilSiapDigunakan:
+          bg = const Color(0xFFECFDF5);
+          text = const Color(0xFF047857);
+          label = 'Mobil Siap Digunakan';
+          icon = Icons.directions_car_outlined;
+          break;
+        case BookingStatus.selesai:
+          bg = const Color(0xFFF1F5F9);
+          text = const Color(0xFF334155);
+          label = 'Selesai';
+          icon = Icons.task_alt;
+          break;
+        case BookingStatus.dibatalkan:
+          bg = const Color(0xFFFEF2F2);
+          text = const Color(0xFF991B1B);
+          label = 'Dibatalkan';
+          icon = Icons.cancel_outlined;
+          break;
+      }
     }
 
     return Container(
