@@ -34,14 +34,14 @@ void main() {
       });
       final controller = SupportController(faqApiService: mock);
 
-      expect(controller.faqs.length, equals(6), reason: 'Harus mulai dengan 6 fallback FAQs');
+      expect(controller.faqs, isEmpty, reason: 'Tidak ada lagi FAQ karangan di model');
       await controller.fetchFaqs();
 
       expect(mock.callCount, equals(1));
       expect(controller.isLoadingFaqs, isFalse);
       expect(controller.faqError, contains('Failed host lookup'));
-      expect(controller.faqs.length, equals(6), reason: 'Fallback FAQ tidak boleh terhapus');
-      expect(controller.faqs.first.id, equals('faq-seed-01'));
+      expect(controller.faqs, isEmpty, reason: 'Server gagal, jadi daftar tetap kosong');
+      // Tidak ada FAQ bawaan yang bisa diperiksa id-nya.
     });
 
     test('Offline: Menangani TimeoutException dari koneksi lambat/putus di Merauke', () async {
@@ -54,7 +54,7 @@ void main() {
 
       expect(controller.isLoadingFaqs, isFalse);
       expect(controller.faqError, contains('timeout'));
-      expect(controller.faqs.length, equals(6));
+expect(controller.faqs, isEmpty);
     });
 
     test('Offline: Menangani HttpException dan ApiException status 500, 502, 503', () async {
@@ -75,7 +75,7 @@ void main() {
 
         expect(controller.isLoadingFaqs, isFalse);
         expect(controller.faqError, isNotNull);
-        expect(controller.faqs.length, equals(6));
+expect(controller.faqs, isEmpty);
       }
     });
 
@@ -89,7 +89,7 @@ void main() {
 
       expect(controller.isLoadingFaqs, isFalse);
       expect(controller.faqError, contains('FormatException'));
-      expect(controller.faqs.length, equals(6));
+expect(controller.faqs, isEmpty);
     });
 
     test('Concurrency: Panggilan serentak (rapid multiple fetchFaqs) diabaikan oleh guard isLoadingFaqs', () async {
@@ -135,7 +135,7 @@ void main() {
       // Langkah 1: Offline -> Fallback 6 tetap ada
       step = 0;
       await controller.fetchFaqs();
-      expect(controller.faqs.length, equals(6));
+expect(controller.faqs, isEmpty);
       expect(controller.faqError, contains('Network offline'));
 
       // Langkah 2: Online -> Berhasil sinkron ke 2 item remote
@@ -211,9 +211,72 @@ void main() {
     });
   });
 
+  /* Data uji untuk grup pencarian. Dulu data ini datang dari 6 FAQ karangan
+     yang tertanam di model; sekarang dipasok eksplisit lewat service tiruan. */
+  final faqCariUji = [
+    FaqModel(
+      id: 'faq-cari-1',
+      category: 'Booking & Sewa',
+      question: 'Bagaimana prosedur penjemputan di Bandara Mopah Merauke?',
+      answer:
+          'Tim operasional kami akan menunggu di lobi kedatangan bandara dan menghubungi lewat WhatsApp 30 menit sebelum jadwal.',
+      orderIndex: 1,
+      isActive: true,
+    ),
+    FaqModel(
+      id: 'faq-cari-2',
+      category: 'Armada',
+      question: 'Bagaimana kebijakan bahan bakar (BBM) armada?',
+      answer: 'Sistem same-to-same: level BBM saat kembali sama seperti saat diambil.',
+      orderIndex: 2,
+      isActive: true,
+    ),
+    FaqModel(
+      id: 'faq-cari-3',
+      category: 'Armada',
+      question: 'Apakah tersedia bantuan jika terjadi kendala armada di jalan?',
+      answer:
+          'Tersedia unit Kurik pengganti dan tim mekanik siaga di Merauke selama jam operasional.',
+      orderIndex: 3,
+      isActive: true,
+    ),
+    FaqModel(
+      id: 'faq-cari-4',
+      category: 'Pembayaran',
+      question: 'Metode pembayaran apa saja yang berlaku?',
+      answer: 'Transfer bank BRI, QRIS, dan tunai di tempat.',
+      orderIndex: 4,
+      isActive: true,
+    ),
+    FaqModel(
+      id: 'faq-cari-5',
+      category: 'Pembayaran',
+      question: 'Bagaimana cara mengirim bukti transfer?',
+      answer: 'Unggah bukti transfer melalui menu pembayaran di aplikasi.',
+      orderIndex: 5,
+      isActive: true,
+    ),
+    FaqModel(
+      id: 'faq-cari-6',
+      category: 'Booking & Sewa',
+      question: 'Berapa lama minimal durasi sewa?',
+      answer: 'Minimal satu hari (24 jam) untuk seluruh unit armada.',
+      orderIndex: 6,
+      isActive: true,
+    ),
+  ];
+
+  Future<SupportController> siapkanControllerCari() async {
+    final controller = SupportController(
+      faqApiService: AdversarialFaqApiService(fetchHandler: () async => faqCariUji),
+    );
+    await controller.fetchFaqs();
+    return controller;
+  }
+
   group('Adversarial Challenge: Search & Keyword Filter Resilience', () {
     testWidgets('Pencarian case-insensitive (huruf kecil, besar, campuran)', (tester) async {
-      final controller = SupportController(faqApiService: AdversarialFaqApiService());
+      final controller = await siapkanControllerCari();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(
@@ -243,7 +306,7 @@ void main() {
     }, skip: true);
 
     testWidgets('Pencarian kata kunci yang berada di teks Jawaban (bukan hanya Pertanyaan)', (tester) async {
-      final controller = SupportController(faqApiService: AdversarialFaqApiService());
+      final controller = await siapkanControllerCari();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(
@@ -269,7 +332,7 @@ void main() {
     }, skip: true);
 
     testWidgets(r'Pencarian dengan karakter khusus regex: . * + ? ^ $ { } ( ) | [ ] \', (tester) async {
-      final controller = SupportController(faqApiService: AdversarialFaqApiService());
+      final controller = await siapkanControllerCari();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(
@@ -302,7 +365,7 @@ void main() {
     }, skip: true);
 
     testWidgets('Pencarian dengan string kosong, spasi berlebih, dan string sangat panjang', (tester) async {
-      final controller = SupportController(faqApiService: AdversarialFaqApiService());
+      final controller = await siapkanControllerCari();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(
@@ -331,7 +394,7 @@ void main() {
     }, skip: true);
 
     testWidgets('Kombinasi filter kategori dan pencarian kata kunci secara simultan', (tester) async {
-      final controller = SupportController(faqApiService: AdversarialFaqApiService());
+      final controller = await siapkanControllerCari();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(

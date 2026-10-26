@@ -103,8 +103,12 @@ class BookingModel {
   final BookingStatus status;
   final DateTime createdAt;
   final int dailyRate;
-  final int serviceFee;
+
+  /* Tarif final yang ditetapkan admin di portal, dibaca dari server.
+     Null berarti admin belum menetapkan tarif, jadi yang ditampilkan hanya
+     estimasi. Sebelumnya nilai ini tidak pernah dibaca sama sekali. */
   final int? quotedAmount;
+  final int serviceFee;
   final String paymentBank;
   final String paymentAccountNumber;
   final List<BookingFeeAdjustment> adminAdjustments;
@@ -368,9 +372,13 @@ class BookingModel {
   int get adjustmentsTotal =>
       adminAdjustments.fold(0, (sum, item) => sum + item.amount);
 
-  /// Total tarif resmi: jika tarif final sudah dikonfirmasi admin dan terdapat quotedAmount resmi, prioritaskan quotedAmount; jika belum, gunakan estimasi dasar
+  /// Apakah admin sudah menetapkan tarif final untuk pesanan ini.
+  bool get tarifFinalAda => quotedAmount != null && quotedAmount! > 0;
+
+  /// Total tarif resmi: jika tarif final sudah ditetapkan admin atau terdapat quotedAmount resmi,
+  /// prioritaskan quotedAmount. Jika belum, gunakan estimasi dasar ditambah penyesuaian biaya jika ada.
   int get totalCost {
-    if (isFinalTariffConfirmed && quotedAmount != null && quotedAmount! > 0) {
+    if (tarifFinalAda) {
       return quotedAmount!;
     }
     return isFinalTariffConfirmed
@@ -477,8 +485,8 @@ class BookingModel {
     BookingStatus? status,
     DateTime? createdAt,
     int? dailyRate,
-    int? serviceFee,
     int? quotedAmount,
+    int? serviceFee,
     String? paymentBank,
     String? paymentAccountNumber,
     List<BookingFeeAdjustment>? adminAdjustments,
@@ -509,8 +517,8 @@ class BookingModel {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       dailyRate: dailyRate ?? this.dailyRate,
-      serviceFee: serviceFee ?? this.serviceFee,
       quotedAmount: quotedAmount ?? this.quotedAmount,
+      serviceFee: serviceFee ?? this.serviceFee,
       paymentBank: paymentBank ?? this.paymentBank,
       paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,
       adminAdjustments: adminAdjustments ?? this.adminAdjustments,
@@ -533,24 +541,6 @@ class BookingModel {
     );
   }
 
-  /// Contoh rincian penyesuaian biaya standar dari dashboard admin website
-  static const List<BookingFeeAdjustment> standardAdminAdjustments = [
-    BookingFeeAdjustment(
-      title: 'Layanan Luar Jam Operasional',
-      amount: 50000,
-      note: 'Penjemputan di luar jadwal operasional kantor',
-    ),
-    BookingFeeAdjustment(
-      title: 'Deposit Jaminan (Refundable)',
-      amount: 500000,
-      note: 'Akan dikembalikan utuh setelah unit selesai sewa',
-    ),
-    BookingFeeAdjustment(
-      title: 'Diskon Promo Pengguna Baru',
-      amount: -50000,
-      note: 'Potongan sewa perdana pelanggan Merauke',
-    ),
-  ];
 
   /// Data dummy riwayat pesanan awal (dikosongkan agar riwayat selesai bernilai 0 di awal aplikasi)
   static List<BookingModel> get initialSampleBookings => const [];

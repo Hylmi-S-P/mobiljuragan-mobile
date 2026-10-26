@@ -45,6 +45,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     super.initState();
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
+    /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
+       sambungan tetap hidup di latar belakang dan terus memakai baterai
+       serta kuota. */
+    if (widget.ticket != null) {
+      context.read<SupportController>().berhentiDengarkanTiket(widget.ticket!.id);
+    }
+
         _keyboardScrollTimer?.cancel();
         // Beri jeda 350ms agar animasi keyboard bawaan OS selesai sepenuhnya
         // sebelum scroll, menghindari konflik animasi dan getaran layar (jitter)
@@ -60,8 +67,29 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      /* Muat riwayat dari server saat layar dibuka.
+       *
+       * Tanpa ini, percakapan hanya hidup di memori aplikasi: menutup layar atau
+       * memulai ulang aplikasi membuat riwayat hilang, padahal pesannya sudah
+       * tersimpan di server. Balasan staf yang masuk saat layar tertutup pun tidak
+       * akan pernah terlihat. */
       if (widget.ticket != null) {
-        context.read<SupportController>().refreshTicketConversation(widget.ticket!.id);
+        context.read<SupportController>().muatRiwayatTiket(ticketId: widget.ticket!.id);
+
+        /* Langganan peristiwa tiket.
+         *
+         * Backend sudah mengirim peristiwa setiap ada pesan atau perubahan
+         * status, tetapi sebelumnya tidak ada klien yang mendengarkan. Akibatnya
+         * balasan staf baru terlihat setelah layar dimuat ulang manual. */
+        final support = context.read<SupportController>();
+        support.dengarkanTiket(
+          ticketId: widget.ticket!.id,
+          onPesanBaru: () {
+            if (!mounted) return;
+            support.muatRiwayatTiket(ticketId: widget.ticket!.id);
+            _scrollToBottom();
+          },
+        );
       }
 
       // Inisialisasi otomatis hanya jika chat dibuka dari pesanan sewa mobil spesifik
@@ -86,6 +114,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   @override
   void dispose() {
+      /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
+         sambungan tetap hidup di latar belakang dan terus memakai baterai
+         serta kuota. */
+      if (widget.ticket != null) {
+        context.read<SupportController>().berhentiDengarkanTiket(widget.ticket!.id);
+      }
+
     _keyboardScrollTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
@@ -259,8 +294,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             Container(
               margin: const EdgeInsets.only(right: 12),
               child: OutlinedButton.icon(
-                onPressed: () {
-                  support.handoffToAdmin(conversationKey: conversationKey);
+                onPressed: () async {
+                  /* Penyerahan ke staf kini menunggu jawaban server. Kalau gagal,
+                     pesan sistem sudah menjelaskan sebabnya di dalam percakapan. */
+                  await support.handoffToAdmin(conversationKey: conversationKey);
                   _scrollToBottom();
                 },
                 icon: const Icon(Icons.support_agent_rounded, color: Color(0xFF5EEAD4), size: 16),
@@ -450,31 +487,34 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           if (isWaiting) ...[
             const SizedBox(width: 8),
             ElevatedButton(
-              onPressed: () {
-                support.confirmPaymentFromChat(
-                  booking: booking,
-                  onAdvance: () {
-                    bookingCtrl.confirmPaymentAndAdvance(booking.id);
-                  },
-                );
+              onPressed: () async {
+                /* Laporan diteruskan ke staf, bukan langsung melunasi pesanan.
+                   Status pembayaran hanya berubah setelah admin memeriksa bukti
+                   transfer di portal. */
+                await support.confirmPaymentFromChat(booking: booking);
 
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    backgroundColor: const Color(0xFF15803D),
+                    backgroundColor: support.pesanBelumTerkirim
+                        ? const Color(0xFFB91C1C)
+                        : const Color(0xFF15803D),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     content: Text(
-                      'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
+                      support.pesanBelumTerkirim
+                          ? 'Laporan belum terkirim. Periksa koneksi lalu coba lagi.'
+                          : 'Laporan sudah dikirim. Staf akan memeriksa pembayaran Anda.',
                       style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
                     ),
                   ),
                 );
                 _scrollToBottom();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF15803D),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF15803D),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 minimumSize: const Size(44, 32),
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -535,7 +575,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   ),
                 ),
                 Text(
-                  'Kategori: ${ticket.categoryLabel} • Status: ${ticket.status}',
+                  'Kategori: ${ticket.categoryLabel} · Status: ${ticket.status}',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     color: AppColors.textSecondary,
@@ -753,28 +793,28 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     fontFamily: 'Inter',
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
-                    controller.confirmPaymentFromChat(
-                      booking: booking,
-                      onAdvance: () {
-                        bookingCtrl.confirmPaymentAndAdvance(booking.id);
-                      },
-                    );
+                    await controller.confirmPaymentFromChat(booking: booking);
+                    if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        backgroundColor: const Color(0xFF15803D),
+                        backgroundColor: controller.pesanBelumTerkirim
+                            ? const Color(0xFFB91C1C)
+                            : const Color(0xFF15803D),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         content: Text(
-                          'Pembayaran #${booking.id} berhasil diverifikasi! Unit siap digunakan.',
+                          controller.pesanBelumTerkirim
+                              ? 'Laporan belum terkirim. Periksa koneksi lalu coba lagi.'
+                              : 'Laporan sudah dikirim. Staf akan memeriksa pembayaran Anda.',
                           style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
                         ),
                       ),
                     );
                   } else if (suggestion == 'Panggil Staf Lapangan' ||
                       suggestion == 'Panggil Staf Admin') {
-                    controller.handoffToAdmin(conversationKey: conversationKey);
+                    await controller.handoffToAdmin(conversationKey: conversationKey);
                   } else {
                     controller.sendUserMessage(
                       text: suggestion,

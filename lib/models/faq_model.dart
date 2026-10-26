@@ -75,63 +75,6 @@ class FaqModel {
     };
   }
 
-  /// 6 Fallback FAQ resmi Merauke untuk ketahanan saat offline / server tidak terjangkau
-  static List<FaqModel> get fallbackFaqs => const [
-    FaqModel(
-      id: 'faq-seed-01',
-      category: 'Booking & Sewa',
-      question: 'Bagaimana prosedur penjemputan di Bandara Mopah Merauke?',
-      answer:
-          'Tim operasional kami akan menunggu di lobi kedatangan Bandara Mopah dengan papan nama penyewa atau menghubungi via WhatsApp 30 menit sebelum jadwal pesawat mendarat. Serah terima unit dilakukan langsung di area parkir bandara tanpa biaya tambahan antar-jemput.',
-      orderIndex: 1,
-      isActive: true,
-    ),
-    FaqModel(
-      id: 'faq-seed-02',
-      category: 'Booking & Sewa',
-      question: 'Bagaimana verifikasi dokumen KTP dan SIM A untuk lepas kunci?',
-      answer:
-          'Verifikasi dokumen fisik asli (KTP elektronik dan SIM A aktif) dilakukan langsung di kantor operasional MobilJuragan atau saat serah terima unit di titik penjemputan Merauke.',
-      orderIndex: 2,
-      isActive: true,
-    ),
-    FaqModel(
-      id: 'faq-seed-03',
-      category: 'Armada',
-      question: 'Bagaimana kebijakan bahan bakar (BBM) armada?',
-      answer:
-          'Mobil diserahterimakan dengan indikator BBM tertentu (umumnya terisi minimal setengah bar). Penyewa diharapkan mengembalikan unit dengan posisi BBM setara saat serah terima awal.',
-      orderIndex: 3,
-      isActive: true,
-    ),
-    FaqModel(
-      id: 'faq-seed-04',
-      category: 'Booking & Sewa',
-      question: 'Berapa tarif jasa pengemudi dan durasi kerjanya?',
-      answer:
-          'Jasa pengemudi lokal Merauke bertarif Rp 150.000 per hari dengan durasi pemakaian normal hingga 12 jam per hari dalam wilayah perkotaan Merauke dan sekitarnya.',
-      orderIndex: 4,
-      isActive: true,
-    ),
-    FaqModel(
-      id: 'faq-seed-05',
-      category: 'Pembayaran',
-      question: 'Metode pembayaran apa saja yang berlaku?',
-      answer:
-          'Pembayaran dapat diselesaikan langsung di aplikasi menggunakan QRIS Dinamis, Virtual Account / Transfer Bank (BRI / Mandiri), atau Tunai di Tempat (COD) saat serah terima unit di Merauke. Layanan konfirmasi manual melalui Chat CS juga siap membantu jika Anda memerlukan bantuan pembayaran.',
-      orderIndex: 5,
-      isActive: true,
-    ),
-    FaqModel(
-      id: 'faq-seed-06',
-      category: 'Armada',
-      question: 'Apakah tersedia bantuan jika terjadi kendala armada di jalan?',
-      answer:
-          'MobilJuragan siap membantu penanganan kendala armada selama jam operasional (06.00 - 22.00 WIT) untuk wilayah Merauke Kota, Kurik, Tanah Miring, hingga Semangga. Hubungi nomor operasional kami jika membutuhkan bantuan darurat.',
-      orderIndex: 6,
-      isActive: true,
-    ),
-  ];
 
   @override
   bool operator ==(Object other) =>

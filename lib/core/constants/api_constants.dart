@@ -42,7 +42,7 @@ class ApiConstants {
   // Endpoints Tiket Bantuan Pelanggan
   static const String ticketsEndpoint = '/tickets';
 
-  // Endpoint Asisten AI RAG Gateway
+  // Endpoint Asisten AI Pelanggan
   static const String aiChatEndpoint = '/ai/chat';
 
   // Endpoints Pembayaran
@@ -52,6 +52,10 @@ class ApiConstants {
   // Durasi timeout HTTP request umum
   static const Duration timeoutDuration = Duration(seconds: 8);
 
-  // Durasi timeout khusus pemrosesan Asisten AI (RAG Gateway & inferensi LLM)
-  static const Duration aiTimeoutDuration = Duration(seconds: 45);
+  /// Timeout khusus asisten AI.
+  ///
+  /// Lebih panjang dari [timeoutDuration] karena backend menunggu model sampai
+  /// 45 detik sebelum memberi teks cadangan. Kalau klien menyerah lebih dulu,
+  /// pelanggan melihat galat padahal jawabannya sebenarnya sedang dibuat.
+  static const Duration aiTimeoutDuration = Duration(seconds: 60);
 }

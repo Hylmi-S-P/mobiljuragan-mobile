@@ -28,19 +28,19 @@ class FakeFaqApiService extends FaqApiService {
 
 void main() {
   group('SupportController FAQ & Offline Resilience Tests', () {
-    test('State awal SupportController memiliki fallback 6 FAQ dan kategori default', () {
+    test('State awal SupportController kosong sebelum data server dimuat', () {
       final controller = SupportController(faqApiService: FakeFaqApiService());
 
-      expect(controller.faqs.length, equals(6));
+      expect(controller.faqs, isEmpty);
       expect(controller.isLoadingFaqs, isFalse);
       expect(controller.faqError, isNull);
 
       // Kategori dinamis selalu diawali 'Semua'
       final categories = controller.faqCategories;
       expect(categories.first, equals('Semua'));
-      expect(categories, contains('Booking & Sewa'));
-      expect(categories, contains('Armada'));
-      expect(categories, contains('Pembayaran'));
+      // Kategori hanya muncul dari data server, bukan dari FAQ karangan.
+      // Kategori hanya muncul dari data server, bukan dari FAQ karangan.
+      // Kategori hanya muncul dari data server, bukan dari FAQ karangan.
     });
 
     test('fetchFaqs berhasil memperbarui daftar FAQ dari backend online', () async {
@@ -91,8 +91,8 @@ void main() {
       );
       final controller = SupportController(faqApiService: fakeService);
 
-      // Pastikan fallback awal 6 FAQ terpasang
-      expect(controller.faqs.length, equals(6));
+      // Awalnya kosong: tidak ada lagi FAQ karangan yang ditanam di model.
+      expect(controller.faqs, isEmpty);
 
       // Eksekusi fetch saat jaringan mati - TIDAK boleh melempar unhandled exception
       await controller.fetchFaqs();
@@ -101,9 +101,9 @@ void main() {
       expect(controller.isLoadingFaqs, isFalse);
       expect(controller.faqError, contains('Tidak dapat terhubung ke server backend (Offline).'));
 
-      // Pertahankan 6 FAQ fallback tanpa ada data yang hilang
-      expect(controller.faqs.length, equals(6));
-      expect(controller.faqs.first.question, contains('Bandara Mopah Merauke'));
+      // Server gagal, jadi daftar tetap kosong dan galatnya dilaporkan.
+      expect(controller.faqs, isEmpty);
+      // Tidak ada isi FAQ yang bisa diperiksa karena daftarnya kosong.
     });
 
     test('fetchFaqs menangani SocketException secara anggun dan mempertahankan fallback', () async {
@@ -116,7 +116,7 @@ void main() {
 
       expect(controller.isLoadingFaqs, isFalse);
       expect(controller.faqError, contains('Connection refused'));
-      expect(controller.faqs.length, equals(6));
+      expect(controller.faqs, isEmpty);
     });
 
     test('fetchFaqs dengan respons remote kosong tetap mempertahankan FAQ yang ada', () async {
@@ -125,7 +125,7 @@ void main() {
 
       await controller.fetchFaqs();
 
-      expect(controller.faqs.length, equals(6));
+      expect(controller.faqs, isEmpty);
       expect(controller.faqError, isNull);
     });
 
@@ -147,9 +147,50 @@ void main() {
     });
   });
 
+
+    /* Data uji dipasok sendiri. Dulu test ini mengandalkan 6 FAQ karangan yang
+       tertanam di model; data itu sudah dihapus karena tidak pernah disetujui
+       siapa pun. Sekarang layar diuji dengan data yang jelas berasal dari server
+       tiruan. */
+    final faqUji = [
+      FaqModel(
+        id: 'faq-uji-1',
+        category: 'Booking & Sewa',
+        question: 'Bagaimana prosedur penjemputan di Bandara Mopah Merauke?',
+        answer:
+            'Tim operasional kami akan menunggu di lobi kedatangan Bandara Mopah dengan papan nama penyewa.',
+        orderIndex: 1,
+        isActive: true,
+      ),
+      FaqModel(
+        id: 'faq-uji-2',
+        category: 'Armada',
+        question: 'Bagaimana kebijakan bahan bakar (BBM) armada?',
+        answer: 'MPV, SUV, pickup, dan kendaraan komersial.',
+        orderIndex: 2,
+        isActive: true,
+      ),
+      FaqModel(
+        id: 'faq-uji-3',
+        category: 'Pembayaran',
+        question: 'Metode pembayaran apa saja yang berlaku?',
+        answer: 'Transfer bank, QRIS, dan tunai di tempat.',
+        orderIndex: 3,
+        isActive: true,
+      ),
+    ];
+
+    Future<SupportController> siapkanController() async {
+      final controller = SupportController(
+        faqApiService: FakeFaqApiService(faqsToReturn: faqUji),
+      );
+      await controller.fetchFaqs();
+      return controller;
+    }
+
   group('HelpCenterScreen Widget & Interaction Tests', () {
-    testWidgets('HelpCenterScreen merender kategori dinamis dan 6 topik fallback', (tester) async {
-      final controller = SupportController(faqApiService: FakeFaqApiService());
+    testWidgets('HelpCenterScreen merender kategori dan topik dari server', (tester) async {
+      final controller = await siapkanController();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(
@@ -162,7 +203,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Pusat Bantuan'), findsWidgets);
-      expect(find.text('6 Topik'), findsOneWidget);
+      expect(find.text('3 Topik'), findsOneWidget);
       expect(find.text('Semua'), findsOneWidget);
       expect(find.text('Booking & Sewa'), findsOneWidget);
       expect(find.text('Armada'), findsOneWidget);
@@ -171,7 +212,7 @@ void main() {
     });
 
     testWidgets('Ketukan pada pertanyaan mengekspansi accordion jawaban FAQ', (tester) async {
-      final controller = SupportController(faqApiService: FakeFaqApiService());
+      final controller = await siapkanController();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(
@@ -202,7 +243,7 @@ void main() {
     testWidgets(
       'Pencarian kata kunci memfilter daftar FAQ secara real-time',
       (tester) async {
-        final controller = SupportController(faqApiService: FakeFaqApiService());
+        final controller = await siapkanController();
 
         await tester.pumpWidget(
           ChangeNotifierProvider<SupportController>.value(
@@ -226,7 +267,7 @@ void main() {
     );
 
     testWidgets('Pemilihan chip kategori memfilter topik sesuai kategori', (tester) async {
-      final controller = SupportController(faqApiService: FakeFaqApiService());
+      final controller = await siapkanController();
 
       await tester.pumpWidget(
         ChangeNotifierProvider<SupportController>.value(

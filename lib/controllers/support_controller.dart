@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../data/remote/ai_api_service.dart';
 import '../data/remote/faq_api_service.dart';
 import '../data/remote/ticket_api_service.dart';
+import '../data/remote/ticket_event_stream.dart';
 import '../models/booking_model.dart';
 import '../models/faq_model.dart';
 import '../models/support_ticket_model.dart';
@@ -10,6 +12,10 @@ import '../models/support_ticket_model.dart';
 class SupportController extends ChangeNotifier {
   final FaqApiService _faqApiService;
   final TicketApiService _ticketApiService;
+  final AiApiService _aiApiService;
+
+  /// Pendengar peristiwa tiket. Satu sambungan per tiket yang sedang dibuka.
+  final Map<String, TicketEventStream> _aliranPeristiwa = {};
   final List<SupportTicketModel> _tickets = [];
 
   /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
@@ -19,18 +25,87 @@ class SupportController extends ChangeNotifier {
   final Map<String, bool> _handoffStatus = {};
 
   /// Daftar FAQ aktif dengan fallback awal untuk ketahanan saat offline
-  List<FaqModel> _faqs = FaqModel.fallbackFaqs;
+  /* Mulai dari daftar kosong. Sebelumnya diisi FAQ karangan yang ditulis tangan
+     dan tampil seolah-olah resmi saat server tidak terjangkau. Kalau data belum
+     ada, lebih baik layar mengatakannya daripada menampilkan jawaban yang tidak
+     pernah disetujui siapa pun. */
+  List<FaqModel> _faqs = const [];
   bool _isLoadingFaqs = false;
   String? _faqError;
 
   SupportController({
     FaqApiService? faqApiService,
     TicketApiService? ticketApiService,
+    AiApiService? aiApiService,
   })  : _faqApiService = faqApiService ?? FaqApiService(),
-        _ticketApiService = ticketApiService ?? TicketApiService() {
+        _ticketApiService = ticketApiService ?? TicketApiService(),
+        _aiApiService = aiApiService ?? AiApiService() {
     _initData();
   }
 
+
+  /// Mulai mendengarkan peristiwa satu tiket.
+  ///
+  /// Tanpa ini, balasan staf baru terlihat setelah layar dimuat ulang manual.
+  /// Backend sudah mengirim peristiwanya sejak lama; yang tidak ada adalah
+  /// pendengarnya.
+  ///
+  /// [onPesanBaru] dipanggil saat jumlah pesan bertambah, [onStatusBerubah] saat
+  /// status tiket berubah. Keduanya menerima data mentah supaya layar yang
+  /// memutuskan cara memuat ulang.
+  Future<void> dengarkanTiket({
+    required String ticketId,
+    required void Function() onPesanBaru,
+    void Function(String status)? onStatusBerubah,
+    void Function(String pesan)? onGalat,
+  }) async {
+    if (ticketId.isEmpty) return;
+
+    /* Satu tiket hanya boleh punya satu sambungan. Kalau layar dibuka ulang,
+       sambungan lama ditutup lebih dulu supaya tidak menumpuk. */
+    _aliranPeristiwa[ticketId]?.berhenti();
+
+    final aliran = TicketEventStream();
+    _aliranPeristiwa[ticketId] = aliran;
+
+    await aliran.mulai(
+      ticketId: ticketId,
+      onEvent: (peristiwa) {
+        switch (peristiwa.jenis) {
+          case 'pesan':
+            onPesanBaru();
+          case 'status':
+            final status = peristiwa.status;
+            if (status != null) onStatusBerubah?.call(status);
+          case 'handover':
+            onPesanBaru();
+          default:
+            /* `siap` hanya penanda sambungan terbentuk. */
+            break;
+        }
+      },
+      onError: onGalat,
+    );
+  }
+
+  /// Menghentikan pendengar satu tiket.
+  void berhentiDengarkanTiket(String ticketId) {
+    _aliranPeristiwa.remove(ticketId)?.berhenti();
+  }
+
+  /// Menghentikan semua pendengar. Dipanggil saat controller dibuang.
+  void berhentiSemuaDengarkan() {
+    for (final aliran in _aliranPeristiwa.values) {
+      aliran.berhenti();
+    }
+    _aliranPeristiwa.clear();
+  }
+
+  @override
+  void dispose() {
+    berhentiSemuaDengarkan();
+    super.dispose();
+  }
   /// Membuat key sesi percakapan unik agar riwayat obrolan tidak bocor antar transaksi/tiket
   static String buildConversationKey({String? bookingId, String? ticketId}) {
     if (bookingId != null && bookingId.isNotEmpty) {
@@ -189,6 +264,67 @@ class SupportController extends ChangeNotifier {
   /// Status apakah percakapan sesi dialihkan ke admin operasional
   bool isAiHandoffToAdminFor(String conversationKey) {
     return _handoffStatus[conversationKey] ?? false;
+  }
+
+  /// Memuat riwayat percakapan sebuah tiket dari server.
+  ///
+  /// Sebelumnya riwayat hanya hidup di memori aplikasi. Menutup layar bantuan atau
+  /// memulai ulang aplikasi membuat percakapan hilang, padahal pesannya sudah
+  /// tersimpan di server — termasuk jawaban asisten AI dan balasan staf.
+  ///
+  /// Hasilnya menggantikan isi percakapan lokal, lalu status handoff ikut
+  /// disesuaikan supaya tombol "Panggil Staf" tidak muncul lagi pada tiket yang
+  /// sudah ditangani staf.
+  Future<void> muatRiwayatTiket({required String ticketId}) async {
+    final conversationKey = 'ticket_$ticketId';
+
+    try {
+      final detail = await _ticketApiService.fetchTicketDetail(ticketId: ticketId);
+      final daftarPesan = detail['messages'];
+      if (daftarPesan is! List) return;
+
+      final hasil = <ChatMessageModel>[];
+      for (final mentah in daftarPesan) {
+        if (mentah is! Map) continue;
+
+        final adalahPelanggan = mentah['isCustomer'] == true;
+        final adalahAi = mentah['isAi'] == true;
+        final pengirim = mentah['sender'];
+        final namaPengirim = pengirim is Map
+            ? (pengirim['fullName'] as String?)?.trim()
+            : null;
+
+        hasil.add(
+          ChatMessageModel(
+            id: (mentah['id'] as String?) ?? 'srv-${hasil.length}',
+            message: (mentah['body'] as String?) ?? '',
+            timestamp:
+                DateTime.tryParse((mentah['sentAt'] as String?) ?? '') ?? DateTime.now(),
+            isFromUser: adalahPelanggan,
+            senderName: adalahPelanggan
+                ? 'Anda'
+                : adalahAi
+                    ? 'Asisten AI MobilJuragan'
+                    : (namaPengirim?.isNotEmpty == true
+                        ? namaPengirim!
+                        : 'Customer Service MobilJuragan'),
+            isAI: adalahAi,
+            conversationKey: conversationKey,
+          ),
+        );
+      }
+
+      _conversations[conversationKey] = hasil;
+
+      // Tiket yang sudah dipegang staf tidak boleh menampilkan tombol "Panggil Staf".
+      if ((detail['handledBy'] as String?) == 'HUMAN') {
+        _handoffStatus[conversationKey] = true;
+      }
+
+      notifyListeners();
+    } catch (_) {
+      // Gagal memuat tidak boleh menghapus percakapan yang sudah tampil.
+    }
   }
 
   /// Backward-compatibility getter
@@ -353,83 +489,146 @@ class SupportController extends ChangeNotifier {
 
     final isHandedOff = isAiHandoffToAdminFor(conversationKey);
 
-    // Simulasi respons otomatis AI atau staf operasional untuk sesi tersebut
-    Future.delayed(const Duration(milliseconds: 900), () {
-      final currentList = _conversations.putIfAbsent(conversationKey, () => []);
+    /* Balasan AI diambil dari backend sungguhan.
+     *
+     * Sebelumnya blok ini berisi `Future.delayed` yang menempelkan kalimat tetap di
+     * dalam aplikasi. Pelanggan melihat "jawaban AI" yang tidak pernah berasal dari
+     * model dan tidak pernah tersimpan di server, sehingga admin yang mengambil alih
+     * tiket tidak melihat percakapan sebelumnya sama sekali.
+     *
+     * Sekarang permintaan dikirim ke POST /ai/chat beserta id tiketnya, sehingga
+     * backend menyimpan pertanyaan dan jawaban ke tiket yang sama. */
+    if (!isHandedOff && conversationKey.startsWith('ticket_')) {
+      final ticketId = conversationKey.replaceFirst('ticket_', '');
+      unawaited(
+        _mintaBalasanAi(
+          ticketId: ticketId,
+          pesan: text.trim(),
+          conversationKey: conversationKey,
+        ),
+      );
+    }
+  }
 
-      if (!isHandedOff) {
-        final reply = ChatMessageModel(
-          id: 'msg-reply-${DateTime.now().millisecondsSinceEpoch}',
-          message: 'Pesan Anda telah kami terima. Jika Anda membutuhkan bantuan langsung dari tim operasional Merauke, silakan tekan tombol "Panggil Staf" di atas.',
+  /// Meminta balasan asisten AI dari backend lalu menampilkannya di percakapan.
+  ///
+  /// Kegagalan jaringan ditampilkan apa adanya, bukan disembunyikan dengan balasan
+  /// palsu. Pelanggan perlu tahu kapan pesannya tidak terkirim.
+  Future<void> _mintaBalasanAi({
+    required String ticketId,
+    required String pesan,
+    required String conversationKey,
+  }) async {
+    try {
+      final hasil = await _aiApiService.kirimPesan(pesan: pesan, ticketId: ticketId);
+
+      if (hasil.kosong) return;
+
+      final daftar = _conversations.putIfAbsent(conversationKey, () => []);
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-ai-${DateTime.now().microsecondsSinceEpoch}',
+          message: hasil.balasan,
           timestamp: DateTime.now(),
           isFromUser: false,
           senderName: 'Asisten AI MobilJuragan',
           isAI: true,
           conversationKey: conversationKey,
-        );
-        currentList.add(reply);
-      } else {
-        final reply = ChatMessageModel(
-          id: 'msg-admin-${DateTime.now().millisecondsSinceEpoch}',
-          message: 'Halo, saya staf operasional MobilJuragan Merauke. Kami sedang memproses permohonan Anda.',
+        ),
+      );
+      notifyListeners();
+    } catch (_) {
+      final daftar = _conversations[conversationKey];
+      if (daftar == null) return;
+
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
+          message:
+              'Asisten AI sedang tidak bisa dihubungi. Pesan Anda tetap tersimpan; '
+              'silakan tekan "Panggil Staf" agar dibantu tim operasional.',
           timestamp: DateTime.now(),
           isFromUser: false,
-          senderName: 'Admin Operasional Merauke',
+          senderName: 'Sistem',
           isAI: false,
           conversationKey: conversationKey,
-        );
-        currentList.add(reply);
-      }
+        ),
+      );
       notifyListeners();
-    });
+    }
   }
 
   /// Menyinkronkan riwayat pesan tiket dari backend REST API
   Future<void> refreshTicketConversation(String ticketId) async {
-    try {
-      final detail = await _ticketApiService.fetchTicketDetail(ticketId);
-      if (detail != null && detail.containsKey('messages')) {
-        final messages = detail['messages'] as List?;
-        if (messages != null && messages.isNotEmpty) {
-          final ticketKey = 'ticket_$ticketId';
-          final list = <ChatMessageModel>[];
-          for (final m in messages) {
-            final isUser = m['authorRole'] == 'CUSTOMER';
-            final authorName = isUser ? 'Anda' : (m['author']?['fullName'] ?? 'Admin Operasional Merauke');
-            list.add(
-              ChatMessageModel(
-                id: m['id']?.toString() ?? 'msg-$ticketId-${DateTime.now().millisecondsSinceEpoch}',
-                message: m['body']?.toString() ?? '',
-                timestamp: m['createdAt'] != null ? DateTime.tryParse(m['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
-                isFromUser: isUser,
-                senderName: authorName,
-                isAI: false,
-                conversationKey: ticketKey,
-              ),
-            );
-          }
-          _conversations[ticketKey] = list;
-          notifyListeners();
-        }
-      }
-    } catch (_) {}
+    await muatRiwayatTiket(ticketId: ticketId);
   }
 
-  /// Mengalihkan percakapan sesi ke staf operasional manusia
-  void handoffToAdmin({String conversationKey = 'general'}) {
-    _handoffStatus[conversationKey] = true;
-    final list = _conversations.putIfAbsent(conversationKey, () => []);
+  /// Mengalihkan percakapan sesi ke staf operasional manusia.
+  ///
+  /// Sebelumnya fungsi ini hanya mengubah flag di memori aplikasi, sehingga backend
+  /// tidak pernah tahu dan tiket tidak pernah masuk antrean admin, padahal pesan
+  /// sistem yang tampil berbunyi "berhasil dialihkan". Sekarang server diberi tahu
+  /// lebih dulu, dan penanda lokal baru dipasang setelah server membalas berhasil.
+  Future<bool> handoffToAdmin({String conversationKey = 'general'}) async {
+    if (!conversationKey.startsWith('ticket_')) {
+      // Percakapan tanpa tiket belum punya wadah di backend. Penanda lokal tetap
+      // dipasang supaya perilaku lamanya tidak hilang.
+      _handoffStatus[conversationKey] = true;
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan: 'Percakapan dialihkan ke staf operasional.',
+      );
+      return true;
+    }
 
-    final systemNotice = ChatMessageModel(
-      id: 'sys-${DateTime.now().millisecondsSinceEpoch}',
-      message: 'Percakapan berhasil dialihkan ke staf admin operasional MobilJuragan Merauke.',
-      timestamp: DateTime.now(),
-      isFromUser: false,
-      senderName: 'Sistem',
-      isAI: false,
-      conversationKey: conversationKey,
+    final ticketId = conversationKey.replaceFirst('ticket_', '');
+
+    try {
+      final berhasil = await _ticketApiService.handover(ticketId: ticketId);
+
+      if (!berhasil) {
+        _tambahPesanSistem(
+          conversationKey: conversationKey,
+          pesan:
+              'Gagal mengalihkan ke staf: tiket belum berstatus ditangani staf. '
+              'Silakan coba lagi sebentar.',
+        );
+        return false;
+      }
+
+      _handoffStatus[conversationKey] = true;
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan:
+            'Percakapan berhasil dialihkan ke staf admin operasional MobilJuragan Merauke. '
+            'Balasan staf akan muncul di layar ini.',
+      );
+      return true;
+    } catch (_) {
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan:
+            'Gagal mengalihkan ke staf karena koneksi bermasalah. '
+            'Pesan Anda tetap tersimpan; silakan coba lagi.',
+      );
+      return false;
+    }
+  }
+
+  /// Menambahkan pesan pemberitahuan dari sistem ke sebuah percakapan.
+  void _tambahPesanSistem({required String conversationKey, required String pesan}) {
+    final list = _conversations.putIfAbsent(conversationKey, () => []);
+    list.add(
+      ChatMessageModel(
+        id: 'sys-${DateTime.now().microsecondsSinceEpoch}',
+        message: pesan,
+        timestamp: DateTime.now(),
+        isFromUser: false,
+        senderName: 'Sistem',
+        isAI: false,
+        conversationKey: conversationKey,
+      ),
     );
-    list.add(systemNotice);
     notifyListeners();
   }
 
@@ -458,15 +657,15 @@ class SupportController extends ChangeNotifier {
     if (alreadySent) return;
 
     final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? '• Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n• Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
+        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
         : '';
 
     final invoiceText =
         'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
-        '• Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
-        '• Bank Transfer: Bank BRI Merauke\n'
-        '• No. Rekening: 0321-01-002847-53-1\n'
-        '• Atas Nama: MobilJuragan Merauke\n'
+        '· Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
+        '· Bank Transfer: Bank BRI Merauke\n'
+        '· No. Rekening: 0321-01-002847-53-1\n'
+        '· Atas Nama: MobilJuragan Merauke\n'
         '$driverDetail\n'
         'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
 
@@ -484,47 +683,51 @@ class SupportController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Konfirmasi pembayaran langsung dari ruang chat CS untuk pesanan terkait
-  void confirmPaymentFromChat({
+  /// Mencatat bahwa pelanggan mengaku sudah transfer, tanpa mengubah status apa pun.
+  ///
+  /// Sebelumnya method ini mengarang pesan "pembayaran berhasil diverifikasi lunas"
+  /// dan langsung memajukan status pesanan ke mobil siap digunakan, padahal backend
+  /// tidak pernah menerima bukti apa pun. Akibatnya pelanggan bisa melewati
+  /// pembayaran hanya dengan menekan satu tombol di ruang chat.
+  ///
+  /// Sekarang yang dikirim hanya pesan ke thread tiket. Status pembayaran tetap
+  /// menunggu admin memverifikasi bukti transfer lewat portal.
+  Future<void> confirmPaymentFromChat({
     required BookingModel booking,
-    required VoidCallback onAdvance,
-  }) {
-    onAdvance();
-
+  }) async {
     final convKey = 'booking_${booking.id}';
     final list = _conversations.putIfAbsent(convKey, () => []);
 
-    final userConfirmMsg = ChatMessageModel(
+    final pesan = ChatMessageModel(
       id: 'usr-pay-${DateTime.now().millisecondsSinceEpoch}',
-      message: 'Saya sudah melakukan transfer pembayaran sebesar Rp ${_formatRupiah(booking.totalCost)} untuk pesanan #${booking.id}.',
+      message:
+          'Saya sudah melakukan transfer pembayaran sebesar Rp ${_formatRupiah(booking.totalCost)} untuk pesanan #${booking.id}. Mohon diperiksa ya.',
       timestamp: DateTime.now(),
       isFromUser: true,
       senderName: 'Anda',
       conversationKey: convKey,
     );
-    list.add(userConfirmMsg);
+    list.add(pesan);
     notifyListeners();
 
-    Future.delayed(const Duration(milliseconds: 700), () {
-      final currentList = _conversations.putIfAbsent(convKey, () => []);
-
-      final driverReadyText = booking.withDriver && booking.assignedDriver != null
-          ? '\n\nStaf pengemudi kami, ${booking.assignedDriver!.driverName} (WhatsApp: ${booking.assignedDriver!.phoneNumber}), siap menjemput Anda di ${booking.pickupLocation}. Sopir akan menghubungi nomor Anda sebelum waktu penjemputan.'
-          : '\n\nUnit ${booking.vehicle.name} siap diserahterimakan di ${booking.pickupLocation}.';
-
-      final verifiedMsg = ChatMessageModel(
-        id: 'bot-paid-${DateTime.now().millisecondsSinceEpoch}',
-        message: 'Pembayaran pesanan #${booking.id} sebesar Rp ${_formatRupiah(booking.totalCost)} berhasil diverifikasi lunas oleh sistem dan staf operasional Merauke!$driverReadyText',
-        timestamp: DateTime.now(),
-        isFromUser: false,
-        senderName: 'Customer Service MobilJuragan',
-        isAI: true,
-        conversationKey: convKey,
+    /* Pesan diteruskan ke backend supaya staf melihatnya di portal. Kalau gagal,
+       pesan tetap tampil di layar tetapi bendera di bawah memberi tahu bahwa
+       laporannya belum tersampaikan. */
+    try {
+      await _ticketApiService.addMessage(
+        ticketId: booking.id,
+        message: pesan.message,
       );
-      currentList.add(verifiedMsg);
-      notifyListeners();
-    });
+      _pesanBelumTerkirim = false;
+    } catch (_) {
+      _pesanBelumTerkirim = true;
+    }
+    notifyListeners();
   }
+
+  /// Benar kalau laporan pembayaran terakhir gagal terkirim ke server.
+  bool get pesanBelumTerkirim => _pesanBelumTerkirim;
+  bool _pesanBelumTerkirim = false;
 
   /// Mengirimkan pesan koordinasi penjemputan E-Ticket resmi ke thread pesanan terkait
   void sendPickupCoordinationMessage(BookingModel booking) {

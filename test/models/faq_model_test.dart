@@ -84,38 +84,23 @@ void main() {
     });
   });
 
-  group('FaqModel Fallback FAQs Integrity Tests', () {
-    test('fallbackFaqs menyediakan tepat 6 FAQ kanonik Merauke', () {
-      final fallbacks = FaqModel.fallbackFaqs;
-
-      expect(fallbacks.length, equals(6));
-      for (final faq in fallbacks) {
-        expect(faq.id.isNotEmpty, isTrue);
-        expect(faq.question.isNotEmpty, isTrue);
-        expect(faq.answer.isNotEmpty, isTrue);
-        expect(faq.category.isNotEmpty, isTrue);
-        expect(faq.isActive, isTrue);
-        expect(faq.orderIndex, inInclusiveRange(1, 6));
-      }
-    });
-
-    test('fallbackFaqs mencakup kategori Booking & Sewa, Armada, dan Pembayaran', () {
-      final categories = FaqModel.fallbackFaqs.map((f) => f.category).toSet();
-
-      expect(categories, contains('Booking & Sewa'));
-      expect(categories, contains('Armada'));
-      expect(categories, contains('Pembayaran'));
-    });
-
+  group('FaqModel Equality Tests', () {
     test('operator equality dan hashCode bekerja dengan benar', () {
-      final item1 = FaqModel.fallbackFaqs.first;
-      final item2 = FaqModel(
-        id: item1.id,
-        question: item1.question,
-        answer: item1.answer,
-        category: item1.category,
-        orderIndex: item1.orderIndex,
-        isActive: item1.isActive,
+      const item1 = FaqModel(
+        id: 'faq-uji-01',
+        question: 'Apakah unit bisa diantar ke bandara?',
+        answer: 'Bisa, tanpa biaya tambahan di dalam kota Merauke.',
+        category: 'Booking & Sewa',
+        orderIndex: 1,
+        isActive: true,
+      );
+      const item2 = FaqModel(
+        id: 'faq-uji-01',
+        question: 'Apakah unit bisa diantar ke bandara?',
+        answer: 'Bisa, tanpa biaya tambahan di dalam kota Merauke.',
+        category: 'Booking & Sewa',
+        orderIndex: 1,
+        isActive: true,
       );
 
       expect(item1, equals(item2));
