@@ -422,7 +422,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 Text(
                   isDriver
                       ? 'Armada dikemudikan staf resmi MobilJuragan. Bebas uang jaminan dan tanpa syarat SIM A.'
-                      : 'KTP asli dan SIM A penyewa ditunjukkan kepada staf saat penyerahan unit kendaraan di Merauke.',
+                      : 'Surat pernyataan bebas narkoba dan anti penggelapan dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w400,

@@ -7,6 +7,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../controllers/booking_controller.dart';
 import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
+import '../data/remote/document_api_service.dart';
+import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
 import '../models/payment_model.dart';
 import '../services/notification_service.dart';
@@ -41,12 +43,43 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   bool _isRefreshing = false;
   String? _trackingBookingId;
 
+  final DocumentApiService _documentApiService = DocumentApiService();
+  BookingDocumentModel? _bookingDocument;
+  bool _isUploadingDocument = false;
+  String? _draftStatementUrl;
+  String? _draftKtpUrl;
+  String? _draftSimUrl;
+
   @override
   void initState() {
     super.initState();
     _trackingBookingId = widget.booking?.id ??
         context.read<BookingController>().activeBooking?.id;
     _checkAndStartPolling();
+    _loadBookingDocuments();
+  }
+
+  Future<void> _loadBookingDocuments() async {
+    final targetId = _trackingBookingId ??
+        widget.booking?.id ??
+        context.read<BookingController>().activeBooking?.id;
+    if (targetId == null) return;
+
+    try {
+      final doc = await _documentApiService.fetchBookingDocuments(targetId);
+      if (mounted) {
+        setState(() {
+          _bookingDocument = doc;
+          if (doc != null) {
+            _draftStatementUrl ??= doc.statementLetterUrl;
+            _draftKtpUrl ??= doc.ktpUrl;
+            _draftSimUrl ??= doc.simUrl;
+          }
+        });
+      }
+    } catch (_) {
+      // Abaikan jika jaringan offline atau dokumen belum dibuat
+    }
   }
 
   void _checkAndStartPolling() {
@@ -231,6 +264,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     setState(() => _isRefreshing = true);
     final controller = context.read<BookingController>();
     final hasUpdated = await controller.refreshActiveBookingStatus(booking.id);
+    await _loadBookingDocuments();
     if (!mounted) return;
     setState(() => _isRefreshing = false);
 
@@ -411,6 +445,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ] else ...[
                   _buildSelfDriveHandoverGuideCard(activeBooking),
                   const SizedBox(height: 16),
+                  _buildLepasKunciDocumentCard(activeBooking),
+                  const SizedBox(height: 16),
                 ],
               ] else ...[
                 // Tahap 1, 2, & 3: Sebelum Lunas (Permintaan Masuk, Konfirmasi Tarif, Menunggu Pembayaran)
@@ -428,6 +464,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   ],
                 ] else ...[
                   _buildSelfDriveHandoverGuideCard(activeBooking),
+                  const SizedBox(height: 16),
+                  _buildLepasKunciDocumentCard(activeBooking),
                   const SizedBox(height: 16),
                 ],
               ],
@@ -1727,6 +1765,750 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               fontWeight: FontWeight.w400,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kartu Pengelolaan & Verifikasi Dokumen Persyaratan Lepas Kunci
+  Widget _buildLepasKunciDocumentCard(BookingModel booking) {
+    final doc = _bookingDocument;
+    final status = doc?.status ?? DocumentStatus.pendingUpload;
+
+    Color badgeBg;
+    Color badgeText;
+    String badgeLabel;
+
+    switch (status) {
+      case DocumentStatus.verified:
+        badgeBg = AppColors.badgeGreenBg;
+        badgeText = AppColors.badgeGreenText;
+        badgeLabel = 'Terverifikasi Resmi';
+        break;
+      case DocumentStatus.pendingVerification:
+        badgeBg = const Color(0xFFFEF3C7);
+        badgeText = const Color(0xFF92400E);
+        badgeLabel = 'Sedang Diverifikasi';
+        break;
+      case DocumentStatus.rejected:
+        badgeBg = const Color(0xFFFEE2E2);
+        badgeText = const Color(0xFF991B1B);
+        badgeLabel = 'Perlu Perbaikan';
+        break;
+      case DocumentStatus.pendingUpload:
+        badgeBg = AppColors.surfaceLight;
+        badgeText = AppColors.textSecondary;
+        badgeLabel = 'Menunggu Unggahan';
+        break;
+    }
+
+    final hasStatement = (_draftStatementUrl != null && _draftStatementUrl!.isNotEmpty) ||
+        (doc?.statementLetterUrl != null && doc!.statementLetterUrl!.isNotEmpty);
+    final hasKtp = (_draftKtpUrl != null && _draftKtpUrl!.isNotEmpty) ||
+        (doc?.ktpUrl != null && doc!.ktpUrl!.isNotEmpty);
+    final hasSim = (_draftSimUrl != null && _draftSimUrl!.isNotEmpty) ||
+        (doc?.simUrl != null && doc!.simUrl!.isNotEmpty);
+
+    final isVerified = status == DocumentStatus.verified;
+    final hasAnyDraft = (_draftStatementUrl != null && _draftStatementUrl != doc?.statementLetterUrl) ||
+        (_draftKtpUrl != null && _draftKtpUrl != doc?.ktpUrl) ||
+        (_draftSimUrl != null && _draftSimUrl != doc?.simUrl);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Kartu Dokumen
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.assignment_outlined, size: 18, color: AppColors.primaryNavy),
+                  SizedBox(width: 8),
+                  Text(
+                    'Dokumen Sewa Lepas Kunci',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  badgeLabel,
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    fontWeight: FontWeight.w700,
+                    color: badgeText,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Banner Informasi Alur Santai & Reassurance (Tidak Membuat Pelanggan Khawatir)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: status == DocumentStatus.rejected
+                  ? const Color(0xFFFEF2F2)
+                  : const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: status == DocumentStatus.rejected
+                    ? const Color(0xFFFECACA)
+                    : const Color(0xFFBBF7D0),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      status == DocumentStatus.rejected
+                          ? Icons.warning_amber_rounded
+                          : Icons.verified_user_outlined,
+                      size: 16,
+                      color: status == DocumentStatus.rejected
+                          ? const Color(0xFFB91C1C)
+                          : const Color(0xFF15803D),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        status == DocumentStatus.rejected
+                            ? 'Permintaan Revisi Dokumen:'
+                            : 'Prosedur Resmi Sewa Mandiri',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: status == DocumentStatus.rejected
+                              ? const Color(0xFF991B1B)
+                              : const Color(0xFF166534),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  status == DocumentStatus.rejected
+                      ? (doc?.rejectionReason ??
+                          'Dokumen yang diunggah belum memenuhi syarat. Mohon periksa kembali kelengkapan tanda tangan atau kejelasan foto.')
+                      : 'Surat pernyataan bebas narkoba dan anti penggelapan wajib ditandatangani basah. Anda dapat mengunggahnya sekarang atau langsung mengisi formulir fisik bermaterai gratis saat serah terima di kantor pool Merauke.',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    height: 1.4,
+                    color: status == DocumentStatus.rejected
+                        ? const Color(0xFF7F1D1D)
+                        : const Color(0xFF14532D),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Bar Tombol Tindakan Cepat (Pratinjau Teks & Unduh PDF Resmi)
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showStatementClausesModal(context),
+                  icon: const Icon(Icons.article_outlined, size: 15),
+                  label: const Text(
+                    'Baca Klausul Surat',
+                    style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryNavy,
+                    side: const BorderSide(color: AppColors.borderMedium),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _downloadTemplatePdf,
+                  icon: const Icon(Icons.download_rounded, size: 15),
+                  label: const Text(
+                    'Unduh PDF Resmi',
+                    style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryTeal,
+                    side: const BorderSide(color: AppColors.primaryTeal),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 3 Slot Berkas Persyaratan
+          const Text(
+            'Kelengkapan Berkas Persyaratan:',
+            style: TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          _buildDocumentSlotItem(
+            title: '1. Surat Pernyataan TTD Basah',
+            subtitle: 'Format resmi bertanda tangan basah pemohon',
+            isUploaded: hasStatement,
+            disabled: isVerified,
+            onPick: () => _pickDocumentMock('statement', 'Surat Pernyataan TTD Basah'),
+          ),
+          const SizedBox(height: 8),
+
+          _buildDocumentSlotItem(
+            title: '2. Foto Fisik e-KTP Asli',
+            subtitle: 'Identitas resmi sesuai data akun pemesan',
+            isUploaded: hasKtp,
+            disabled: isVerified,
+            onPick: () => _pickDocumentMock('ktp', 'Foto Fisik e-KTP Asli'),
+          ),
+          const SizedBox(height: 8),
+
+          _buildDocumentSlotItem(
+            title: '3. Foto Fisik SIM A Aktif',
+            subtitle: 'Lisensi mengemudi mobil yang masih berlaku',
+            isUploaded: hasSim,
+            disabled: isVerified,
+            onPick: () => _pickDocumentMock('sim', 'Foto Fisik SIM A Aktif'),
+          ),
+          const SizedBox(height: 14),
+
+          // Tombol Kirim Dokumen Persyaratan
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: (isVerified || _isUploadingDocument || (!hasAnyDraft && status != DocumentStatus.rejected))
+                  ? null
+                  : () => _submitDocuments(booking),
+              icon: _isUploadingDocument
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.cloud_upload_outlined, size: 18),
+              label: Text(
+                _isUploadingDocument
+                    ? 'Mengirim Berkas...'
+                    : (isVerified
+                        ? 'Dokumen Telah Disetujui'
+                        : 'Kirim Dokumen Persyaratan'),
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Inter',
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryNavy,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                disabledBackgroundColor: AppColors.borderSubtle,
+                disabledForegroundColor: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentSlotItem({
+    required String title,
+    required String subtitle,
+    required bool isUploaded,
+    required bool disabled,
+    required VoidCallback onPick,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isUploaded ? const Color(0xFF86EFAC) : AppColors.borderSubtle,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isUploaded ? const Color(0xFFDCFCE7) : AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              isUploaded ? Icons.check_circle_outline : Icons.insert_drive_file_outlined,
+              size: 20,
+              color: isUploaded ? const Color(0xFF15803D) : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: disabled ? null : onPick,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: isUploaded ? AppColors.primaryTeal : AppColors.primaryNavy,
+              side: BorderSide(
+                color: isUploaded ? AppColors.primaryTeal : AppColors.borderMedium,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            ),
+            child: Text(
+              isUploaded ? 'Ganti' : 'Pilih Foto',
+              style: const TextStyle(
+                fontSize: AppTypography.sizeTiny,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _pickDocumentMock(String slotType, String slotTitle) {
+    setState(() {
+      const sampleBase64 =
+          'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...contoh_dokumen_resmi.jpg';
+      if (slotType == 'statement') {
+        _draftStatementUrl = sampleBase64;
+      } else if (slotType == 'ktp') {
+        _draftKtpUrl = sampleBase64;
+      } else if (slotType == 'sim') {
+        _draftSimUrl = sampleBase64;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Berkas $slotTitle berhasil dipilih.'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: AppColors.primaryNavy,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _submitDocuments(BookingModel booking) async {
+    final statement = _draftStatementUrl ?? _bookingDocument?.statementLetterUrl;
+    final ktp = _draftKtpUrl ?? _bookingDocument?.ktpUrl;
+    final sim = _draftSimUrl ?? _bookingDocument?.simUrl;
+
+    if (statement == null && ktp == null && sim == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih minimal salah satu dokumen persyaratan untuk diunggah.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isUploadingDocument = true);
+    try {
+      final updated = await _documentApiService.uploadBookingDocuments(
+        bookingId: booking.id,
+        statementLetterUrl: statement,
+        ktpUrl: ktp,
+        simUrl: sim,
+      );
+
+      if (mounted) {
+        setState(() {
+          _bookingDocument = updated;
+          _isUploadingDocument = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryNavy,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: const Text(
+              'Dokumen persyaratan berhasil dikirim ke admin operasional untuk diverifikasi.',
+              style: TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingDocument = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFB91C1C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text(
+              'Gagal mengirim dokumen: ${e.toString().replaceAll('ApiException: ', '')}',
+              style: const TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadTemplatePdf() async {
+    try {
+      final bytes = await _documentApiService.downloadStatementTemplatePdf();
+      if (mounted) {
+        final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.primaryNavy,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text(
+              'Template surat pernyataan resmi berhasil diunduh ($kbSize KB). Format PDF siap cetak A4.',
+              style: const TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFB91C1C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            content: Text(
+              'Gagal mengunduh template PDF: ${e.toString().replaceAll('ApiException: ', '')}',
+              style: const TextStyle(fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showStatementClausesModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle Drag Bar
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderMedium,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Header Modal
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Surat Pernyataan Lepas Kunci',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeHeading,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'PT MobilJuragan Trans Merauke',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                      onPressed: () => Navigator.pop(sheetContext),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.borderSubtle),
+
+              // Isi Klausul Scrollable
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: const Text(
+                          'Dengan ini saya selaku penyewa unit kendaraan lepas kunci menyatakan dengan sebenar-benarnya tanpa paksaan dari pihak manapun:',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBody,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildClauseCard(
+                        number: '1',
+                        title: 'Bebas Narkotika & Zat Terlarang',
+                        description:
+                            'Tidak membawa, menyimpan, mengonsumsi, atau mendistribusikan narkotika, psikotropika, dan zat adiktif terlarang lainnya di dalam unit kendaraan rental.',
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildClauseCard(
+                        number: '2',
+                        title: 'Anti Penggelapan & Larangan Gadai',
+                        description:
+                            'Tidak memindahtangankan, menggadaikan, meminjamkan kembali kepada pihak ketiga tanpa izin tertulis, atau memperjualbelikan unit kendaraan milik PT MobilJuragan Trans Merauke.',
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildClauseCard(
+                        number: '3',
+                        title: 'Kepatuhan Hukum & Lalu Lintas',
+                        description:
+                            'Mengemudikan kendaraan secara bertanggung jawab dan mematuhi peraturan perundang-undangan lalu lintas yang berlaku di wilayah hukum Merauke dan sekitarnya.',
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildClauseCard(
+                        number: '4',
+                        title: 'Pemeliharaan Fisik & Dokumen Kendaraan',
+                        description:
+                            'Merawat kebersihan, kelengkapan surat berkendara (STNK resmi), ban cadangan, serta kelayakan fisik kendaraan selama masa sewa berlangsung.',
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildClauseCard(
+                        number: '5',
+                        title: 'Pertanggungjawaban Penuh',
+                        description:
+                            'Bersedia bertanggung jawab penuh secara perdata maupun pidana atas segala risiko hukum, kecelakaan, dan kerusakan yang timbul akibat kelalaian pemakaian penyewa.',
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildClauseCard(
+                        number: '6',
+                        title: 'Pengembalian Unit Tepat Waktu',
+                        description:
+                            'Bersedia mengembalikan unit kendaraan tepat waktu sesuai kesepakatan jadwal reservasi pada kantor pool resmi MobilJuragan Merauke.',
+                      ),
+                      const SizedBox(height: 16),
+
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: Color(0xFF1D4ED8)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Catatan: Formulir fisik resmi dengan materai yang sah juga tersedia gratis di kantor pool Merauke saat Anda mengambil kunci unit kendaraan.',
+                                style: TextStyle(
+                                  fontSize: AppTypography.sizeTiny,
+                                  color: Color(0xFF1E40AF),
+                                  fontFamily: 'Inter',
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Tombol Bawah
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryNavy,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Tutup Pratinjau'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildClauseCard({
+    required String number,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: AppColors.primaryNavy,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
