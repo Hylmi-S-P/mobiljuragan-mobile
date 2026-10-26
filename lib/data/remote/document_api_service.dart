@@ -45,6 +45,26 @@ class DocumentApiService {
     );
   }
 
+  /// Mengunduh berkas biner PDF surat pernyataan yang sudah terisi otomatis data reservasi
+  Future<Uint8List> downloadBookingStatementPdf(String bookingId) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.bookingsEndpoint}/$bookingId/statement-pdf',
+      );
+
+      final response = await _httpClient
+          .get(uri)
+          .timeout(ApiConstants.timeoutDuration);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      }
+    } catch (_) {
+      // Fallback ke template standar bila jaringan bermasalah
+    }
+    return downloadStatementTemplatePdf();
+  }
+
   /// Mengambil dokumen persyaratan yang terikat dengan pemesanan
   Future<BookingDocumentModel?> fetchBookingDocuments(String bookingId) async {
     final response = await _client.get(
