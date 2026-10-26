@@ -82,34 +82,27 @@ class TicketApiService {
     return {};
   }
 
-  /// Mengambil detail tiket beserta seluruh pesan percakapan dari backend
-  Future<Map<String, dynamic>?> fetchTicketDetail(String ticketId) async {
-    try {
-      final response = await _client.get(
-        '${ApiConstants.ticketsEndpoint}/$ticketId',
-        requiresAuth: true,
-      );
-      if (response is Map) {
-        return Map<String, dynamic>.from(response);
+  /// Menyerahkan tiket dari asisten AI ke staf admin.
+  ///
+  /// Sebelumnya perpindahan ini hanya ditandai dengan flag di memori aplikasi,
+  /// sehingga backend tidak pernah tahu dan tiket tidak pernah muncul di antrean
+  /// admin. Fungsi ini yang memberi tahu server.
+  Future<bool> handover({required String ticketId}) async {
+    final response = await _client.post(
+      '${ApiConstants.ticketsEndpoint}/$ticketId/handover',
+      requiresAuth: true,
+    );
+    if (response is Map) {
+      final data = response['data'];
+      if (data is Map) {
+        return data['handledBy'] == 'HUMAN';
       }
-      return null;
-    } catch (_) {
-      return null;
     }
+    return response != null;
   }
 
-  /// Mengalihkan penanganan tiket dari asisten AI ke staf manusia (handover)
-  Future<bool> handoverTicket(String ticketId) async {
-    try {
-      final response = await _client.post(
-        '${ApiConstants.ticketsEndpoint}/$ticketId/handover',
-        requiresAuth: true,
-      );
-      return response != null;
-    } catch (_) {
-      return false;
-    }
-  }
+  /// Alias handoverTicket untuk kompatibilitas
+  Future<bool> handoverTicket(String ticketId) => handover(ticketId: ticketId);
 
   /// Menutup tiket bantuan oleh pelanggan
   Future<Map<String, dynamic>> closeTicket(String ticketId) async {
@@ -125,5 +118,26 @@ class TicketApiService {
     } catch (_) {
       return {};
     }
+  }
+
+  /// Mengambil satu tiket beserta seluruh riwayat pesannya.
+  ///
+  /// Sebelumnya riwayat percakapan hanya hidup di memori aplikasi, sehingga
+  /// menutup layar bantuan atau memulai ulang aplikasi membuat seluruh percakapan
+  /// hilang, termasuk percakapan yang sebenarnya sudah tersimpan di server.
+  /// Fungsi ini yang memuatnya kembali.
+  Future<Map<String, dynamic>> fetchTicketDetail({required String ticketId}) async {
+    final response = await _client.get(
+      '${ApiConstants.ticketsEndpoint}/$ticketId',
+      requiresAuth: true,
+    );
+    if (response is Map) {
+      final data = response['data'];
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+      return Map<String, dynamic>.from(response);
+    }
+    return {};
   }
 }

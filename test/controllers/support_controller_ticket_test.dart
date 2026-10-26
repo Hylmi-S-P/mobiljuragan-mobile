@@ -81,11 +81,11 @@ class FakeTicketApiService extends TicketApiService {
   }
 
   @override
-  Future<Map<String, dynamic>?> fetchTicketDetail(String ticketId) async {
+  Future<Map<String, dynamic>> fetchTicketDetail({required String ticketId}) async {
     fetchDetailCount++;
     lastDetailTicketId = ticketId;
     if (exceptionToThrow != null) throw exceptionToThrow!;
-    return detailResponse;
+    return detailResponse ?? {};
   }
 
   @override
