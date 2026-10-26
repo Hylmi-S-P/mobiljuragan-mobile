@@ -104,17 +104,29 @@ class VehicleCardItem extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
-                              color: AppColors.badgeGreenBg,
+                              color: vehicle.isAvailable
+                                  ? AppColors.badgeGreenBg
+                                  : const Color(0xFFFEF3C7),
                               borderRadius: BorderRadius.circular(4),
+                              border: vehicle.isAvailable
+                                  ? null
+                                  : Border.all(
+                                      color: const Color(0xFFFDE68A),
+                                      width: 0.8,
+                                    ),
                             ),
-                            child: const Text(
-                              'Tersedia',
+                            child: Text(
+                              vehicle.isAvailable
+                                  ? 'Tersedia'
+                                  : (vehicle.isBooked ? 'Sedang Disewa' : vehicle.availabilityTag),
                               style: TextStyle(
                                 fontSize: AppTypography.sizeMicro,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.badgeGreenText,
+                                color: vehicle.isAvailable
+                                    ? AppColors.badgeGreenText
+                                    : const Color(0xFF92400E),
                                 fontFamily: 'Inter',
                               ),
                             ),

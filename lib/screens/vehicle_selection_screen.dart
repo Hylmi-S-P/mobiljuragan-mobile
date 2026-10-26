@@ -307,6 +307,8 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
   }
 
   Widget _buildStickyCTA(VehicleModel selectedVehicle) {
+    final bool isAvailable = selectedVehicle.isAvailable;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
@@ -334,7 +336,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
+              backgroundColor: isAvailable ? AppColors.primaryNavy : const Color(0xFF0F172A),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -342,10 +344,12 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               elevation: 0,
             ),
             child: Text(
-              'Lanjutkan: ${selectedVehicle.name}',
+              isAvailable
+                  ? 'Lanjutkan: ${selectedVehicle.name}'
+                  : 'Lihat Spesifikasi: ${selectedVehicle.name}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: AppTypography.sizeBodyLarge,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',

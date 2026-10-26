@@ -64,6 +64,35 @@ class VehicleDetailScreen extends StatelessWidget {
                                 fontFamily: 'Inter',
                               ),
                             ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: currentVehicle.isAvailable
+                                    ? AppColors.badgeGreenBg
+                                    : const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(4),
+                                border: currentVehicle.isAvailable
+                                    ? null
+                                    : Border.all(
+                                        color: const Color(0xFFFDE68A),
+                                        width: 0.8,
+                                      ),
+                              ),
+                              child: Text(
+                                currentVehicle.isAvailable
+                                    ? 'Tersedia'
+                                    : (currentVehicle.isBooked ? 'Sedang Disewa' : currentVehicle.availabilityTag),
+                                style: TextStyle(
+                                  fontSize: AppTypography.sizeCaption,
+                                  fontWeight: FontWeight.w600,
+                                  color: currentVehicle.isAvailable
+                                      ? AppColors.badgeGreenText
+                                      : const Color(0xFF92400E),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -103,9 +132,13 @@ class VehicleDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _buildVehicleImageCard(),
+                  if (!currentVehicle.isAvailable) ...[
+                    _buildOccupiedWarningBanner(currentVehicle),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildVehicleImageCard(currentVehicle),
                   const SizedBox(height: 16),
-                  _buildSpecsGrid(),
+                  _buildSpecsGrid(currentVehicle),
                   const SizedBox(height: 16),
                   _buildTariffInfoBox(bookingController),
                   const SizedBox(height: 12),
@@ -115,13 +148,13 @@ class VehicleDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-          _buildStickyCTA(context),
+          _buildStickyCTA(context, currentVehicle),
         ],
       ),
     );
   }
 
-  Widget _buildVehicleImageCard() {
+  Widget _buildVehicleImageCard(VehicleModel currentVehicle) {
     return Container(
       width: double.infinity,
       height: 170,
@@ -133,7 +166,7 @@ class VehicleDetailScreen extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: Image.asset(
-          vehicle.detailImageUrl ?? vehicle.imageUrl,
+          currentVehicle.detailImageUrl ?? currentVehicle.imageUrl,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             return const Center(
@@ -149,7 +182,7 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSpecsGrid() {
+  Widget _buildSpecsGrid(VehicleModel currentVehicle) {
     return Column(
       children: [
         Row(
@@ -157,14 +190,14 @@ class VehicleDetailScreen extends StatelessWidget {
             Expanded(
               child: SpecCardItem(
                 label: 'Kapasitas Kursi',
-                value: vehicle.seatCapacity,
+                value: currentVehicle.seatCapacity,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: SpecCardItem(
                 label: 'Tipe Transmisi',
-                value: vehicle.transmission,
+                value: currentVehicle.transmission,
               ),
             ),
           ],
@@ -175,15 +208,19 @@ class VehicleDetailScreen extends StatelessWidget {
             Expanded(
               child: SpecCardItem(
                 label: 'Kategori Bodi',
-                value: vehicle.bodyType,
+                value: currentVehicle.bodyType,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: SpecCardItem(
                 label: 'Status Unit',
-                value: 'Tersedia',
-                valueColor: AppColors.badgeGreenText,
+                value: currentVehicle.isAvailable
+                    ? 'Tersedia'
+                    : (currentVehicle.isBooked ? 'Sedang Disewa' : currentVehicle.availabilityTag),
+                valueColor: currentVehicle.isAvailable
+                    ? AppColors.badgeGreenText
+                    : const Color(0xFF92400E),
               ),
             ),
           ],
@@ -268,7 +305,62 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStickyCTA(BuildContext context) {
+  Widget _buildOccupiedWarningBanner(VehicleModel currentVehicle) {
+    final bool isBooked = currentVehicle.isBooked;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFCD34D), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Color(0xFFB45309),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isBooked ? 'Armada Sedang Disewa' : 'Armada Sedang Tidak Tersedia',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF92400E),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isBooked
+                      ? 'Unit ini telah dipesan dan dibayar oleh pelanggan lain. Anda tetap dapat mempelajari spesifikasi armada di bawah ini, namun reservasi unit ini sementara dikunci.'
+                      : 'Unit ini sementara tidak dapat dipesan. Silakan pilih armada lain yang tersedia pada katalog.',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF78350F),
+                    fontFamily: 'Inter',
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStickyCTA(BuildContext context, VehicleModel currentVehicle) {
+    final bool canProceed = currentVehicle.isAvailable;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: const BoxDecoration(
@@ -281,25 +373,34 @@ class VehicleDetailScreen extends StatelessWidget {
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: () {
-              context.read<BookingController>().selectVehicle(vehicle);
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => RentalOptionsScreen(vehicle: vehicle),
-                ),
-              );
-            },
+            onPressed: canProceed
+                ? () {
+                    context.read<BookingController>().selectVehicle(currentVehicle);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => RentalOptionsScreen(vehicle: currentVehicle),
+                      ),
+                    );
+                  }
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryNavy,
               foregroundColor: AppColors.textWhite,
+              disabledBackgroundColor: const Color(0xFFE2E8F0),
+              disabledForegroundColor: const Color(0xFF94A3B8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
-            child: const Text(
-              'Lanjut ke Opsi Rental',
-              style: AppTypography.sectionTitle,
+            child: Text(
+              canProceed ? 'Lanjut ke Opsi Rental' : 'Armada Sedang Tidak Tersedia',
+              style: TextStyle(
+                fontSize: AppTypography.sizeBodyLarge,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Inter',
+                color: canProceed ? AppColors.textWhite : const Color(0xFF64748B),
+              ),
             ),
           ),
         ),
