@@ -4,6 +4,7 @@ import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/controllers/vehicle_controller.dart';
 import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
 import 'package:mobiljuragan_mobile/screens/vehicle_detail_screen.dart';
+import 'package:mobiljuragan_mobile/screens/vehicle_selection_screen.dart';
 import 'package:mobiljuragan_mobile/widgets/vehicle_card_item.dart';
 import 'package:provider/provider.dart';
 
@@ -234,6 +235,27 @@ void main() {
 
       final elevatedButton = tester.widget<ElevatedButton>(ctaFinder);
       expect(elevatedButton.onPressed, isNotNull);
+    });
+  });
+
+  group('VehicleSelectionScreen Widget Tests', () {
+    testWidgets('Tombol sticky CTA selalu bertuliskan Lanjutkan untuk unit apa pun yang dipilih', (tester) async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ChangeNotifierProvider<VehicleController>(create: (_) => VehicleController()),
+          ],
+          child: const MaterialApp(
+            home: VehicleSelectionScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Secara default Avanza terpilih, tombol harus bertuliskan 'Lanjutkan: AVANZA G PUTIH'
+      expect(find.widgetWithText(ElevatedButton, 'Lanjutkan: AVANZA G PUTIH'), findsOneWidget);
     });
   });
 }
