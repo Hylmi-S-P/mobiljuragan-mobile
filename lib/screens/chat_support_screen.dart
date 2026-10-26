@@ -371,8 +371,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: messages.length,
+              itemCount: messages.length + (support.isAiThinking(conversationKey) ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == messages.length) {
+                  return _buildAiThinkingIndicator(maxBubbleWidth);
+                }
                 final msg = messages[index];
                 return _buildMessageItem(msg, support, maxBubbleWidth);
               },
@@ -589,6 +592,93 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       ),
     );
   }
+
+  Widget _buildAiThinkingIndicator(double maxBubbleWidth) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  color: AppColors.tealLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.headset_mic_rounded,
+                    size: 12,
+                    color: AppColors.primaryTeal,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Asisten AI MobilJuragan',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Container(
+            constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.cardWhite,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(14),
+                topRight: Radius.circular(14),
+                bottomLeft: Radius.circular(2),
+                bottomRight: Radius.circular(14),
+              ),
+              border: Border.all(color: AppColors.borderSubtle, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryTeal),
+                  ),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Sedang menyiapkan jawaban...',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    color: AppColors.textSecondary,
+                    fontStyle: FontStyle.italic,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMessageItem(ChatMessageModel msg, SupportController controller, double maxBubbleWidth) {
     final isUser = msg.isFromUser;
     final isSystemNotice = msg.senderName == 'Sistem';

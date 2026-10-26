@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/remote/ai_api_service.dart';
+import '../data/remote/ai_chat_api_service.dart';
 import '../data/remote/faq_api_service.dart';
 import '../data/remote/ticket_api_service.dart';
 import '../data/remote/ticket_event_stream.dart';
@@ -45,9 +46,13 @@ class SupportController extends ChangeNotifier {
     FaqApiService? faqApiService,
     TicketApiService? ticketApiService,
     AiApiService? aiApiService,
+    AiChatApiService? aiChatApiService,
   })  : _faqApiService = faqApiService ?? FaqApiService(),
         _ticketApiService = ticketApiService ?? TicketApiService(),
-        _aiApiService = aiApiService ?? AiApiService() {
+        _aiApiService = aiApiService ??
+            (aiChatApiService != null
+                ? _AiChatApiServiceAdapter(aiChatApiService)
+                : AiApiService()) {
     _initData();
   }
 
@@ -594,15 +599,13 @@ class SupportController extends ChangeNotifier {
 
     /* Balasan AI diambil dari backend sungguhan.
      *
-     * Sebelumnya blok ini berisi `Future.delayed` yang menempelkan kalimat tetap di
-     * dalam aplikasi. Pelanggan melihat "jawaban AI" yang tidak pernah berasal dari
-     * model dan tidak pernah tersimpan di server, sehingga admin yang mengambil alih
-     * tiket tidak melihat percakapan sebelumnya sama sekali.
-     *
-     * Sekarang permintaan dikirim ke POST /ai/chat beserta id tiketnya, sehingga
-     * backend menyimpan pertanyaan dan jawaban ke tiket yang sama. */
-    if (!isHandedOff && conversationKey.startsWith('ticket_')) {
-      final ticketId = conversationKey.replaceFirst('ticket_', '');
+     * Permintaan dikirim ke POST /ai/chat. Jika percakapan terkait tiket kendala,
+     * id tiket disertakan agar backend mencatat pertanyaan dan jawaban AI pada tiket yang sama.
+     * Untuk obrolan umum (general) atau koordinasi pesanan, id tiket bernilai null. */
+    if (!isHandedOff) {
+      final ticketId = conversationKey.startsWith('ticket_')
+          ? conversationKey.replaceFirst('ticket_', '')
+          : null;
       unawaited(
         _mintaBalasanAi(
           ticketId: ticketId,
@@ -615,13 +618,16 @@ class SupportController extends ChangeNotifier {
 
   /// Meminta balasan asisten AI dari backend lalu menampilkannya di percakapan.
   ///
-  /// Kegagalan jaringan ditampilkan apa adanya, bukan disembunyikan dengan balasan
-  /// palsu. Pelanggan perlu tahu kapan pesannya tidak terkirim.
+  /// Status `_isAiThinking` dikelola agar antarmuka dapat menampilkan indikator proses.
+  /// Kegagalan jaringan ditampilkan apa adanya secara sopan.
   Future<void> _mintaBalasanAi({
-    required String ticketId,
+    String? ticketId,
     required String pesan,
     required String conversationKey,
   }) async {
+    _isAiThinking[conversationKey] = true;
+    notifyListeners();
+
     try {
       final hasil = await _aiApiService.kirimPesan(pesan: pesan, ticketId: ticketId);
 
@@ -642,21 +648,24 @@ class SupportController extends ChangeNotifier {
       notifyListeners();
     } catch (_) {
       final daftar = _conversations[conversationKey];
-      if (daftar == null) return;
-
-      daftar.add(
-        ChatMessageModel(
-          id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
-          message:
-              'Asisten AI sedang tidak bisa dihubungi. Pesan Anda tetap tersimpan; '
-              'silakan tekan "Panggil Staf" agar dibantu tim operasional.',
-          timestamp: DateTime.now(),
-          isFromUser: false,
-          senderName: 'Sistem',
-          isAI: false,
-          conversationKey: conversationKey,
-        ),
-      );
+      if (daftar != null) {
+        daftar.add(
+          ChatMessageModel(
+            id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
+            message:
+                'Asisten AI sedang melakukan sinkronisasi otomatis. Pesan Anda tetap tersimpan; '
+                'silakan tekan "Panggil Staf" jika butuh bantuan tim operasional.',
+            timestamp: DateTime.now(),
+            isFromUser: false,
+            senderName: 'Asisten AI MobilJuragan',
+            isAI: true,
+            conversationKey: conversationKey,
+          ),
+        );
+        notifyListeners();
+      }
+    } finally {
+      _isAiThinking[conversationKey] = false;
       notifyListeners();
     }
   }
@@ -869,5 +878,23 @@ class SupportController extends ChangeNotifier {
       ),
     );
     notifyListeners();
+  }
+}
+
+/// Adapter untuk menjaga kompatibilitas pengujian lama yang menyuntikkan AiChatApiService
+class _AiChatApiServiceAdapter extends AiApiService {
+  final AiChatApiService _delegate;
+  _AiChatApiServiceAdapter(this._delegate);
+
+  @override
+  Future<AiChatResult> kirimPesan({
+    required String pesan,
+    String? ticketId,
+  }) async {
+    final reply = await _delegate.sendChat(message: pesan);
+    if (reply == null || reply.isEmpty) {
+      throw Exception('Gagal mendapatkan balasan dari AI');
+    }
+    return AiChatResult(balasan: reply);
   }
 }

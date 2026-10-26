@@ -14,22 +14,28 @@ class AiApiService {
 
   /// Mengirim pertanyaan pelanggan ke asisten AI.
   ///
-  /// [ticketId] wajib dikirim supaya backend menyimpan percakapan ke tiket yang
-  /// sama. Tanpa itu, admin tidak akan melihat apa pun saat mengambil alih tiket.
+  /// [ticketId] opsional. Bila dikirim, backend menyimpan percakapan ke tiket yang
+  /// sama sehingga staf admin dapat membacanya setelah mengambil alih. Bila tidak ada
+  /// [ticketId], percakapan dilayani sebagai konsultasi umum 24 jam.
   ///
   /// Hasil yang dikembalikan berisi [AiChatResult]. Kalau gateway sedang bermasalah,
   /// backend tetap membalas 200 dengan teks cadangan dan menandai `fallback`.
   Future<AiChatResult> kirimPesan({
     required String pesan,
-    required String ticketId,
+    String? ticketId,
   }) async {
+    final body = <String, dynamic>{
+      'message': pesan,
+    };
+    if (ticketId != null && ticketId.isNotEmpty) {
+      body['ticketId'] = ticketId;
+    }
+
     final response = await _client.post(
       ApiConstants.aiChatEndpoint,
-      requiresAuth: true,
-      body: {
-        'message': pesan,
-        'ticketId': ticketId,
-      },
+      requiresAuth: false,
+      timeout: ApiConstants.aiTimeoutDuration,
+      body: body,
     );
 
     if (response is Map) {
@@ -38,6 +44,13 @@ class AiApiService {
         return AiChatResult(
           balasan: (data['reply'] as String?)?.trim() ?? '',
           pakaiCadangan: data['fallback'] == true,
+        );
+      }
+      final directReply = response['reply'];
+      if (directReply is String && directReply.trim().isNotEmpty) {
+        return AiChatResult(
+          balasan: directReply.trim(),
+          pakaiCadangan: response['fallback'] == true,
         );
       }
     }

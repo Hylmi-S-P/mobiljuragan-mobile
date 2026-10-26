@@ -23,6 +23,11 @@ class AiChatApiService {
       );
 
       if (response is Map) {
+        final data = response['data'];
+        if (data is Map && data['reply'] != null) {
+          final reply = data['reply'].toString().trim();
+          if (reply.isNotEmpty) return reply;
+        }
         final reply = response['reply'];
         if (reply != null && reply.toString().trim().isNotEmpty) {
           return reply.toString().trim();

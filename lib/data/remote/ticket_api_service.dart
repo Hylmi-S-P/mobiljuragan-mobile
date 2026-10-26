@@ -87,7 +87,10 @@ class TicketApiService {
   /// Sebelumnya perpindahan ini hanya ditandai dengan flag di memori aplikasi,
   /// sehingga backend tidak pernah tahu dan tiket tidak pernah muncul di antrean
   /// admin. Fungsi ini yang memberi tahu server.
-  Future<bool> handover({required String ticketId}) async {
+  Future<bool> handover({required String ticketId}) => handoverTicket(ticketId);
+
+  /// Alias handoverTicket untuk kompatibilitas
+  Future<bool> handoverTicket(String ticketId) async {
     final response = await _client.post(
       '${ApiConstants.ticketsEndpoint}/$ticketId/handover',
       requiresAuth: true,
@@ -100,9 +103,6 @@ class TicketApiService {
     }
     return response != null;
   }
-
-  /// Alias handoverTicket untuk kompatibilitas
-  Future<bool> handoverTicket(String ticketId) => handover(ticketId: ticketId);
 
   /// Menutup tiket bantuan oleh pelanggan
   Future<Map<String, dynamic>> closeTicket(String ticketId) async {
