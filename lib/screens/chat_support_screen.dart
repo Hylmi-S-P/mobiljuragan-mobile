@@ -28,6 +28,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   Timer? _keyboardScrollTimer;
+  SupportController? _supportController;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _supportController = context.read<SupportController>();
+  }
 
   /// Menghasilkan key unik sesi percakapan agar tidak tercampur antar transaksi/tiket
   String get conversationKey {
@@ -45,13 +52,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     super.initState();
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
-    /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
-       sambungan tetap hidup di latar belakang dan terus memakai baterai
-       serta kuota. */
-    if (widget.ticket != null) {
-      context.read<SupportController>().berhentiDengarkanTiket(widget.ticket!.id);
-    }
-
         _keyboardScrollTimer?.cancel();
         // Beri jeda 350ms agar animasi keyboard bawaan OS selesai sepenuhnya
         // sebelum scroll, menghindari konflik animasi dan getaran layar (jitter)
@@ -74,14 +74,21 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
        * tersimpan di server. Balasan staf yang masuk saat layar tertutup pun tidak
        * akan pernah terlihat. */
       if (widget.ticket != null) {
-        context.read<SupportController>().muatRiwayatTiket(ticketId: widget.ticket!.id);
+        final support = context.read<SupportController>();
+        support.muatRiwayatTiket(ticketId: widget.ticket!.id).then((_) {
+          if (!mounted) return;
+          final currentMsgs = support.getMessages(conversationKey);
+          final hasAi = currentMsgs.any((m) => m.isAI);
+          if (!hasAi && !support.isAiHandoffToAdminFor(conversationKey)) {
+            support.inisialisasiResponAiTiket(ticket: widget.ticket!);
+          }
+        });
 
         /* Langganan peristiwa tiket.
          *
          * Backend sudah mengirim peristiwa setiap ada pesan atau perubahan
          * status, tetapi sebelumnya tidak ada klien yang mendengarkan. Akibatnya
          * balasan staf baru terlihat setelah layar dimuat ulang manual. */
-        final support = context.read<SupportController>();
         support.dengarkanTiket(
           ticketId: widget.ticket!.id,
           onPesanBaru: () {
@@ -118,7 +125,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
          sambungan tetap hidup di latar belakang dan terus memakai baterai
          serta kuota. */
       if (widget.ticket != null) {
-        context.read<SupportController>().berhentiDengarkanTiket(widget.ticket!.id);
+        _supportController?.berhentiDengarkanTiket(widget.ticket!.id);
       }
 
     _keyboardScrollTimer?.cancel();
@@ -182,7 +189,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
     // Ambil daftar pesan dan status handoff terisolasi untuk sesi saat ini
     final messages = support.getMessages(conversationKey);
-    final isHandedOff = activeTicket != null || support.isAiHandoffToAdminFor(conversationKey);
+    final isHandedOff = support.isAiHandoffToAdminFor(conversationKey) || (activeTicket?.isHandledByHuman ?? false);
 
     // Rekomendasi pesan cepat sesuai konteks sesi
     final List<String> suggestions;
@@ -191,7 +198,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         suggestions = [
           'No. Rekening Bank BRI',
           'Lokasi jemput Bandara Mopah',
-          'Panggil Staf Lapangan',
         ];
       } else {
         suggestions = [
@@ -203,16 +209,15 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       }
     } else if (activeTicket != null) {
       suggestions = [
-        'Status penanganan',
-        'Kirim foto kendala',
-        'Posisi armada saat ini',
+        'Kendala sudah teratasi',
+        'Hubungkan ke staf operasional',
+        'Cek status penanganan',
       ];
     } else {
       suggestions = [
         'Lokasi jemput Bandara Mopah',
         'Verifikasi KTP & SIM A',
         'Tarif sewa & supir',
-        'Panggil Staf Admin',
       ];
     }
 
@@ -225,15 +230,15 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           ? 'Staf Operasional Merauke (Online)'
           : '${currentBooking.vehicle.name} (${currentBooking.vehicle.plateNumber})';
     } else if (activeTicket != null) {
-      screenTitle = 'Tiket #${activeTicket.id}';
+      screenTitle = 'Tiket #${activeTicket.displayTicketNumber}';
       screenSubtitle = isHandedOff
-          ? 'Staf Penanganan Aktif (Online)'
-          : 'Kategori: ${activeTicket.categoryLabel}';
+          ? 'Staf Operasional Merauke (Online)'
+          : 'Asisten AI Respon Cepat (Aktif)';
     } else {
       screenTitle = 'Chat Bantuan CS';
       screenSubtitle = isHandedOff
           ? 'Staf Operasional Merauke (Online)'
-          : 'Customer Service MobilJuragan';
+          : 'Asisten AI Respon Cepat';
     }
 
     return Scaffold(
@@ -265,14 +270,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 Container(
                   width: 7,
                   height: 7,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF22C55E),
+                  decoration: BoxDecoration(
+                    color: isHandedOff ? const Color(0xFF22C55E) : const Color(0xFF38BDF8),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 5),
-                // Flexible + ellipsis: subjudul menyusut agar tidak menabrak
-                // tombol "Panggil Staf" saat ukuran teks sistem diperbesar.
+                // Flexible + ellipsis: subjudul menyusut dengan aman
                 Flexible(
                   child: Text(
                     screenSubtitle,
@@ -290,36 +294,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           ],
         ),
         actions: [
-          if (!isHandedOff)
-            Container(
-              margin: const EdgeInsets.only(right: 12),
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  /* Penyerahan ke staf kini menunggu jawaban server. Kalau gagal,
-                     pesan sistem sudah menjelaskan sebabnya di dalam percakapan. */
-                  await support.handoffToAdmin(conversationKey: conversationKey);
-                  _scrollToBottom();
-                },
-                icon: const Icon(Icons.support_agent_rounded, color: Color(0xFF5EEAD4), size: 16),
-                label: const Text(
-                  'Panggil Staf',
-                  style: TextStyle(
-                    color: AppColors.textWhite,
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF14B8A6), width: 1.2),
-                  backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.35),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  minimumSize: const Size(44, 32),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            )
-          else
+          if (isHandedOff)
             Container(
               margin: const EdgeInsets.only(right: 14),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -346,6 +321,39 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF6EE7B7),
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              margin: const EdgeInsets.only(right: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF334155), width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF38BDF8),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Asisten AI',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFBAE6FD),
                       fontFamily: 'Inter',
                     ),
                   ),
@@ -552,7 +560,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              ticket.id,
+              ticket.displayTicketNumber,
               style: const TextStyle(
                 fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w700,
@@ -902,9 +910,17 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                         ),
                       ),
                     );
-                  } else if (suggestion == 'Panggil Staf Lapangan' ||
-                      suggestion == 'Panggil Staf Admin') {
+                  } else if (suggestion == 'Hubungkan ke staf operasional') {
                     await controller.handoffToAdmin(conversationKey: conversationKey);
+                  } else if (suggestion == 'Kendala sudah teratasi') {
+                    if (widget.ticket != null) {
+                      await controller.closeTicket(widget.ticket!.id);
+                    } else {
+                      controller.sendUserMessage(
+                        text: 'Terima kasih, kendala saya sudah teratasi.',
+                        conversationKey: conversationKey,
+                      );
+                    }
                   } else {
                     controller.sendUserMessage(
                       text: suggestion,
@@ -921,7 +937,96 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
+  /// Kartu interaktif evaluasi solusi AI sebelum terjadi eskalasi otomatis
+  Widget _buildAiRetentionPrompt(SupportController controller) {
+    if (widget.ticket == null) return const SizedBox.shrink();
+    if (controller.isAiThinking(conversationKey)) return const SizedBox.shrink();
+    if (controller.isAiHandoffToAdminFor(conversationKey)) return const SizedBox.shrink();
+
+    final msgs = controller.getMessages(conversationKey);
+    final hasAiReply = msgs.any((m) => m.isAI);
+    if (!hasAiReply) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.help_outline, size: 16, color: Color(0xFF15803D)),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Apakah solusi AI membantu kendala Anda?',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                color: Color(0xFF14532D),
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () async {
+              await controller.closeTicket(widget.ticket!.id);
+            },
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: const Text(
+                'Teratasi',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeTiny,
+                  color: Color(0xFF15803D),
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          InkWell(
+            onTap: () async {
+              await controller.handoffToAdmin(conversationKey: conversationKey);
+              _scrollToBottom();
+            },
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Text(
+                'Minta Staf',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeTiny,
+                  color: Color(0xFF1D4ED8),
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildComposerBar(SupportController controller) {
+    final isHandedOff = controller.isAiHandoffToAdminFor(conversationKey) ||
+        (widget.ticket?.isHandledByHuman ?? false);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
@@ -972,10 +1077,12 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Pesan terhubung langsung dengan staf operasional MobilJuragan Merauke.',
+          Text(
+            isHandedOff
+                ? 'Pesan terhubung langsung dengan staf operasional MobilJuragan Merauke.'
+                : 'Dijawab otomatis oleh asisten virtual. Dialihkan ke staf jika kendala berlanjut.',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: AppTypography.sizeTiny,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
@@ -1007,6 +1114,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildAiRetentionPrompt(support),
             if (suggestions.isNotEmpty)
               _buildQuickSuggestionsBar(suggestions, support, booking, bookingCtrl),
             _buildComposerBar(support),

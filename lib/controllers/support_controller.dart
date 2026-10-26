@@ -42,6 +42,18 @@ class SupportController extends ChangeNotifier {
   final Map<String, bool> _isAiThinking = {};
   bool isAiThinking(String conversationKey) => _isAiThinking[conversationKey] ?? false;
 
+  /// Batas retensi putaran dialog dengan AI sebelum dievaluasi untuk eskalasi ke staf operasional
+  static const int maxAiTurnsBeforeHandoff = 3;
+
+  /// Peta penghitung putaran percakapan AI per sesi tiket
+  final Map<String, int> _ticketTurnCounts = {};
+
+  int getTicketTurnCount(String conversationKey) => _ticketTurnCounts[conversationKey] ?? 0;
+
+  bool isRetentionThresholdReached(String conversationKey) {
+    return (_ticketTurnCounts[conversationKey] ?? 0) >= maxAiTurnsBeforeHandoff;
+  }
+
   SupportController({
     FaqApiService? faqApiService,
     TicketApiService? ticketApiService,
@@ -287,7 +299,7 @@ class SupportController extends ChangeNotifier {
       category: category,
       description: description,
       status: 'Menunggu',
-      handledBy: 'HUMAN',
+      handledBy: 'AI',
       createdAt: DateTime.now(),
       attachmentName: attachmentName,
     );
@@ -305,6 +317,7 @@ class SupportController extends ChangeNotifier {
             : title;
         createdTicket = SupportTicketModel.fromJson(res).copyWith(
           title: effectiveTitle,
+          handledBy: res['handledBy']?.toString() ?? 'AI',
           attachmentName: attachmentName,
         );
       }
@@ -320,11 +333,12 @@ class SupportController extends ChangeNotifier {
     }
 
     final ticketKey = 'ticket_${createdTicket.id}';
-    _handoffStatus[ticketKey] = true;
+    _handoffStatus[ticketKey] = createdTicket.isHandledByHuman;
+    _ticketTurnCounts[ticketKey] = 0;
     final initialList = [
       ChatMessageModel(
         id: 'tck-sys-${createdTicket.id}',
-        message: 'Laporan Anda telah diterima tim operasional Merauke. Mohon sampaikan rincian tambahan atau tunggu tanggapan staf.',
+        message: 'Tiket bantuan #${createdTicket.displayTicketNumber} telah berhasil dibuat. Asisten virtual kami akan menjawab keluhan Anda secara otomatis.',
         timestamp: createdTicket.createdAt,
         isFromUser: false,
         senderName: 'Sistem',
@@ -343,7 +357,63 @@ class SupportController extends ChangeNotifier {
     _conversations[ticketKey] = initialList;
 
     notifyListeners();
+
+    // Picu respon awal asisten AI secara otomatis
+    unawaited(inisialisasiResponAiTiket(ticket: createdTicket));
+
     return createdTicket;
+  }
+
+  /// Menginisialisasi respon awal otomatis oleh asisten AI untuk tiket kendala baru
+  Future<void> inisialisasiResponAiTiket({required SupportTicketModel ticket}) async {
+    final ticketKey = 'ticket_${ticket.id}';
+    final currentList = _conversations[ticketKey];
+    final hasAiReply = currentList?.any((m) => m.isAI) ?? false;
+    if (hasAiReply) return;
+
+    _isAiThinking[ticketKey] = true;
+    notifyListeners();
+
+    try {
+      final promptContext = 'Tiket #${ticket.displayTicketNumber}: ${ticket.title} (Kategori: ${ticket.categoryLabel}). Keluhan pelanggan: ${ticket.description}';
+      final hasil = await _aiApiService.kirimPesan(
+        pesan: promptContext,
+        ticketId: ticket.id,
+      );
+
+      if (hasil.kosong) return;
+
+      final daftar = _conversations.putIfAbsent(ticketKey, () => []);
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-ai-${DateTime.now().microsecondsSinceEpoch}',
+          message: hasil.balasan,
+          timestamp: DateTime.now(),
+          isFromUser: false,
+          senderName: 'Asisten AI MobilJuragan',
+          isAI: true,
+          conversationKey: ticketKey,
+        ),
+      );
+      _ticketTurnCounts[ticketKey] = (_ticketTurnCounts[ticketKey] ?? 0) + 1;
+    } catch (_) {
+      final daftar = _conversations.putIfAbsent(ticketKey, () => []);
+      daftar.add(
+        ChatMessageModel(
+          id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
+          message:
+              'Halo, tiket bantuan Anda telah diterima sistem operasional. Asisten virtual kami siap membantu menjawab pertanyaan dan kendala Anda.',
+          timestamp: DateTime.now(),
+          isFromUser: false,
+          senderName: 'Asisten AI MobilJuragan',
+          isAI: true,
+          conversationKey: ticketKey,
+        ),
+      );
+    } finally {
+      _isAiThinking[ticketKey] = false;
+      notifyListeners();
+    }
   }
 
   /// Menutup tiket bantuan oleh pelanggan
@@ -492,10 +562,9 @@ class SupportController extends ChangeNotifier {
 
       _conversations[conversationKey] = hasil;
 
-      // Tiket yang sudah dipegang staf tidak boleh menampilkan tombol "Panggil Staf".
-      if ((detail['handledBy'] as String?) == 'HUMAN') {
-        _handoffStatus[conversationKey] = true;
-      }
+      // Sinkronkan status apakah tiket dipegang staf atau bot AI
+      final handledBy = (detail['handledBy'] as String?)?.toUpperCase();
+      _handoffStatus[conversationKey] = handledBy == 'HUMAN';
 
       notifyListeners();
     } catch (_) {
@@ -645,6 +714,15 @@ class SupportController extends ChangeNotifier {
           conversationKey: conversationKey,
         ),
       );
+      _ticketTurnCounts[conversationKey] = (_ticketTurnCounts[conversationKey] ?? 0) + 1;
+      final turnCount = _ticketTurnCounts[conversationKey]!;
+
+      // Jika percakapan tiket mencapai batas retensi (misal 3 putaran),
+      // picu eskalasi otomatis ke staf operasional agar pengguna segera ditangani langsung
+      if (conversationKey.startsWith('ticket_') && turnCount >= maxAiTurnsBeforeHandoff) {
+        unawaited(handoffToAdmin(conversationKey: conversationKey));
+      }
+
       notifyListeners();
     } catch (_) {
       final daftar = _conversations[conversationKey];
@@ -654,7 +732,7 @@ class SupportController extends ChangeNotifier {
             id: 'msg-err-${DateTime.now().microsecondsSinceEpoch}',
             message:
                 'Asisten AI sedang melakukan sinkronisasi otomatis. Pesan Anda tetap tersimpan; '
-                'silakan tekan "Panggil Staf" jika butuh bantuan tim operasional.',
+                'tim operasional akan segera terhubung jika kendala membutuhkan penanganan langsung.',
             timestamp: DateTime.now(),
             isFromUser: false,
             senderName: 'Asisten AI MobilJuragan',

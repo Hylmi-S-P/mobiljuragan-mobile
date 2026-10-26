@@ -56,9 +56,18 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
     final bookingId = _bookingIdController.text.trim();
+    final booking = context.read<BookingController>();
+    final activeBooking = booking.hasActiveBooking ? booking.activeBooking : null;
+    final vehicleContext = (activeBooking != null && (bookingId.isEmpty || bookingId == activeBooking.id))
+        ? 'Armada Terkait: ${activeBooking.vehicle.name} (${activeBooking.vehicle.plateNumber})\n'
+        : '';
 
-    final fullDesc = bookingId.isNotEmpty
-        ? 'Ref Booking: $bookingId\n$description'
+    final effectiveBookingId = bookingId.isNotEmpty
+        ? bookingId
+        : (activeBooking != null ? activeBooking.id : '');
+
+    final fullDesc = effectiveBookingId.isNotEmpty
+        ? 'Ref Booking: $effectiveBookingId\n$vehicleContext$description'
         : description;
 
     final newTicket = await support.createTicket(
@@ -285,14 +294,31 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                       const SizedBox(height: 16),
 
                       // Input 3: Nomor Booking Terkait (Opsional)
-                      const Text(
-                        'Nomor Booking Terkait (Opsional)',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Nomor Booking Terkait (Opsional)',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeBody,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                          if (context.watch<BookingController>().hasActiveBooking)
+                            const Text(
+                              'Armada Aktif',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeCaption,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryTeal,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -330,6 +356,34 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                           return null;
                         },
                       ),
+                      if (context.watch<BookingController>().hasActiveBooking &&
+                          context.watch<BookingController>().activeBooking != null) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.borderSubtle),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.directions_car_outlined, size: 14, color: AppColors.primaryNavy),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${context.watch<BookingController>().activeBooking!.vehicle.name} (${context.watch<BookingController>().activeBooking!.vehicle.plateNumber})',
+                                style: const TextStyle(
+                                  fontSize: AppTypography.sizeCaption,
+                                  color: AppColors.primaryNavy,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
 
                       // Input 4: Detail Kendala
