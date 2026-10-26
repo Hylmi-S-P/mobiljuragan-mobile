@@ -82,7 +82,7 @@ class VehicleDetailScreen extends StatelessWidget {
                               child: Text(
                                 currentVehicle.isAvailable
                                     ? 'Tersedia'
-                                    : (currentVehicle.isBooked ? 'Sedang Disewa' : currentVehicle.availabilityTag),
+                                    : (currentVehicle.isBooked ? 'Tersewa' : currentVehicle.availabilityTag),
                                 style: TextStyle(
                                   fontSize: AppTypography.sizeCaption,
                                   fontWeight: FontWeight.w600,
@@ -217,7 +217,7 @@ class VehicleDetailScreen extends StatelessWidget {
                 label: 'Status Unit',
                 value: currentVehicle.isAvailable
                     ? 'Tersedia'
-                    : (currentVehicle.isBooked ? 'Sedang Disewa' : currentVehicle.availabilityTag),
+                    : (currentVehicle.isBooked ? 'Tersewa' : currentVehicle.availabilityTag),
                 valueColor: currentVehicle.isAvailable
                     ? AppColors.badgeGreenText
                     : const Color(0xFF92400E),
@@ -329,7 +329,7 @@ class VehicleDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isBooked ? 'Armada Sedang Disewa' : 'Armada Sedang Tidak Tersedia',
+                  isBooked ? 'Armada Sedang Tersewa' : 'Armada Sedang Tidak Tersedia',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
@@ -340,7 +340,7 @@ class VehicleDetailScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   isBooked
-                      ? 'Unit ini telah dipesan dan dibayar oleh pelanggan lain. Anda tetap dapat mempelajari spesifikasi armada di bawah ini, namun reservasi unit ini sementara dikunci.'
+                      ? 'Unit ini telah dipesan dan disewa oleh pelanggan lain. Anda tetap dapat mempelajari spesifikasi armada di bawah ini, namun reservasi unit ini sementara dikunci.'
                       : 'Unit ini sementara tidak dapat dipesan. Silakan pilih armada lain yang tersedia pada katalog.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeCaption,

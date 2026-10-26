@@ -120,7 +120,7 @@ class VehicleCardItem extends StatelessWidget {
                             child: Text(
                               vehicle.isAvailable
                                   ? 'Tersedia'
-                                  : (vehicle.isBooked ? 'Sedang Disewa' : vehicle.availabilityTag),
+                                  : (vehicle.isBooked ? 'Tersewa' : vehicle.availabilityTag),
                               style: TextStyle(
                                 fontSize: AppTypography.sizeMicro,
                                 fontWeight: FontWeight.w600,

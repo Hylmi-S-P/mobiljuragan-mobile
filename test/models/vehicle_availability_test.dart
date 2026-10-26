@@ -61,7 +61,7 @@ void main() {
       final vehicleFromBooking = VehicleModel.fromJson(jsonWithActiveBooking);
       expect(vehicleFromBooking.isAvailable, isFalse);
       expect(vehicleFromBooking.isBooked, isTrue);
-      expect(vehicleFromBooking.availabilityTag, equals('Sedang Disewa'));
+      expect(vehicleFromBooking.availabilityTag, equals('Tersewa'));
 
       final jsonWithBookedStatus = {
         'id': 'v-2',
@@ -74,7 +74,7 @@ void main() {
       final vehicleFromStatus = VehicleModel.fromJson(jsonWithBookedStatus);
       expect(vehicleFromStatus.isAvailable, isFalse);
       expect(vehicleFromStatus.isBooked, isTrue);
-      expect(vehicleFromStatus.availabilityTag, equals('Sedang Disewa'));
+      expect(vehicleFromStatus.availabilityTag, equals('Tersewa'));
 
       final jsonAvailable = {
         'id': 'v-3',
@@ -93,7 +93,7 @@ void main() {
   });
 
   group('VehicleCardItem Widget Tests', () {
-    testWidgets('Merender badge Tersedia untuk unit tersedia dan Sedang Disewa untuk unit terisi', (tester) async {
+    testWidgets('Merender badge Tersedia untuk unit tersedia dan Tersewa untuk unit terisi', (tester) async {
       final availableVehicle = VehicleModel(
         id: 'v-avail',
         name: 'AVANZA G PUTIH',
@@ -117,7 +117,7 @@ void main() {
         transmission: 'Manual',
         bodyType: 'MPV Keluarga',
         condition: 'Sedang Beroperasi',
-        availabilityTag: 'Sedang Disewa',
+        availabilityTag: 'Tersewa',
         pricePerDay: 550000,
         imageUrl: 'assets/images/innova_card.png',
       );
@@ -144,12 +144,12 @@ void main() {
       );
 
       expect(find.text('Tersedia'), findsOneWidget);
-      expect(find.text('Sedang Disewa'), findsOneWidget);
+      expect(find.text('Tersewa'), findsOneWidget);
     });
   });
 
   group('VehicleDetailScreen Widget Tests', () {
-    testWidgets('Unit Sedang Disewa menampilkan banner peringatan dan tombol lanjut terkunci abu-abu', (tester) async {
+    testWidgets('Unit Tersewa menampilkan banner peringatan dan tombol lanjut terkunci abu-abu', (tester) async {
       final bookedVehicle = VehicleModel(
         id: 'xpander-exceed-hitam-ps1691b',
         name: 'XPANDER EXCEED HITAM',
@@ -159,7 +159,7 @@ void main() {
         transmission: 'Manual',
         bodyType: 'MPV Keluarga',
         condition: 'Sedang Beroperasi',
-        availabilityTag: 'Sedang Disewa',
+        availabilityTag: 'Tersewa',
         pricePerDay: 550000,
         imageUrl: 'assets/images/innova_card.png',
       );
@@ -179,10 +179,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Badge status pada header dan kartu spesifikasi 'Status Unit'
-      expect(find.text('Sedang Disewa'), findsNWidgets(2));
-      expect(find.text('Armada Sedang Disewa'), findsOneWidget); // Judul banner
+      expect(find.text('Tersewa'), findsNWidgets(2));
+      expect(find.text('Armada Sedang Tersewa'), findsOneWidget); // Judul banner
       expect(
-        find.textContaining('Unit ini telah dipesan dan dibayar oleh pelanggan lain'),
+        find.textContaining('Unit ini telah dipesan dan disewa oleh pelanggan lain'),
         findsOneWidget,
       );
 

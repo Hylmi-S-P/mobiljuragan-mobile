@@ -44,14 +44,17 @@ class VehicleModel {
   /// Penanda ketersediaan unit untuk reservasi baru
   bool get isAvailable {
     final tag = availabilityTag.toLowerCase();
-    if (tag.contains('sedang disewa') || tag.contains('perawatan') || tag.contains('tidak tersedia')) {
+    if (tag.contains('sedang disewa') || tag.contains('tersewa') || tag.contains('perawatan') || tag.contains('tidak tersedia')) {
       return false;
     }
     return tag.contains('tersedia');
   }
 
   /// Penanda unit sedang terkunci karena telah dibayar atau digunakan penyewa lain
-  bool get isBooked => availabilityTag.toLowerCase().contains('sedang disewa');
+  bool get isBooked {
+    final tag = availabilityTag.toLowerCase();
+    return tag.contains('sedang disewa') || tag.contains('tersewa');
+  }
 
   /// Konversi dari entitas tabel Drift (Vehicle) ke domain model VehicleModel
   factory VehicleModel.fromDrift(Vehicle entry) {
@@ -183,7 +186,7 @@ class VehicleModel {
 
     String calculatedAvailability = 'Tersedia • Lepas Kunci';
     if (opStatus == 'BOOKED' || hasActiveBooking) {
-      calculatedAvailability = 'Sedang Disewa';
+      calculatedAvailability = 'Tersewa';
     } else if (opStatus == 'MAINTENANCE') {
       calculatedAvailability = 'Perawatan';
     } else if (opStatus == 'UNAVAILABLE') {
