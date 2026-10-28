@@ -62,8 +62,10 @@ class FakeSecureStorageService extends SecureStorageService {
   @override
   Future<void> saveUserIdentity({
     required String userId,
-    required String nik,
+    String? nik,
     required String phoneNumber,
+    String? fullName,
+    String? gender,
   }) async {
     _userId = userId;
     _nik = nik;

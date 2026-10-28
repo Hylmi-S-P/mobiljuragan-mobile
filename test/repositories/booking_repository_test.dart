@@ -10,6 +10,8 @@ import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
 /// Test double untuk BookingApiService
 class FakeBookingApiService extends BookingApiService {
   int createCount = 0;
+  int cancelCount = 0;
+  String? lastCancelledBookingId;
   String? lastVehicleId;
   DateTime? lastStart;
   DateTime? lastEnd;
@@ -17,6 +19,17 @@ class FakeBookingApiService extends BookingApiService {
   Exception? exceptionToThrow;
 
   FakeBookingApiService({this.exceptionToThrow});
+
+  @override
+  Future<Map<String, dynamic>> cancelBooking({
+    required String bookingId,
+    String? reason,
+  }) async {
+    cancelCount++;
+    lastCancelledBookingId = bookingId;
+    if (exceptionToThrow != null) throw exceptionToThrow!;
+    return {'status': 'success', 'message': 'Booking cancelled'};
+  }
 
   @override
   Future<Map<String, dynamic>> createBooking({
@@ -123,6 +136,26 @@ void main() {
       final savedInDrift = allBookings.firstWhere((b) => b.id == 'MBJ-2026-0044');
       expect(savedInDrift, isNotNull);
       expect(savedInDrift.id, equals('MBJ-2026-0044'));
+    });
+
+    test('cancelBookingRemote memanggil API pembatalan dan menangani offline fallback', () async {
+      final fakeApi = FakeBookingApiService();
+      final repository = BookingRepository(database.bookingDao, fakeApi);
+
+      final success = await repository.cancelBookingRemote(
+        bookingId: 'bkg-123',
+        reason: 'Rencana berubah',
+      );
+
+      expect(success, isTrue);
+      expect(fakeApi.cancelCount, equals(1));
+      expect(fakeApi.lastCancelledBookingId, equals('bkg-123'));
+
+      // Uji offline fallback
+      final offlineApi = FakeBookingApiService(exceptionToThrow: Exception('Offline network error'));
+      final offlineRepo = BookingRepository(database.bookingDao, offlineApi);
+      final offlineResult = await offlineRepo.cancelBookingRemote(bookingId: 'bkg-999');
+      expect(offlineResult, isFalse);
     });
   });
 }

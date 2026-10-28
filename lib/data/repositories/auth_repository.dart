@@ -32,6 +32,7 @@ class AuthRepository {
     required String phoneNumber,
     required String otp,
     String? fullName,
+    String? gender,
     String? idCardNumber,
   }) async {
     try {
@@ -45,26 +46,24 @@ class AuthRepository {
 
         final userId = userData?['id']?.toString() ?? 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch}';
         final name = userData?['fullName']?.toString() ?? fullName ?? 'Pelanggan MobilJuragan';
-        final nik = idCardNumber ?? '9101012304980002';
+        final userGender = gender ?? 'Laki-laki';
 
         await _secureStorage.saveUserIdentity(
           userId: userId,
-          nik: nik,
+          nik: idCardNumber,
           phoneNumber: phoneNumber,
+          fullName: name,
+          gender: userGender,
         );
 
         return UserModel(
           id: userId,
           name: name,
           phoneNumber: phoneNumber,
-          email: '${phoneNumber.replaceAll(RegExp(r'[^0-9]'), '')}@mobiljuragan.com',
-          idCardNumber: nik,
+          gender: userGender,
+          idCardNumber: idCardNumber ?? '',
           city: 'Merauke, Papua Selatan',
-          avatarInitials: name.isNotEmpty
-              ? (name.trim().split(' ').length > 1
-                  ? '${name.trim().split(' ')[0][0]}${name.trim().split(' ')[1][0]}'.toUpperCase()
-                  : name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase())
-              : 'MJ',
+          avatarInitials: UserModel.computeInitials(name),
           isVerified: true,
         );
       }
@@ -74,6 +73,16 @@ class AuthRepository {
     return null;
   }
 
+  /// Memeriksa apakah ada sesi aktif di SecureStorage
+  Future<bool> hasActiveSession() async {
+    return await _secureStorage.hasValidToken();
+  }
+
+  /// Menghapus sesi dan kredensial pengguna dari SecureStorage
+  Future<void> logout() async {
+    await _secureStorage.clearAuth();
+  }
+
   /// Memulihkan sesi pengguna dari Secure Storage saat aplikasi pertama dibuka
   Future<UserModel?> restoreSession() async {
     final hasToken = await _secureStorage.hasValidToken();
@@ -81,31 +90,23 @@ class AuthRepository {
 
     final userId = await _secureStorage.getUserId();
     final phone = await _secureStorage.getUserPhone();
+    final name = await _secureStorage.getUserName();
+    final gender = await _secureStorage.getUserGender();
     final nik = await _secureStorage.getUserNik();
 
     if (userId != null && phone != null) {
+      final actualName = (name != null && name.isNotEmpty) ? name : 'Pelanggan MobilJuragan';
       return UserModel(
         id: userId,
-        name: 'Harun',
+        name: actualName,
         phoneNumber: phone,
-        email: 'harun.merauke@gmail.com',
-        idCardNumber: nik ?? '9101012304980002',
+        gender: gender ?? 'Laki-laki',
+        idCardNumber: nik ?? '',
         city: 'Merauke, Papua Selatan',
-        avatarInitials: 'HR',
+        avatarInitials: UserModel.computeInitials(actualName),
         isVerified: true,
       );
     }
     return null;
   }
-
-  /// Menghapus kredensial rahasia saat keluar akun (Logout)
-  Future<void> logout() async {
-    await _secureStorage.clearAuth();
-  }
-
-  /// Mengecek apakah token aktif tersimpan
-  Future<bool> hasActiveSession() => _secureStorage.hasValidToken();
-
-  /// Mendapatkan access token saat ini
-  Future<String?> getAccessToken() => _secureStorage.getAccessToken();
 }

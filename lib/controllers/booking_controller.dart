@@ -408,13 +408,13 @@ class BookingController extends ChangeNotifier {
   /// Membatalkan pesanan (baik pesanan aktif maupun pesanan spesifik berdasarkan ID)
   /// Menerapkan aturan pengembalian dana 85% untuk pesanan online yang telah dibayar.
   /// Untuk pesanan COD yang belum diserahkan uangnya, refund bernilai Rp 0 tanpa potongan penalti.
-  void cancelBooking({
+  Future<void> cancelBooking({
     required String bookingId,
     required String reason,
     String? bankName,
     String? accountNumber,
     String? accountHolderName,
-  }) {
+  }) async {
     final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
     if (index == -1) return;
 
@@ -443,7 +443,8 @@ class BookingController extends ChangeNotifier {
     if (_activeBooking?.id == bookingId) {
       _activeBooking = updated;
     }
-    repository?.saveBooking(updated);
+    await repository?.saveBooking(updated);
+    await repository?.cancelBookingRemote(bookingId: bookingId, reason: reason);
     notifyListeners();
   }
 

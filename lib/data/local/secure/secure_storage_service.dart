@@ -24,6 +24,8 @@ class SecureStorageService {
   static const String _keyUserId = 'sec_user_id';
   static const String _keyUserNik = 'sec_user_nik';
   static const String _keyUserPhone = 'sec_user_phone';
+  static const String _keyUserName = 'sec_user_name';
+  static const String _keyUserGender = 'sec_user_gender';
 
   /// Menyimpan token autentikasi JWT
   Future<void> saveAuthTokens({
@@ -46,20 +48,32 @@ class SecureStorageService {
     return await _storage.read(key: _keyRefreshToken);
   }
 
-  /// Menyimpan data identitas sensitif pengguna (User ID, NIK, No HP)
+  /// Menyimpan data identitas pengguna asli (User ID, No HP, Nama Lengkap, Gender, NIK)
   Future<void> saveUserIdentity({
     required String userId,
-    required String nik,
+    String? nik,
     required String phoneNumber,
+    String? fullName,
+    String? gender,
   }) async {
     await _storage.write(key: _keyUserId, value: userId);
-    await _storage.write(key: _keyUserNik, value: nik);
+    if (nik != null && nik.isNotEmpty) {
+      await _storage.write(key: _keyUserNik, value: nik);
+    }
     await _storage.write(key: _keyUserPhone, value: phoneNumber);
+    if (fullName != null && fullName.isNotEmpty) {
+      await _storage.write(key: _keyUserName, value: fullName);
+    }
+    if (gender != null && gender.isNotEmpty) {
+      await _storage.write(key: _keyUserGender, value: gender);
+    }
   }
 
   Future<String?> getUserId() async => await _storage.read(key: _keyUserId);
   Future<String?> getUserNik() async => await _storage.read(key: _keyUserNik);
   Future<String?> getUserPhone() async => await _storage.read(key: _keyUserPhone);
+  Future<String?> getUserName() async => await _storage.read(key: _keyUserName);
+  Future<String?> getUserGender() async => await _storage.read(key: _keyUserGender);
 
   /// Mengecek apakah terdapat sesi token aktif
   Future<bool> hasValidToken() async {
@@ -74,5 +88,7 @@ class SecureStorageService {
     await _storage.delete(key: _keyUserId);
     await _storage.delete(key: _keyUserNik);
     await _storage.delete(key: _keyUserPhone);
+    await _storage.delete(key: _keyUserName);
+    await _storage.delete(key: _keyUserGender);
   }
 }

@@ -4,19 +4,19 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/custom_app_bar.dart';
 import '../../theme/app_typography.dart';
 
-/// Layar Verifikasi OTP untuk Pendaftaran Akun Baru (Frame 12 & 12b style)
+/// Layar Verifikasi OTP Pelanggan MobilJuragan (Clean Surface Auth Flow)
+/// Kanvas putih minimalis, tanpa badge redundan, tanpa checkbox ganda, dilengkapi auto-submit 6 digit
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
-  final String email;
+  final String? email;
   final VoidCallback? onSuccess;
 
   const OtpVerificationScreen({
     super.key,
     required this.phoneNumber,
-    required this.email,
+    this.email,
     this.onSuccess,
   });
 
@@ -31,7 +31,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       List.generate(6, (_) => FocusNode());
 
   bool _isLoading = false;
-  bool _agreeTerms = true;
   int _resendSeconds = 105; // 01:45 hitung mundur
   Timer? _resendTimer;
 
@@ -86,23 +85,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Kode OTP baru telah dikirimkan ke nomor ${widget.phoneNumber}.'),
+        content: Text('Kode OTP baru telah dikirimkan ke WhatsApp ${widget.phoneNumber}.'),
         backgroundColor: AppColors.primaryTeal,
       ),
     );
   }
 
   void _handleVerifyOtp() {
-    if (!_agreeTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap setujui Ketentuan Layanan dan Kebijakan Privasi terlebih dahulu.'),
-          backgroundColor: Color(0xFFDC2626),
-        ),
-      );
-      return;
-    }
-
     final code = _otpControllers.map((c) => c.text.trim()).join();
     if (code.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,10 +107,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       _isLoading = true;
     });
 
-    Future.delayed(const Duration(milliseconds: 500), () async {
+    Future.delayed(const Duration(milliseconds: 350), () async {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      final isSuccess = await auth.verifyRegisterOtp(code);
+      final isSuccess = await auth.verifyOtp(code);
 
       if (!mounted) return;
       setState(() {
@@ -167,177 +156,149 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     final hasError = auth.hasLoginError;
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      appBar: CustomAppBar(
-        title: 'Verifikasi Nomor OTP',
-        stepSubtitle: hasError
-            ? 'Kode OTP Tidak Cocok'
-            : 'Langkah 2 dari 2 • Aktivasi Pendaftaran',
-        showBackButton: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 14),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: hasError ? const Color(0xFFFEE2E2) : AppColors.badgeAmberBg,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: hasError ? const Color(0xFFFCA5A5) : const Color(0xFFFDE68A),
-              ),
-            ),
-            child: Text(
-              hasError ? 'State: Error' : 'Tahap OTP',
-              style: TextStyle(
-                fontSize: AppTypography.sizeTiny,
-                fontWeight: FontWeight.w700,
-                color: hasError ? const Color(0xFFB91C1C) : AppColors.badgeAmberText,
-                fontFamily: 'Inter',
-              ),
-            ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Top Minimal Header (Tanpa Badge Kuning Berlebih)
+              _buildTopHeader(),
+              const SizedBox(height: 28),
+
+              // 2. Hero Title & Integrated Target Phone Box
+              _buildHeroTitle(),
+              const SizedBox(height: 28),
+
+              // 3. Error Banner jika ada
+              if (hasError) ...[
+                _buildErrorBanner(auth.errorMessage),
+                const SizedBox(height: 20),
+              ],
+
+              // 4. 6 Kotak Digit OTP dengan Auto-Submit
+              _buildOtpBoxes(auth, hasError),
+              const SizedBox(height: 20),
+
+              // 5. Timer Hitung Mundur Bersih (Tanpa Checkbox Kedua!)
+              _buildResendRow(),
+              const SizedBox(height: 32),
+
+              // 6. Tombol Primary CTA (Navy #1E293B)
+              _buildSubmitButton(hasError),
+              const SizedBox(height: 16),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Hero Card
-            _buildHeroCard(),
-            const SizedBox(height: 16),
-
-            // 2. Form Card 6 Kotak OTP
-            _buildFormCard(auth, hasError),
-            const SizedBox(height: 16),
-
-            // 3. Tombol Aksi Utama
-            _buildSubmitButton(auth, hasError),
-            const SizedBox(height: 24),
-
-            // 4. Grounding Footer Institusional
-            const Center(
-              child: Text(
-                'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  color: AppColors.textMuted,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeroCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
+  Widget _buildTopHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.tealLight,
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.surfaceLight,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.borderSubtle),
             ),
-            child: const Center(
-              child: Icon(
-                Icons.mark_email_read_outlined,
-                color: AppColors.primaryTeal,
-                size: 22,
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              size: 20,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Langkah 2 dari 2',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Verifikasi Akun Baru',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTitle,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Masukkan 6 digit kode OTP yang telah dikirimkan ke nomor ${widget.phoneNumber} untuk mengaktifkan akun rental Anda.',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    color: AppColors.textSecondary,
-                    height: 1.35,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Container(
+              width: 56,
+              height: 6,
+              decoration: BoxDecoration(
+                color: AppColors.primaryTeal,
+                borderRadius: BorderRadius.circular(3),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildFormCard(AuthController auth, bool hasError) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasError ? const Color(0xFFFCA5A5) : AppColors.borderSubtle,
-          width: hasError ? 1.5 : 1,
+  Widget _buildHeroTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Verifikasi Kode OTP',
+          style: TextStyle(
+            fontSize: AppTypography.sizeDisplay,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        const SizedBox(height: 8),
+        const Text(
+          'Masukkan 6 digit kode yang dikirim via WhatsApp ke nomor:',
+          style: TextStyle(
+            fontSize: AppTypography.sizeBodyLarge,
+            color: AppColors.textSecondary,
+            height: 1.45,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Nomor WhatsApp Terdaftar',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.phoneNumber,
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
+              Text(
+                widget.phoneNumber,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+              const SizedBox(width: 8),
+              const Text(
+                '•',
+                style: TextStyle(color: AppColors.borderMedium),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
                 child: const Text(
-                  'Ubah Data',
+                  'Ubah',
                   style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
@@ -346,233 +307,176 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Divider(color: AppColors.borderSubtle, thickness: 1, height: 1),
-          const SizedBox(height: 14),
+        ),
+      ],
+    );
+  }
 
-          // Label OTP
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Kode Verifikasi OTP (6 Digit)',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              if (hasError)
-                const Text(
-                  'Kode Tidak Cocok',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFDC2626),
-                    fontFamily: 'Inter',
-                  ),
-                ),
-            ],
+  Widget _buildErrorBanner(String? message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: Color(0xFFDC2626),
           ),
-
-          // Error Banner jika OTP keliru
-          if (hasError) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFCA5A5)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    size: 16,
-                    color: Color(0xFFDC2626),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Kode OTP tidak sesuai atau kedaluwarsa. Silakan periksa kembali pesan WhatsApp Anda.',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFB91C1C),
-                        height: 1.35,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message ?? 'Kode OTP tidak sesuai atau kedaluwarsa. Silakan periksa kembali pesan WhatsApp Anda.',
+              style: const TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFB91C1C),
+                fontFamily: 'Inter',
               ),
             ),
-          ],
-          const SizedBox(height: 12),
-
-          // 6 Kotak Digit OTP
-          Row(
-            children: List.generate(6, (index) {
-              return Expanded(
-                child: Container(
-                  height: 48,
-                  margin: EdgeInsets.only(
-                    left: index == 0 ? 0 : 3,
-                    right: index == 5 ? 0 : 3,
-                  ),
-                  child: TextField(
-                    controller: _otpControllers[index],
-                    focusNode: _otpFocusNodes[index],
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    maxLength: 1,
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeMetric,
-                      fontWeight: FontWeight.w800,
-                      color: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      contentPadding: EdgeInsets.zero,
-                      filled: true,
-                      fillColor: hasError
-                          ? const Color(0xFFFEF2F2)
-                          : AppColors.surfaceLight,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: hasError ? const Color(0xFFDC2626) : AppColors.borderMedium,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: hasError ? const Color(0xFFDC2626) : AppColors.borderMedium,
-                          width: hasError ? 1.5 : 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: hasError ? const Color(0xFFDC2626) : AppColors.primaryTeal,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      if (hasError) {
-                        auth.clearErrorState();
-                      }
-                      if (value.isNotEmpty) {
-                        if (index < 5) {
-                          _otpFocusNodes[index + 1].requestFocus();
-                        } else {
-                          _otpFocusNodes[index].unfocus();
-                          _handleVerifyOtp();
-                        }
-                      } else if (value.isEmpty && index > 0) {
-                        _otpFocusNodes[index - 1].requestFocus();
-                      }
-                    },
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 16),
-
-          // Timer Hitung Mundur 01:45
-          Center(
-            child: _resendSeconds > 0
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.access_time_rounded,
-                        size: 14,
-                        color: AppColors.primaryTeal,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Kirim ulang kode dalam $_formattedTimer',
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryTeal,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
-                  )
-                : TextButton.icon(
-                    onPressed: _handleResendOtp,
-                    icon: const Icon(Icons.refresh_rounded, size: 14, color: AppColors.primaryTeal),
-                    label: const Text(
-                      'Kirim Ulang Kode OTP Sekarang',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryTeal,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 10),
-
-          // Checkbox Persetujuan Syarat
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: _agreeTerms,
-                  onChanged: (val) {
-                    setState(() {
-                      _agreeTerms = val ?? true;
-                    });
-                  },
-                  activeColor: AppColors.primaryTeal,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Saya menyetujui Ketentuan Layanan dan Kebijakan Privasi MobilJuragan.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    color: AppColors.textSecondary,
-                    height: 1.35,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSubmitButton(AuthController auth, bool hasError) {
+  Widget _buildOtpBoxes(AuthController auth, bool hasError) {
+    return Row(
+      children: List.generate(6, (index) {
+        return Expanded(
+          child: Container(
+            height: 52,
+            margin: EdgeInsets.only(
+              left: index == 0 ? 0 : 4,
+              right: index == 5 ? 0 : 4,
+            ),
+            child: TextField(
+              controller: _otpControllers[index],
+              focusNode: _otpFocusNodes[index],
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 1,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: hasError ? const Color(0xFFDC2626) : AppColors.textPrimary,
+                fontFamily: 'Inter',
+              ),
+              decoration: InputDecoration(
+                counterText: '',
+                contentPadding: EdgeInsets.zero,
+                filled: true,
+                fillColor: hasError
+                    ? const Color(0xFFFEF2F2)
+                    : (_otpControllers[index].text.isNotEmpty
+                        ? Colors.white
+                        : AppColors.surfaceLight),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: hasError ? const Color(0xFFDC2626) : AppColors.borderMedium,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: hasError
+                        ? const Color(0xFFDC2626)
+                        : (_otpControllers[index].text.isNotEmpty
+                            ? AppColors.primaryNavy
+                            : AppColors.borderMedium),
+                    width: _otpControllers[index].text.isNotEmpty ? 1.5 : 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
+                    width: 2,
+                  ),
+                ),
+              ),
+              onChanged: (value) {
+                if (hasError) {
+                  auth.clearErrorState();
+                }
+                setState(() {});
+                if (value.isNotEmpty) {
+                  if (index < 5) {
+                    _otpFocusNodes[index + 1].requestFocus();
+                  } else {
+                    _otpFocusNodes[index].unfocus();
+                    // Auto-submit saat kotak ke-6 terisi
+                    _handleVerifyOtp();
+                  }
+                } else if (value.isEmpty && index > 0) {
+                  _otpFocusNodes[index - 1].requestFocus();
+                }
+              },
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildResendRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Belum menerima pesan?',
+          style: TextStyle(
+            fontSize: AppTypography.sizeCaption,
+            color: AppColors.textSecondary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        _resendSeconds > 0
+            ? Text(
+                'Kirim ulang ($_formattedTimer)',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryTeal,
+                  fontFamily: 'Inter',
+                ),
+              )
+            : InkWell(
+                onTap: _handleResendOtp,
+                child: const Text(
+                  'Kirim Ulang OTP',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryTeal,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton(bool hasError) {
     return SizedBox(
       width: double.infinity,
-      height: (50 * MediaQuery.textScalerOf(context).scale(1)).clamp(50, 100),
+      height: 48,
       child: ElevatedButton(
         onPressed: _isLoading
             ? null
             : (hasError ? _resetOtpForm : _handleVerifyOtp),
         style: ElevatedButton.styleFrom(
           backgroundColor: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
-          foregroundColor: AppColors.textWhite,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.borderMedium,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
         ),
         child: _isLoading
@@ -581,12 +485,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  color: Colors.white,
                 ),
               )
             : Text(
-                hasError ? 'Coba Lagi' : 'Verifikasi & Selesaikan Pendaftaran',
-                style: AppTypography.sectionTitle,
+                hasError ? 'Coba Lagi' : 'Verifikasi & Masuk',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
               ),
       ),
     );

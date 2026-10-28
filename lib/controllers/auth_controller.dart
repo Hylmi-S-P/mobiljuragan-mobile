@@ -3,53 +3,21 @@ import '../data/local/secure/secure_storage_service.dart';
 import '../data/repositories/auth_repository.dart';
 import '../models/user_model.dart';
 
-/// Helper validator untuk aturan keamanan password
-class PasswordRules {
-  static bool hasMinLength(String p) => p.length >= 8;
-  static bool hasUppercase(String p) => RegExp(r'[A-Z]').hasMatch(p);
-  static bool hasNumber(String p) => RegExp(r'[0-9]').hasMatch(p);
-  static bool hasSymbol(String p) =>
-      RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=\\/~`\[\]]').hasMatch(p);
-
-  static bool isValid(String p) {
-    return hasMinLength(p) &&
-        hasUppercase(p) &&
-        hasNumber(p) &&
-        hasSymbol(p);
-  }
-}
-
-/// Controller untuk mengelola autentikasi, status login, dan profil pengguna
-/// dengan keamanan token berbasis FlutterSecureStorage (Hardware Keystore).
+/// Controller untuk mengelola autentikasi berbasis OTP WhatsApp dan sesi pengguna
+/// dengan token aman di FlutterSecureStorage (Hardware Keystore).
 class AuthController extends ChangeNotifier {
   final AuthRepository? repository;
   final SecureStorageService? secureStorage;
 
-  UserModel? _currentUser = UserModel.defaultUser;
-  bool _isLoggedIn = true;
-  String _phoneNumber = '+62 812-4800-2910';
+  UserModel? _currentUser;
+  bool _isLoggedIn = false;
+  String _phoneNumber = '';
   String _inputOtp = '';
   bool _hasLoginError = false;
   String? _errorMessage;
   bool _hasSecureToken = false;
 
-  // Kredensial default untuk demo aplikasi
-  String _currentPassword = 'Merauke#2026';
-  final Map<String, String> _userPasswords = {
-    'harun.merauke@gmail.com': 'Merauke#2026',
-    '812-4800-2910': 'Merauke#2026',
-    '+62 812-4800-2910': 'Merauke#2026',
-    '081248002910': 'Merauke#2026',
-  };
-
-  // Database pengguna dalam memori untuk prototyping
-  final Map<String, UserModel> _usersDb = {
-    'harun.merauke@gmail.com': UserModel.defaultUser,
-    '81248002910': UserModel.defaultUser,
-    '+6281248002910': UserModel.defaultUser,
-  };
-
-  // Data sementara saat pendaftaran sebelum verifikasi OTP
+  // Data sementara pendaftaran sebelum verifikasi OTP selesai
   Map<String, String>? _pendingRegistration;
 
   AuthController({
@@ -63,11 +31,10 @@ class AuthController extends ChangeNotifier {
   String get inputOtp => _inputOtp;
   bool get hasLoginError => _hasLoginError;
   String? get errorMessage => _errorMessage;
-  String get currentPassword => _currentPassword;
   Map<String, String>? get pendingRegistration => _pendingRegistration;
   bool get hasSecureToken => _hasSecureToken;
 
-  /// Memulihkan sesi login yang tersimpan di Hardware Keystore / Secure Storage saat aplikasi boot
+  /// Memulihkan sesi pengguna dari Secure Storage saat aplikasi pertama kali dibuka (Guest Mode jika belum login)
   Future<void> initSession() async {
     final storage = secureStorage;
     final repo = repository;
@@ -87,22 +54,10 @@ class AuthController extends ChangeNotifier {
       }
     }
 
-    // Default demo session: pastikan token demo tersimpan di secure storage jika belum ada
-    final user = _currentUser;
-    if (_isLoggedIn && user != null && storage != null) {
-      final hasToken = await storage.hasValidToken();
-      if (!hasToken) {
-        await storage.saveAuthTokens(
-          accessToken: 'demo_jwt_token_${DateTime.now().millisecondsSinceEpoch}',
-        );
-        await storage.saveUserIdentity(
-          userId: user.id,
-          nik: user.idCardNumber,
-          phoneNumber: user.phoneNumber,
-        );
-        _hasSecureToken = true;
-      }
-    }
+    // Default Guest Mode: pengguna belum login
+    _currentUser = null;
+    _isLoggedIn = false;
+    _hasSecureToken = false;
     notifyListeners();
   }
 
@@ -122,46 +77,6 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Login menggunakan Email / Nomor HP dan Password
-  bool loginWithPassword({
-    required String identifier,
-    required String password,
-  }) {
-    final cleanId = identifier.trim().toLowerCase();
-    final cleanPhone = cleanId.replaceAll(RegExp(r'[\s\-]'), '');
-
-    bool isMatch = false;
-
-    if (_userPasswords.containsKey(cleanId) && _userPasswords[cleanId] == password) {
-      isMatch = true;
-    } else if (_userPasswords.containsKey(cleanPhone) && _userPasswords[cleanPhone] == password) {
-      isMatch = true;
-    } else if (cleanId == 'harun.merauke@gmail.com' && password == _currentPassword) {
-      isMatch = true;
-    } else if ((cleanPhone == '81248002910' || cleanPhone == '+6281248002910' || cleanPhone == '081248002910') &&
-        password == _currentPassword) {
-      isMatch = true;
-    }
-
-    if (isMatch) {
-      _isLoggedIn = true;
-      _hasLoginError = false;
-      _errorMessage = null;
-      _currentUser = _usersDb[cleanId] ?? _usersDb[cleanPhone] ?? UserModel.defaultUser;
-
-      // Simpan token ke FlutterSecureStorage secara aman
-      _saveSecureTokenAsync(_currentUser!);
-
-      notifyListeners();
-      return true;
-    } else {
-      _hasLoginError = true;
-      _errorMessage = 'Email/No HP atau password salah. Silakan periksa kembali.';
-      notifyListeners();
-      return false;
-    }
-  }
-
   Future<void> _saveSecureTokenAsync(UserModel user) async {
     final storage = secureStorage;
     if (storage != null) {
@@ -170,30 +85,26 @@ class AuthController extends ChangeNotifier {
       );
       await storage.saveUserIdentity(
         userId: user.id,
-        nik: user.idCardNumber,
         phoneNumber: user.phoneNumber,
+        fullName: user.name,
+        gender: user.gender,
+        nik: user.idCardNumber,
       );
       _hasSecureToken = true;
       notifyListeners();
     }
   }
 
-  /// Menyimpan data pendaftaran sebelum lanjut ke tahap verifikasi OTP
+  /// Menyimpan data pendaftaran sebelum verifikasi kode OTP
   void setPendingRegistration({
     required String name,
     required String phone,
-    required String email,
-    required String idCard,
-    required String city,
-    required String password,
+    required String gender,
   }) {
     _pendingRegistration = {
       'name': name,
       'phone': phone,
-      'email': email,
-      'idCard': idCard,
-      'city': city,
-      'password': password,
+      'gender': gender,
     };
     _phoneNumber = phone;
     _hasLoginError = false;
@@ -201,126 +112,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Menyelesaikan pendaftaran setelah verifikasi kode OTP berhasil
-  Future<bool> verifyRegisterOtp(String code) async {
-    final repo = repository;
-    final phone = _pendingRegistration?['phone'] ?? _phoneNumber;
-    final fullName = _pendingRegistration?['name'];
-    final idCard = _pendingRegistration?['idCard'];
-
-    if (repo != null) {
-      try {
-        final verifiedUser = await repo.verifyOtpAndSave(
-          phoneNumber: phone,
-          otp: code,
-          fullName: fullName,
-          idCardNumber: idCard,
-        );
-        if (verifiedUser != null) {
-          _currentUser = verifiedUser;
-          _isLoggedIn = true;
-          _hasLoginError = false;
-          _errorMessage = null;
-          _hasSecureToken = true;
-          _pendingRegistration = null;
-          notifyListeners();
-          return true;
-        }
-      } catch (_) {
-        // Fallback ke simulasi lokal jika API offline/gagal
-      }
-    }
-
-    if (code == '123456' || code == '888888' || code == '1234') {
-      if (_pendingRegistration != null) {
-        final name = _pendingRegistration!['name']!;
-        final userPhone = _pendingRegistration!['phone']!;
-        final email = _pendingRegistration!['email']!;
-        final nik = _pendingRegistration!['idCard']!;
-        final city = _pendingRegistration!['city']!;
-        final password = _pendingRegistration!['password']!;
-
-        final newUser = UserModel(
-          id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-          name: name,
-          phoneNumber: userPhone,
-          email: email,
-          idCardNumber: nik,
-          city: city.isNotEmpty ? city : 'Merauke, Papua Selatan',
-          avatarInitials: name.isNotEmpty
-              ? (name.trim().split(' ').length > 1
-                  ? '${name.trim().split(' ')[0][0]}${name.trim().split(' ')[1][0]}'.toUpperCase()
-                  : name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase())
-              : 'MJ',
-          isVerified: true,
-        );
-
-        _currentUser = newUser;
-
-        // Daftarkan ke database memori
-        _currentPassword = password;
-        final cleanEmail = email.toLowerCase();
-        final cleanPhone = userPhone.replaceAll(RegExp(r'[\s\-]'), '');
-
-        _userPasswords[cleanEmail] = password;
-        _userPasswords[cleanPhone] = password;
-        _usersDb[cleanEmail] = newUser;
-        _usersDb[cleanPhone] = newUser;
-
-        _pendingRegistration = null;
-        await _saveSecureTokenAsync(newUser);
-      } else {
-        _currentUser = UserModel.defaultUser;
-        await _saveSecureTokenAsync(_currentUser!);
-      }
-
-      _isLoggedIn = true;
-      _hasLoginError = false;
-      _errorMessage = null;
-      notifyListeners();
-      return true;
-    } else {
-      _hasLoginError = true;
-      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk simulasi demo.';
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Reset Password melalui verifikasi OTP
-  bool resetPassword({
-    required String identifier,
-    required String otp,
-    required String newPassword,
-  }) {
-    if (otp != '123456' && otp != '888888' && otp != '1234') {
-      _hasLoginError = true;
-      _errorMessage = 'Kode OTP pemulihan tidak sesuai atau kedaluwarsa.';
-      notifyListeners();
-      return false;
-    }
-
-    if (!PasswordRules.isValid(newPassword)) {
-      _hasLoginError = true;
-      _errorMessage = 'Password baru belum memenuhi semua kriteria keamanan.';
-      notifyListeners();
-      return false;
-    }
-
-    final cleanId = identifier.trim().toLowerCase();
-    final cleanPhone = cleanId.replaceAll(RegExp(r'[\s\-]'), '');
-
-    _currentPassword = newPassword;
-    _userPasswords[cleanId] = newPassword;
-    _userPasswords[cleanPhone] = newPassword;
-
-    _hasLoginError = false;
-    _errorMessage = null;
-    notifyListeners();
-    return true;
-  }
-
-  /// Mengirim kode OTP ke nomor WhatsApp / SMS via backend API (dengan fallback simulasi)
+  /// Mengirim permintaan kode OTP ke nomor WhatsApp via backend API
   Future<void> sendOtp(String phone) async {
     _phoneNumber = phone;
     _hasLoginError = false;
@@ -335,13 +127,77 @@ class AuthController extends ChangeNotifier {
           fullName: _pendingRegistration?['name'],
         );
       } catch (_) {
-        // Fallback offline/demo mode tanpa melempar error tak tertangani
+        // Fallback offline / demo mode
       }
     }
   }
 
-  /// Verifikasi kode OTP umum melalui backend API (dengan fallback simulasi)
+  /// Verifikasi kode OTP pendaftaran pelanggan baru
+  Future<bool> verifyRegisterOtp(String code) async {
+    final repo = repository;
+    final phone = _pendingRegistration?['phone'] ?? _phoneNumber;
+    final fullName = _pendingRegistration?['name'] ?? 'Pelanggan MobilJuragan';
+    final gender = _pendingRegistration?['gender'] ?? 'Laki-laki';
+
+    if (repo != null) {
+      try {
+        final verifiedUser = await repo.verifyOtpAndSave(
+          phoneNumber: phone,
+          otp: code,
+          fullName: fullName,
+          gender: gender,
+        );
+        if (verifiedUser != null) {
+          _currentUser = verifiedUser;
+          _isLoggedIn = true;
+          _hasLoginError = false;
+          _errorMessage = null;
+          _hasSecureToken = true;
+          _pendingRegistration = null;
+          notifyListeners();
+          return true;
+        }
+      } catch (_) {
+        // Fallback offline jika backend tidak dapat dihubungi
+      }
+    }
+
+    // Fallback simulasi kode demo
+    if (code == '123456' || code == '888888' || code == '1234') {
+      final actualName = fullName.trim().isNotEmpty ? fullName.trim() : 'Pelanggan MobilJuragan';
+      final newUser = UserModel(
+        id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        name: actualName,
+        phoneNumber: phone,
+        gender: gender ?? 'Laki-laki',
+        city: 'Merauke, Papua Selatan',
+        avatarInitials: UserModel.computeInitials(actualName),
+        isVerified: true,
+      );
+
+      _currentUser = newUser;
+      _isLoggedIn = true;
+      _hasLoginError = false;
+      _errorMessage = null;
+      _pendingRegistration = null;
+      await _saveSecureTokenAsync(newUser);
+      notifyListeners();
+      return true;
+    } else {
+      _hasLoginError = true;
+      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk pengujian.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Verifikasi kode OTP untuk masuk akun (login)
   Future<bool> verifyOtp(String code) async {
+    // Jika ada pending registration, teruskan ke verifyRegisterOtp
+    if (_pendingRegistration != null) {
+      return await verifyRegisterOtp(code);
+    }
+
     final repo = repository;
     if (repo != null) {
       try {
@@ -359,45 +215,64 @@ class AuthController extends ChangeNotifier {
           return true;
         }
       } catch (_) {
-        // Fallback offline/demo mode
+        // Fallback offline
       }
     }
 
-    if (code == '123456' || code == '888888' || code == '1234' || code == '8888') {
+    // Fallback simulasi kode demo
+    if (code == '123456' || code == '888888' || code == '1234') {
       _isLoggedIn = true;
       _hasLoginError = false;
       _errorMessage = null;
-      _currentUser ??= UserModel.defaultUser;
+      final savedName = _pendingRegistration?['name']?.toString() ?? 'Pelanggan MobilJuragan';
+      final savedGender = _pendingRegistration?['gender']?.toString() ?? 'Laki-laki';
+      final phone = _phoneNumber.isNotEmpty ? _phoneNumber : '+62 812-4800-2910';
+      _currentUser = UserModel(
+        id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        name: savedName,
+        phoneNumber: phone,
+        gender: savedGender,
+        city: 'Merauke, Papua Selatan',
+        avatarInitials: UserModel.computeInitials(savedName),
+        isVerified: true,
+      );
       await _saveSecureTokenAsync(_currentUser!);
+      _pendingRegistration = null;
       notifyListeners();
       return true;
     } else {
       _hasLoginError = true;
-      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk simulasi.';
+      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk pengujian.';
       notifyListeners();
       return false;
     }
   }
 
-  /// Pendaftaran akun pengguna baru langsung
-  void register({
-    required String name,
-    required String phone,
-    required String email,
-    required String idCard,
-  }) {
-    _currentUser = UserModel(
-      id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      name: name,
-      phoneNumber: phone,
-      email: email,
-      idCardNumber: idCard,
+  /// Keluar dari sesi akun (menghapus token di Hardware Keystore)
+  Future<void> logout() async {
+    _isLoggedIn = false;
+    _hasSecureToken = false;
+    _currentUser = null;
+    final storage = secureStorage;
+    if (storage != null) {
+      await storage.clearAuth();
+    }
+    final repo = repository;
+    if (repo != null) {
+      await repo.logout();
+    }
+    notifyListeners();
+  }
+
+  /// Masuk dengan akun default untuk mode demo
+  void loginAsDefault() {
+    _currentUser = const UserModel(
+      id: 'USR-MKQ-001',
+      name: 'Pelanggan MobilJuragan',
+      phoneNumber: '+62 812-4800-2910',
+      gender: 'Laki-laki',
       city: 'Merauke, Papua Selatan',
-      avatarInitials: name.isNotEmpty
-          ? (name.trim().split(' ').length > 1
-              ? '${name.trim().split(' ')[0][0]}${name.trim().split(' ')[1][0]}'.toUpperCase()
-              : name.substring(0, 2).toUpperCase())
-          : 'MJ',
+      avatarInitials: 'MJ',
       isVerified: true,
     );
     _isLoggedIn = true;
@@ -406,25 +281,46 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Keluar dari sesi login (Menghapus token dari Hardware Keystore)
-  Future<void> logout() async {
-    _isLoggedIn = false;
-    _hasSecureToken = false;
-    final storage = secureStorage;
-    if (storage != null) {
-      await storage.clearAuth();
-    }
+  /// Memperbarui data profil pengguna
+  void updateProfile({
+    required String name,
+    required String phone,
+    String? gender,
+    String? email,
+    String? idCard,
+  }) {
+    final current = _currentUser;
+    final cleanName = name.trim().isNotEmpty ? name.trim() : (current?.name ?? 'Pelanggan MobilJuragan');
+    _currentUser = UserModel(
+      id: current?.id ?? 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      name: cleanName,
+      phoneNumber: phone,
+      gender: gender ?? current?.gender ?? 'Laki-laki',
+      email: email ?? '',
+      idCardNumber: idCard ?? current?.idCardNumber ?? '',
+      city: current?.city ?? 'Merauke, Papua Selatan',
+      avatarInitials: UserModel.computeInitials(cleanName),
+      isVerified: true,
+    );
+    _saveSecureTokenAsync(_currentUser!);
     notifyListeners();
   }
 
-  /// Masuk kembali dengan akun default
-  void loginAsDefault() {
-    _currentUser = UserModel.defaultUser;
-    _currentPassword = 'Merauke#2026';
-    _isLoggedIn = true;
-    _hasLoginError = false;
-    _saveSecureTokenAsync(_currentUser!);
-    notifyListeners();
+  /// Kompatibilitas pendaftaran profil lokal
+  void register({
+    required String name,
+    required String phone,
+    String? gender,
+    String? email,
+    String? idCard,
+  }) {
+    updateProfile(
+      name: name,
+      phone: phone,
+      gender: gender,
+      email: email,
+      idCard: idCard,
+    );
   }
 
   void triggerErrorState([String? message]) {

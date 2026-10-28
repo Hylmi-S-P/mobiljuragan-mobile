@@ -65,4 +65,24 @@ class BookingApiService {
     }
     return {};
   }
+
+  /// Membatalkan pemesanan sewa di backend (PATCH /api/v1/bookings/:id/cancel)
+  Future<Map<String, dynamic>> cancelBooking({
+    required String bookingId,
+    String? reason,
+  }) async {
+    final response = await _client.patch(
+      '${ApiConstants.bookingsEndpoint}/$bookingId/cancel',
+      requiresAuth: true,
+      body: {
+        if (reason != null && reason.trim().isNotEmpty)
+          'reason': reason.trim(),
+      },
+    );
+
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    return {};
+  }
 }

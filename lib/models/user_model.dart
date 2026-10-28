@@ -3,8 +3,9 @@ class UserModel {
   final String id;
   final String name;
   final String phoneNumber;
+  final String? gender; // 'Laki-laki' | 'Perempuan'
   final String email;
-  final String idCardNumber; // NIK KTP
+  final String idCardNumber; // NIK KTP (opsional saat lepas kunci)
   final String city;
   final String avatarInitials;
   final bool isVerified;
@@ -13,9 +14,10 @@ class UserModel {
     required this.id,
     required this.name,
     required this.phoneNumber,
-    required this.email,
-    required this.idCardNumber,
-    required this.city,
+    this.gender,
+    this.email = '',
+    this.idCardNumber = '',
+    this.city = 'Merauke, Papua Selatan',
     required this.avatarInitials,
     this.isVerified = true,
   });
@@ -24,15 +26,14 @@ class UserModel {
   String get phone => phoneNumber;
   String get nik => idCardNumber;
 
-  /// Data profil default pelanggan (Harun, Merauke)
-  static const UserModel defaultUser = UserModel(
-    id: 'USR-MKQ-001',
-    name: 'Harun',
-    phoneNumber: '+62 812-4800-2910',
-    email: 'harun.merauke@gmail.com',
-    idCardNumber: '9101012304980002',
-    city: 'Merauke, Papua Selatan',
-    avatarInitials: 'HR',
-    isVerified: true,
-  );
+  /// Helper menghitung 1-2 inisial huruf dari nama pengguna asli
+  static String computeInitials(String fullName) {
+    final clean = fullName.trim();
+    if (clean.isEmpty) return 'MJ';
+    final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length > 1) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
 }

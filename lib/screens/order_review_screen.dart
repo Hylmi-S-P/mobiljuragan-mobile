@@ -644,7 +644,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
   ) async {
     final auth = context.read<AuthController>();
     if (!auth.isLoggedIn) {
-      auth.loginAsDefault();
+      _showLoginRequiredSheet(context, auth, booking, vehicle);
+      return;
     }
 
     showDialog(
@@ -854,31 +855,6 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: TextButton(
-                      onPressed: () {
-                        auth.loginAsDefault();
-                        Navigator.pop(modalCtx);
-                        _processOrderSubmission(context, booking, vehicle);
-                      },
-                      child: const Text(
-                        'Pintasan Demo: Masuk Cepat sebagai Harun',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),

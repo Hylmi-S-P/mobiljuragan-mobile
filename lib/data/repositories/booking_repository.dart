@@ -299,4 +299,21 @@ class BookingRepository {
   Future<void> updateBookingStatus(String id, BookingStatus newStatus) async {
     await _bookingDao.updateBookingStatus(id, newStatus.name);
   }
+
+  /// Mengirimkan pembatalan pesanan ke backend API
+  Future<bool> cancelBookingRemote({
+    required String bookingId,
+    String? reason,
+  }) async {
+    try {
+      final res = await _apiService.cancelBooking(
+        bookingId: bookingId,
+        reason: reason,
+      );
+      return res.isNotEmpty;
+    } catch (_) {
+      // Offline fallback: tetap aman jika offline
+      return false;
+    }
+  }
 }

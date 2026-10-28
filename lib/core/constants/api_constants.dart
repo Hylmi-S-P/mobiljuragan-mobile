@@ -15,7 +15,8 @@ class ApiConstants {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://127.0.0.1:4000/api/v1';
+        // Loopback resmi Android Emulator ke host laptop (Port 4000 PM2)
+        return 'http://10.0.2.2:4000/api/v1';
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:

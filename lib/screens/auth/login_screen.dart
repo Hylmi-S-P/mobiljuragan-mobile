@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/custom_app_bar.dart';
-import 'forgot_password_screen.dart';
+import 'otp_verification_screen.dart';
 import 'register_screen.dart';
 import '../../theme/app_typography.dart';
 
-/// Layar Masuk / Login Standar Aplikasi Mobile
-/// Pengguna hanya perlu memasukkan Email atau Nomor HP dan Password
-/// Dilengkapi fitur Lupa Password, toggle show/hide password, dan pintasan akun demo
+/// Layar Masuk Akun Pelanggan MobilJuragan (Clean Surface Auth Flow)
+/// Desain kanvas putih minimalis, tanpa kartu berulang (Box-in-a-Box)
 class LoginScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
 
@@ -25,23 +22,18 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _identifierController =
-      TextEditingController(text: 'harun.merauke@gmail.com');
-  final TextEditingController _passwordController =
-      TextEditingController(text: 'Merauke#2026');
+  final TextEditingController _phoneController =
+      TextEditingController(text: '812-4800-2910');
 
-  bool _isPasswordVisible = false;
-  bool _rememberMe = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _identifierController.dispose();
-    _passwordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
+  void _handleRequestOtp() {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -50,34 +42,27 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final id = _identifierController.text.trim();
-    final pass = _passwordController.text;
+    final rawPhone = _phoneController.text.trim();
+    final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 350), () {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      final isSuccess = auth.loginWithPassword(identifier: id, password: pass);
+      auth.sendOtp(fullPhone);
 
       setState(() {
         _isLoading = false;
       });
 
-      if (isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login berhasil! Selamat datang kembali di MobilJuragan.'),
-            backgroundColor: Color(0xFF16A34A),
+      // Buka Layar Verifikasi OTP
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            phoneNumber: fullPhone,
+            onSuccess: widget.onSuccess,
           ),
-        );
-
-        if (widget.onSuccess != null) {
-          widget.onSuccess!();
-        } else {
-          Navigator.of(context).pop(true);
-        }
-      } else {
-        HapticFeedback.vibrate();
-      }
+        ),
+      );
     });
   }
 
@@ -87,10 +72,10 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -98,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Center(
                 child: Container(
-                  width: 40,
+                  width: 36,
                   height: 4,
                   decoration: BoxDecoration(
                     color: AppColors.borderMedium,
@@ -106,10 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               const Row(
                 children: [
-                  Icon(Icons.headset_mic_rounded, color: AppColors.primaryNavy, size: 24),
+                  Icon(Icons.headset_mic_rounded, color: AppColors.primaryNavy, size: 22),
                   SizedBox(width: 10),
                   Text(
                     'Pusat Bantuan CS Merauke',
@@ -124,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Mengalami kendala saat login atau lupa data akun Anda? Layanan pelanggan CV. Mobil Juragan Merauke siap membantu pada jam operasional (06.00 - 22.00 WIT).',
+                'Mengalami kendala saat masuk akun rental? Layanan pelanggan CV. Mobil Juragan Merauke siap membantu pada jam operasional (06.00 : 22.00 WIT).',
                 style: TextStyle(
                   fontSize: AppTypography.sizeBodyLarge,
                   color: AppColors.textSecondary,
@@ -149,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'WhatsApp Resmi CS',
+                            'WhatsApp Resmi Layanan CS',
                             style: TextStyle(
                               fontSize: AppTypography.sizeCaption,
                               color: AppColors.textSecondary,
@@ -174,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: 48,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.of(ctx).pop();
@@ -212,81 +197,189 @@ class _LoginScreenState extends State<LoginScreen> {
     final hasError = auth.hasLoginError;
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      appBar: CustomAppBar(
-        title: 'Masuk Akun',
-        stepSubtitle: hasError
-            ? 'Login Gagal • Kredensial Tidak Sesuai'
-            : 'Merauke, Papua Selatan',
-        showBackButton: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Hero Card Sambutan
-              _buildHeroCard(),
-              const SizedBox(height: 16),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Top Minimal Header
+                _buildTopHeader(),
+                const SizedBox(height: 28),
 
-              // 2. Form Login Card (Email/No HP & Password)
-              _buildFormCard(auth, hasError),
-              const SizedBox(height: 16),
+                // 2. Hero Title & Subtitle (Langsung di kanvas putih, tanpa card border)
+                _buildHeroTitle(),
+                const SizedBox(height: 28),
 
-              // 3. Tombol Masuk Utama
-              _buildSubmitButton(auth, hasError),
-              const SizedBox(height: 14),
+                // 3. Banner Error jika ada
+                if (hasError) ...[
+                  _buildErrorBanner(auth.errorMessage),
+                  const SizedBox(height: 16),
+                ],
 
-              // 4. Support Box CS Merauke
-              _buildSupportBox(),
-              const SizedBox(height: 24),
+                // 4. Form Input Nomor WhatsApp dengan Prefix Box +62
+                _buildPhoneField(),
+                const SizedBox(height: 22),
 
-              // 5. Footer Registrasi & Grounding Identitas
-              _buildFooter(),
-            ],
+                // 5. Tombol Primary CTA (Navy #1E293B)
+                _buildSubmitButton(),
+                const SizedBox(height: 20),
 
+                // 6. Link Pendaftaran Akun Baru
+                _buildRegisterLink(),
+                const SizedBox(height: 36),
+
+                // 7. Footer Bantuan Ringkas (Border atas tipis)
+                _buildFooterSupport(),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeroCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
+  Widget _buildTopHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.tealLight,
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.surfaceLight,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.borderSubtle),
             ),
-            child: const Center(
-              child: Icon(
-                Icons.account_circle_outlined,
-                color: AppColors.primaryTeal,
-                size: 22,
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              size: 20,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.tealLight,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text(
+            'MobilJuragan Merauke',
+            style: TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryTeal,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Selamat Datang Kembali',
+          style: TextStyle(
+            fontSize: AppTypography.sizeDisplay,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Masukkan nomor WhatsApp Anda yang terdaftar untuk menerima kode masuk (OTP).',
+          style: TextStyle(
+            fontSize: AppTypography.sizeBodyLarge,
+            color: AppColors.textSecondary,
+            height: 1.45,
+            fontFamily: 'Inter',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorBanner(String? message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: Color(0xFFDC2626),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message ?? 'Nomor WhatsApp belum terdaftar atau tidak valid.',
+              style: const TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFB91C1C),
+                fontFamily: 'Inter',
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Portal Layanan Rental Pelanggan',
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Nomor WhatsApp',
+          style: TextStyle(
+            fontSize: AppTypography.sizeBody,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderMedium),
+          ),
+          child: Row(
+            children: [
+              // Prefix Box +62 centered tanpa bendera
+              Container(
+                width: 58,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.horizontal(left: Radius.circular(11)),
+                  border: Border(
+                    right: BorderSide(color: AppColors.borderMedium),
+                  ),
+                ),
+                child: const Text(
+                  '+62',
                   style: TextStyle(
                     fontSize: AppTypography.sizeTitle,
                     fontWeight: FontWeight.w700,
@@ -294,255 +387,59 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontFamily: 'Inter',
                   ),
                 ),
-                SizedBox(height: 3),
-                Text(
-                  'Masuk menggunakan Email atau Nomor HP terdaftar untuk mengelola sewa dan memantau status pesanan.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    color: AppColors.textSecondary,
-                    height: 1.35,
+              ),
+
+              // Input nomor telepon
+              Expanded(
+                child: TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                     fontFamily: 'Inter',
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFormCard(AuthController auth, bool hasError) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasError ? const Color(0xFFFCA5A5) : AppColors.borderSubtle,
-          width: hasError ? 1.5 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Banner Error (jika login gagal)
-          if (hasError) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFCA5A5)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    size: 16,
-                    color: Color(0xFFDC2626),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      auth.errorMessage ?? 'Email/No HP atau password salah. Cek kembali data Anda.',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFB91C1C),
-                        height: 1.35,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Field 1: Email atau Nomor WhatsApp
-          const Text(
-            'Email atau Nomor WhatsApp',
-            style: TextStyle(
-              fontSize: AppTypography.sizeBody,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _identifierController,
-            style: const TextStyle(
-              fontSize: AppTypography.sizeBodyLarge,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-            decoration: InputDecoration(
-              hintText: 'nama@domain.com atau 812-xxxx-xxxx',
-              hintStyle: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: AppTypography.sizeBody,
-                fontFamily: 'Inter',
-              ),
-              prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primaryTeal, size: 20),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-              ),
-            ),
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) {
-                return 'Email atau Nomor WhatsApp wajib diisi.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 14),
-
-          // Field 2: Password
-          const Text(
-            'Password Akun',
-            style: TextStyle(
-              fontSize: AppTypography.sizeBody,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: !_isPasswordVisible,
-            style: const TextStyle(
-              fontSize: AppTypography.sizeBodyLarge,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-            decoration: InputDecoration(
-              hintText: 'Masukkan password Anda',
-              hintStyle: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: AppTypography.sizeBody,
-                fontFamily: 'Inter',
-              ),
-              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.primaryTeal, size: 20),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: AppColors.textSecondary,
-                  size: 20,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _isPasswordVisible = !_isPasswordVisible;
-                  });
-                },
-                tooltip: _isPasswordVisible ? 'Sembunyikan password' : 'Lihat password',
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.borderMedium),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-              ),
-            ),
-            validator: (val) {
-              if (val == null || val.isEmpty) {
-                return 'Password tidak boleh kosong.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 10),
-
-          // Baris Ingat Saya & Lupa Password
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      onChanged: (val) => setState(() => _rememberMe = val ?? true),
-                      activeColor: AppColors.primaryTeal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Ingat Saya',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      color: AppColors.textSecondary,
+                  decoration: const InputDecoration(
+                    hintText: '812-xxxx-xxxx',
+                    hintStyle: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.normal,
                       fontFamily: 'Inter',
                     ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    border: InputBorder.none,
+                    isDense: true,
                   ),
-                ],
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ForgotPasswordScreen(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Lupa Password?',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryTeal,
-                    fontFamily: 'Inter',
-                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().length < 8) {
+                      return 'Masukkan nomor WhatsApp valid (minimal 8 digit).';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSubmitButton(AuthController auth, bool hasError) {
+  Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      height: (50 * MediaQuery.textScalerOf(context).scale(1)).clamp(50, 100),
+      height: 48,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
+        onPressed: _isLoading ? null : _handleRequestOtp,
         style: ElevatedButton.styleFrom(
-          backgroundColor: hasError ? const Color(0xFFDC2626) : AppColors.primaryNavy,
-          foregroundColor: AppColors.textWhite,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: AppColors.primaryNavy,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.borderMedium,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
         ),
         child: _isLoading
@@ -551,130 +448,102 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  color: Colors.white,
                 ),
               )
-            : Text(
-                hasError ? 'Coba Lagi' : 'Masuk Sekarang',
-                style: AppTypography.sectionTitle,
-              ),
-      ),
-    );
-  }
-
-  Widget _buildSupportBox() {
-    return InkWell(
-      onTap: _showSupportDialog,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDBEAFE),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.headset_mic_rounded,
-                color: AppColors.primaryNavy,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Butuh Bantuan Masuk?',
+                    'Kirim Kode OTP',
                     style: TextStyle(
-                      fontSize: AppTypography.sizeBody,
+                      fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primaryNavy,
                       fontFamily: 'Inter',
                     ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Hubungi CS Merauke: +62 812-4800-9921',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF2563EB),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 18),
                 ],
               ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 12,
-              color: Color(0xFF60A5FA),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildFooter() {
-    return Column(
-      children: [
-        Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Belum memiliki akun rental?',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
+  Widget _buildRegisterLink() {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Belum memiliki akun? ',
+            style: TextStyle(
+              fontSize: AppTypography.sizeBody,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => RegisterScreen(onSuccess: widget.onSuccess),
                 ),
+              );
+            },
+            child: const Text(
+              'Daftar baru',
+              style: TextStyle(
+                fontSize: AppTypography.sizeBody,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryTeal,
+                fontFamily: 'Inter',
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RegisterScreen(onSuccess: widget.onSuccess),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Daftar Sekarang',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterSupport() {
+    return Container(
+      padding: const EdgeInsets.only(top: 16),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Kendala saat masuk akun?',
+            style: TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          InkWell(
+            onTap: _showSupportDialog,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Hubungi CS',
                   style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
+                    fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryTeal,
                     fontFamily: 'Inter',
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Center(
-          child: Text(
-            'CV. Mobil Juragan Express Transport • Merauke, Papua Selatan',
-            style: TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              color: AppColors.textMuted,
-              fontFamily: 'Inter',
+                SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.primaryTeal),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

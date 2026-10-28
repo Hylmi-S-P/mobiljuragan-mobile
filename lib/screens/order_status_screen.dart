@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
+import '../controllers/vehicle_controller.dart';
 import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
 import '../data/remote/document_api_service.dart';
@@ -5094,6 +5095,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                 accountNumber: isPaid ? accNumberController.text.trim() : null,
                                 accountHolderName: isPaid ? accNameController.text.trim() : null,
                               );
+
+                              // Segera sinkronkan katalog armada agar badge ketersediaan langsung kembali Tersedia
+                              try {
+                                context.read<VehicleController>().refreshCatalog(force: true);
+                              } catch (_) {}
 
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
