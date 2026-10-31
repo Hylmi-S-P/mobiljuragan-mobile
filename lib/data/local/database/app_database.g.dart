@@ -1040,6 +1040,15 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _vehicleIdMeta = const VerificationMeta(
     'vehicleId',
   );
@@ -1269,6 +1278,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    userId,
     vehicleId,
     startDate,
     startTime,
@@ -1306,6 +1316,12 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
     }
     if (data.containsKey('vehicle_id')) {
       context.handle(
@@ -1497,6 +1513,10 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      ),
       vehicleId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}vehicle_id'],
@@ -1590,6 +1610,12 @@ class Booking extends DataClass implements Insertable<Booking> {
   /// Kode pemesanan unik (contoh: 'MKQ-2026-001' atau UUID/bookingCode dari backend)
   final String id;
 
+  /// Pemilik cache pesanan (ID pengguna yang sedang login).
+  ///
+  /// Null berarti baris dibuat sebelum ada sesi (data contoh untuk tamu). Baris
+  /// dengan pemilik lain tidak boleh tampil, dan dibersihkan saat akun berganti.
+  final String? userId;
+
   /// ID referensi armada kendaraan
   final String vehicleId;
 
@@ -1651,6 +1677,7 @@ class Booking extends DataClass implements Insertable<Booking> {
   final int lastFetched;
   const Booking({
     required this.id,
+    this.userId,
     required this.vehicleId,
     required this.startDate,
     required this.startTime,
@@ -1676,6 +1703,9 @@ class Booking extends DataClass implements Insertable<Booking> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || userId != null) {
+      map['user_id'] = Variable<String>(userId);
+    }
     map['vehicle_id'] = Variable<String>(vehicleId);
     map['start_date'] = Variable<int>(startDate);
     map['start_time'] = Variable<String>(startTime);
@@ -1714,6 +1744,9 @@ class Booking extends DataClass implements Insertable<Booking> {
   BookingsCompanion toCompanion(bool nullToAbsent) {
     return BookingsCompanion(
       id: Value(id),
+      userId: userId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userId),
       vehicleId: Value(vehicleId),
       startDate: Value(startDate),
       startTime: Value(startTime),
@@ -1756,6 +1789,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Booking(
       id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<String?>(json['userId']),
       vehicleId: serializer.fromJson<String>(json['vehicleId']),
       startDate: serializer.fromJson<int>(json['startDate']),
       startTime: serializer.fromJson<String>(json['startTime']),
@@ -1789,6 +1823,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<String?>(userId),
       'vehicleId': serializer.toJson<String>(vehicleId),
       'startDate': serializer.toJson<int>(startDate),
       'startTime': serializer.toJson<String>(startTime),
@@ -1814,6 +1849,7 @@ class Booking extends DataClass implements Insertable<Booking> {
 
   Booking copyWith({
     String? id,
+    Value<String?> userId = const Value.absent(),
     String? vehicleId,
     int? startDate,
     String? startTime,
@@ -1836,6 +1872,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     int? lastFetched,
   }) => Booking(
     id: id ?? this.id,
+    userId: userId.present ? userId.value : this.userId,
     vehicleId: vehicleId ?? this.vehicleId,
     startDate: startDate ?? this.startDate,
     startTime: startTime ?? this.startTime,
@@ -1867,6 +1904,7 @@ class Booking extends DataClass implements Insertable<Booking> {
   Booking copyWithCompanion(BookingsCompanion data) {
     return Booking(
       id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
       vehicleId: data.vehicleId.present ? data.vehicleId.value : this.vehicleId,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       startTime: data.startTime.present ? data.startTime.value : this.startTime,
@@ -1922,6 +1960,7 @@ class Booking extends DataClass implements Insertable<Booking> {
   String toString() {
     return (StringBuffer('Booking(')
           ..write('id: $id, ')
+          ..write('userId: $userId, ')
           ..write('vehicleId: $vehicleId, ')
           ..write('startDate: $startDate, ')
           ..write('startTime: $startTime, ')
@@ -1949,6 +1988,7 @@ class Booking extends DataClass implements Insertable<Booking> {
   @override
   int get hashCode => Object.hashAll([
     id,
+    userId,
     vehicleId,
     startDate,
     startTime,
@@ -1975,6 +2015,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       identical(this, other) ||
       (other is Booking &&
           other.id == this.id &&
+          other.userId == this.userId &&
           other.vehicleId == this.vehicleId &&
           other.startDate == this.startDate &&
           other.startTime == this.startTime &&
@@ -1999,6 +2040,7 @@ class Booking extends DataClass implements Insertable<Booking> {
 
 class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<String> id;
+  final Value<String?> userId;
   final Value<String> vehicleId;
   final Value<int> startDate;
   final Value<String> startTime;
@@ -2022,6 +2064,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<int> rowid;
   const BookingsCompanion({
     this.id = const Value.absent(),
+    this.userId = const Value.absent(),
     this.vehicleId = const Value.absent(),
     this.startDate = const Value.absent(),
     this.startTime = const Value.absent(),
@@ -2046,6 +2089,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   });
   BookingsCompanion.insert({
     required String id,
+    this.userId = const Value.absent(),
     required String vehicleId,
     required int startDate,
     required String startTime,
@@ -2082,6 +2126,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
        lastFetched = Value(lastFetched);
   static Insertable<Booking> custom({
     Expression<String>? id,
+    Expression<String>? userId,
     Expression<String>? vehicleId,
     Expression<int>? startDate,
     Expression<String>? startTime,
@@ -2106,6 +2151,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
       if (vehicleId != null) 'vehicle_id': vehicleId,
       if (startDate != null) 'start_date': startDate,
       if (startTime != null) 'start_time': startTime,
@@ -2135,6 +2181,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
 
   BookingsCompanion copyWith({
     Value<String>? id,
+    Value<String?>? userId,
     Value<String>? vehicleId,
     Value<int>? startDate,
     Value<String>? startTime,
@@ -2159,6 +2206,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   }) {
     return BookingsCompanion(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       vehicleId: vehicleId ?? this.vehicleId,
       startDate: startDate ?? this.startDate,
       startTime: startTime ?? this.startTime,
@@ -2189,6 +2237,9 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
     }
     if (vehicleId.present) {
       map['vehicle_id'] = Variable<String>(vehicleId.value);
@@ -2266,6 +2317,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   String toString() {
     return (StringBuffer('BookingsCompanion(')
           ..write('id: $id, ')
+          ..write('userId: $userId, ')
           ..write('vehicleId: $vehicleId, ')
           ..write('startDate: $startDate, ')
           ..write('startTime: $startTime, ')
@@ -2755,6 +2807,7 @@ typedef $$VehiclesTableProcessedTableManager =
     >;
 typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   required String id,
+  Value<String?> userId,
   required String vehicleId,
   required int startDate,
   required String startTime,
@@ -2779,6 +2832,7 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
 });
 typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<String> id,
+  Value<String?> userId,
   Value<String> vehicleId,
   Value<int> startDate,
   Value<String> startTime,
@@ -2813,6 +2867,11 @@ class $$BookingsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2931,6 +2990,11 @@ class $$BookingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get vehicleId => $composableBuilder(
     column: $table.vehicleId,
     builder: (column) => ColumnOrderings(column),
@@ -3043,6 +3107,9 @@ class $$BookingsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 
   GeneratedColumn<String> get vehicleId =>
       $composableBuilder(column: $table.vehicleId, builder: (column) => column);
@@ -3162,6 +3229,7 @@ class $$BookingsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String?> userId = const Value.absent(),
                 Value<String> vehicleId = const Value.absent(),
                 Value<int> startDate = const Value.absent(),
                 Value<String> startTime = const Value.absent(),
@@ -3185,6 +3253,7 @@ class $$BookingsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => BookingsCompanion(
                 id: id,
+                userId: userId,
                 vehicleId: vehicleId,
                 startDate: startDate,
                 startTime: startTime,
@@ -3210,6 +3279,7 @@ class $$BookingsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String?> userId = const Value.absent(),
                 required String vehicleId,
                 required int startDate,
                 required String startTime,
@@ -3233,6 +3303,7 @@ class $$BookingsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => BookingsCompanion.insert(
                 id: id,
+                userId: userId,
                 vehicleId: vehicleId,
                 startDate: startDate,
                 startTime: startTime,

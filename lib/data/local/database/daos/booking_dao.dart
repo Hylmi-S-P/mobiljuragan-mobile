@@ -74,4 +74,14 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
   Future<int> clearAllBookings() async {
     return delete(bookings).go();
   }
+
+  /// Menghapus cache milik akun lain (termasuk baris lama tanpa pemilik).
+  ///
+  /// Dipakai setelah login berhasil: cache akun sebelumnya tidak boleh ikut
+  /// tampil di akun baru.
+  Future<int> deleteBookingsNotOwnedBy(String userId) async {
+    return (delete(bookings)
+          ..where((tbl) => tbl.userId.isNull() | tbl.userId.isNotIn([userId])))
+        .go();
+  }
 }

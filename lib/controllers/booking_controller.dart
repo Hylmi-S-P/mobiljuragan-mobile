@@ -82,6 +82,8 @@ class BookingController extends ChangeNotifier {
     final repo = repository;
     if (repo != null) {
       try {
+        // Pastikan filter pemilik cache sudah terpasang sebelum membaca data.
+        await repo.refreshSession();
         final saved = await repo.getAllBookings();
         _bookingHistory.clear();
         _bookingHistory.addAll(saved);

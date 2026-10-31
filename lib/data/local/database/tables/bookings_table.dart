@@ -5,6 +5,12 @@ class Bookings extends Table {
   /// Kode pemesanan unik (contoh: 'MKQ-2026-001' atau UUID/bookingCode dari backend)
   TextColumn get id => text()();
 
+  /// Pemilik cache pesanan (ID pengguna yang sedang login).
+  ///
+  /// Null berarti baris dibuat sebelum ada sesi (data contoh untuk tamu). Baris
+  /// dengan pemilik lain tidak boleh tampil, dan dibersihkan saat akun berganti.
+  TextColumn get userId => text().nullable()();
+
   /// ID referensi armada kendaraan
   TextColumn get vehicleId => text()();
 

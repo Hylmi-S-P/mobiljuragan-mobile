@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../data/local/secure/secure_storage_service.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/booking_repository.dart';
 import '../models/user_model.dart';
 
 /// Controller untuk mengelola autentikasi berbasis OTP WhatsApp dan sesi pengguna
@@ -8,6 +9,10 @@ import '../models/user_model.dart';
 class AuthController extends ChangeNotifier {
   final AuthRepository? repository;
   final SecureStorageService? secureStorage;
+
+  /// Cache pesanan lokal. Dipakai untuk memastikan riwayat satu akun tidak
+  /// terbawa ke akun lain: dibersihkan saat logout dan saat akun berganti.
+  final BookingRepository? bookingRepository;
 
   UserModel? _currentUser;
   bool _isLoggedIn = false;
@@ -23,6 +28,7 @@ class AuthController extends ChangeNotifier {
   AuthController({
     this.repository,
     this.secureStorage,
+    this.bookingRepository,
   });
 
   UserModel? get currentUser => _currentUser;
@@ -95,6 +101,17 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Dipanggil setiap kali sesi baru dimulai.
+  ///
+  /// Membaca ulang pemilik cache dari secure storage lalu membuang cache akun
+  /// lain, supaya halaman riwayat tidak menampilkan pesanan pemilik sebelumnya.
+  Future<void> _onSessionStarted() async {
+    final bookingRepo = bookingRepository;
+    if (bookingRepo == null) return;
+    await bookingRepo.refreshSession();
+    await bookingRepo.purgeOtherAccounts();
+  }
+
   /// Menyimpan data pendaftaran sebelum verifikasi kode OTP
   void setPendingRegistration({
     required String name,
@@ -154,6 +171,7 @@ class AuthController extends ChangeNotifier {
           _errorMessage = null;
           _hasSecureToken = true;
           _pendingRegistration = null;
+          await _onSessionStarted();
           notifyListeners();
           return true;
         }
@@ -181,6 +199,7 @@ class AuthController extends ChangeNotifier {
       _errorMessage = null;
       _pendingRegistration = null;
       await _saveSecureTokenAsync(newUser);
+      await _onSessionStarted();
       notifyListeners();
       return true;
     } else {
@@ -211,6 +230,7 @@ class AuthController extends ChangeNotifier {
           _hasLoginError = false;
           _errorMessage = null;
           _hasSecureToken = true;
+          await _onSessionStarted();
           notifyListeners();
           return true;
         }
@@ -237,6 +257,7 @@ class AuthController extends ChangeNotifier {
         isVerified: true,
       );
       await _saveSecureTokenAsync(_currentUser!);
+      await _onSessionStarted();
       _pendingRegistration = null;
       notifyListeners();
       return true;
@@ -261,6 +282,16 @@ class AuthController extends ChangeNotifier {
     if (repo != null) {
       await repo.logout();
     }
+
+    /* Cache pesanan bersifat sementara; server tetap sumber kebenaran. Menghapus
+       seluruh cache saat logout adalah cara paling aman agar akun berikutnya
+       tidak melihat riwayat pemilik sebelumnya. */
+    final bookingRepo = bookingRepository;
+    if (bookingRepo != null) {
+      await bookingRepo.clearLocalBookings();
+      await bookingRepo.refreshSession();
+    }
+
     notifyListeners();
   }
 
@@ -277,7 +308,7 @@ class AuthController extends ChangeNotifier {
     );
     _isLoggedIn = true;
     _hasLoginError = false;
-    _saveSecureTokenAsync(_currentUser!);
+    _saveSecureTokenAsync(_currentUser!).then((_) => _onSessionStarted());
     notifyListeners();
   }
 

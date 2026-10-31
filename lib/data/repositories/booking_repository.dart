@@ -1,17 +1,65 @@
 import 'dart:async';
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../core/network/api_client.dart';
 import '../../models/booking_model.dart';
 import '../../models/vehicle_model.dart';
+import '../local/database/app_database.dart';
 import '../local/database/daos/booking_dao.dart';
+import '../local/secure/secure_storage_service.dart';
 import '../remote/booking_api_service.dart';
 
 /// Repository untuk penyimpanan dan sinkronisasi data pemesanan rental mobil (Offline-First Drift SQLite)
 class BookingRepository {
   final BookingDao _bookingDao;
   final BookingApiService _apiService;
+  final SecureStorageService? _secureStorage;
 
-  BookingRepository(this._bookingDao, [BookingApiService? apiService])
-      : _apiService = apiService ?? BookingApiService();
+  /// Pemilik cache yang sedang aktif.
+  ///
+  /// Null berarti belum ada sesi (mode tamu). Nilai ini di-refresh dari secure
+  /// storage setiap kali sesi berubah, jadi satu perangkat tidak pernah
+  /// menampilkan riwayat pesanan akun lain.
+  String? _userId;
+
+  BookingRepository(
+    this._bookingDao, [
+    BookingApiService? apiService,
+    SecureStorageService? secureStorage,
+  ])  : _apiService = apiService ?? BookingApiService(),
+        _secureStorage = secureStorage;
+
+  /// Membaca ulang identitas pemilik cache dari secure storage.
+  Future<String?> refreshSession() async {
+    _userId = await _secureStorage?.getUserId();
+    return _userId;
+  }
+
+  String? get activeUserId => _userId;
+
+  /// Menetapkan pemilik cache tanpa secure storage (dipakai pengujian).
+  @visibleForTesting
+  void setActiveUserForTest(String? userId) {
+    _userId = userId;
+  }
+
+  /// Memfilter baris Drift milik akun aktif.
+  ///
+  /// Saat belum ada sesi (mode tamu), baris yang ada adalah data contoh/kurasi
+  /// yang memang ditampilkan ke pengunjung; bukan riwayat orang lain, karena
+  /// logout selalu mengosongkan cache.
+  List<Booking> _ownedRows(List<Booking> rows) {
+    final owner = _userId;
+    if (owner == null) return rows;
+    return rows.where((row) => row.userId == owner).toList();
+  }
+
+  /// Menempelkan kepemilikan pada companion sebelum ditulis.
+  BookingsCompanion _owned(BookingsCompanion companion) {
+    final owner = _userId;
+    if (owner == null) return companion;
+    return companion.copyWith(userId: Value(owner));
+  }
 
   Map<String, VehicleModel> get _defaultVehicleMap => {
         for (final v in VehicleModel.sampleVehicles) v.id: v,
@@ -94,7 +142,7 @@ class BookingRepository {
   /// Mengambil seluruh riwayat pemesanan secara sinkron dari SQLite lokal
   Future<List<BookingModel>> getAllBookings([Map<String, VehicleModel>? vehicleMap]) async {
     final map = vehicleMap ?? _defaultVehicleMap;
-    final driftList = await _bookingDao.getAllBookings();
+    final driftList = _ownedRows(await _bookingDao.getAllBookings());
     return driftList.map((entry) {
       final vehicle = _resolveVehicle(
         vehicleId: entry.vehicleId,
@@ -108,7 +156,7 @@ class BookingRepository {
   Stream<List<BookingModel>> watchAllBookings([Map<String, VehicleModel>? vehicleMap]) {
     final map = vehicleMap ?? _defaultVehicleMap;
     return _bookingDao.watchAllBookings().map((driftList) {
-      return driftList.map((entry) {
+      return _ownedRows(driftList).map((entry) {
         final vehicle = _resolveVehicle(
           vehicleId: entry.vehicleId,
           customMap: map,
@@ -122,7 +170,7 @@ class BookingRepository {
   Stream<List<BookingModel>> watchActiveBookings([Map<String, VehicleModel>? vehicleMap]) {
     final map = vehicleMap ?? _defaultVehicleMap;
     return _bookingDao.watchActiveBookings().map((driftList) {
-      return driftList.map((entry) {
+      return _ownedRows(driftList).map((entry) {
         final vehicle = _resolveVehicle(
           vehicleId: entry.vehicleId,
           customMap: map,
@@ -169,7 +217,7 @@ class BookingRepository {
           pickupLatitude: pickupLatitude,
           pickupLongitude: pickupLongitude,
         );
-        await _bookingDao.insertOrUpdateBooking(remoteModel.toCompanion());
+        await _bookingDao.insertOrUpdateBooking(_owned(remoteModel.toCompanion()));
         return remoteModel;
       }
     } on ApiException {
@@ -201,7 +249,7 @@ class BookingRepository {
       isFinalTariffConfirmed: false,
     );
 
-    await _bookingDao.insertOrUpdateBooking(fallbackModel.toCompanion());
+    await _bookingDao.insertOrUpdateBooking(_owned(fallbackModel.toCompanion()));
     return fallbackModel;
   }
 
@@ -226,7 +274,7 @@ class BookingRepository {
         );
 
         final updatedModel = BookingModel.fromJson(res, vehicle);
-        await _bookingDao.insertOrUpdateBooking(updatedModel.toCompanion());
+        await _bookingDao.insertOrUpdateBooking(_owned(updatedModel.toCompanion()));
         return updatedModel;
       }
     } catch (_) {}
@@ -237,6 +285,7 @@ class BookingRepository {
   Future<List<BookingModel>> syncAllBookingsFromRemote([Map<String, VehicleModel>? vehicleMap]) async {
     final map = vehicleMap ?? _defaultVehicleMap;
     try {
+      await refreshSession();
       final list = await _apiService.fetchBookings();
       await _bookingDao.clearAllBookings();
       if (list.isNotEmpty) {
@@ -254,7 +303,7 @@ class BookingRepository {
               customMap: map,
             );
             final model = BookingModel.fromJson(json, vehicle);
-            await _bookingDao.insertOrUpdateBooking(model.toCompanion());
+            await _bookingDao.insertOrUpdateBooking(_owned(model.toCompanion()));
             synced.add(model);
           }
         }
@@ -270,12 +319,22 @@ class BookingRepository {
     await _bookingDao.clearAllBookings();
   }
 
+  /// Membuang cache milik akun lain setelah login berhasil.
+  ///
+  /// Baris tanpa pemilik (data contoh tamu, atau sisa versi lama) ikut dibuang
+  /// supaya tidak menyamar sebagai riwayat akun yang baru masuk.
+  Future<void> purgeOtherAccounts() async {
+    final owner = _userId ?? await refreshSession();
+    if (owner == null) return;
+    await _bookingDao.deleteBookingsNotOwnedBy(owner);
+  }
+
   /// Menyimpan pesanan atau pembaruan status ke dalam SQLite lokal (Offline-First)
   /// Hanya mengirimkan createBooking ke remote jika pesanan belum ada di database lokal,
   /// guna mencegah duplikasi pesanan saat pembaruan status (seperti pembatalan atau konfirmasi COD).
   Future<void> saveBooking(BookingModel booking) async {
     final existing = await _bookingDao.getBookingById(booking.id);
-    await _bookingDao.insertOrUpdateBooking(booking.toCompanion());
+    await _bookingDao.insertOrUpdateBooking(_owned(booking.toCompanion()));
 
     if (existing == null) {
       try {

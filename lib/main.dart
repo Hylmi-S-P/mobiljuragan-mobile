@@ -41,6 +41,8 @@ void main() async {
   );
   final bookingRepo = BookingRepository(
     appDatabase.bookingDao,
+    null,
+    secureStorage,
   );
 
   // Seed awal database lokal jika aplikasi baru pertama kali dibuka
@@ -83,6 +85,7 @@ void main() async {
           create: (_) => AuthController(
             repository: authRepo,
             secureStorage: secureStorage,
+            bookingRepository: bookingRepo,
           )..initSession(),
         ),
         ChangeNotifierProvider(
