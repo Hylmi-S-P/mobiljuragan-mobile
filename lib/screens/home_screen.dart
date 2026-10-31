@@ -46,8 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 22),
               _buildReservationStatusSection(),
               const SizedBox(height: 16),
-              _buildAssuranceBanner(),
-              const SizedBox(height: 22),
               _buildPrimaryCTA(),
               const SizedBox(height: 16),
             ],
@@ -492,48 +490,6 @@ class _HomeScreenState extends State<HomeScreen> {
           color: text,
           fontFamily: 'Inter',
         ),
-      ),
-    );
-  }
-
-  Widget _buildAssuranceBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.verified_rounded, color: AppColors.primaryTeal, size: 22),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Armada Bersih, Terawat & Sopir Ramah',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Gratis antar-jemput Bandara Mopah & Hotel Kota',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

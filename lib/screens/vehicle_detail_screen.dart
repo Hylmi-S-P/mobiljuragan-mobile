@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
+import '../core/constants/status_labels.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -82,7 +83,7 @@ class VehicleDetailScreen extends StatelessWidget {
                               child: Text(
                                 currentVehicle.isAvailable
                                     ? 'Tersedia'
-                                    : (currentVehicle.isBooked ? 'Tersewa' : currentVehicle.availabilityTag),
+                                    : vehicleAvailabilityLabel(currentVehicle.availability),
                                 style: TextStyle(
                                   fontSize: AppTypography.sizeCaption,
                                   fontWeight: FontWeight.w600,
@@ -217,7 +218,7 @@ class VehicleDetailScreen extends StatelessWidget {
                 label: 'Status Unit',
                 value: currentVehicle.isAvailable
                     ? 'Tersedia'
-                    : (currentVehicle.isBooked ? 'Tersewa' : currentVehicle.availabilityTag),
+                    : vehicleAvailabilityLabel(currentVehicle.availability),
                 valueColor: currentVehicle.isAvailable
                     ? AppColors.badgeGreenText
                     : const Color(0xFF92400E),
@@ -329,7 +330,7 @@ class VehicleDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isBooked ? 'Armada Sedang Tersewa' : 'Armada Sedang Tidak Tersedia',
+                  isBooked ? 'Armada Sedang Disewa' : 'Armada Sedang Tidak Tersedia',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,

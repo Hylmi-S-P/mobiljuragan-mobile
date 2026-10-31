@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/constants/status_labels.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -120,7 +121,7 @@ class VehicleCardItem extends StatelessWidget {
                             child: Text(
                               vehicle.isAvailable
                                   ? 'Tersedia'
-                                  : (vehicle.isBooked ? 'Tersewa' : vehicle.availabilityTag),
+                                  : vehicleAvailabilityLabel(vehicle.availability),
                               style: TextStyle(
                                 fontSize: AppTypography.sizeMicro,
                                 fontWeight: FontWeight.w600,

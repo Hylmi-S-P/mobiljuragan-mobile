@@ -106,8 +106,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     const SizedBox(height: 16),
                     _buildCategoryFilterBar(vehicleController),
                     const SizedBox(height: 12),
-                    _buildNoticeCard(vehicleController, filteredVehicles.length),
-                    const SizedBox(height: 16),
                     if (filteredVehicles.isEmpty)
                       _buildEmptyState(vehicleController)
                     else
@@ -267,42 +265,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           TextButton(
             onPressed: () => controller.setCategory('Semua'),
             child: const Text('Tampilkan Semua Armada'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoticeCard(VehicleController controller, int count) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.tealLight.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$count armada siap jalan (${controller.totalFleetCount} unit terdaftar di Merauke)',
-            style: const TextStyle(
-              fontSize: AppTypography.sizeBody,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryTeal,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Gunakan filter di atas untuk melihat pilihan kategori armada lainnya',
-            style: TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              fontWeight: FontWeight.w400,
-              color: AppColors.primaryTeal,
-              fontFamily: 'Inter',
-            ),
           ),
         ],
       ),

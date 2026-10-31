@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../data/local/database/app_database.dart';
+import '../core/constants/status_labels.dart';
 
 /// Model data kendaraan untuk katalog dan detail rental MobilJuragan
 class VehicleModel {
@@ -41,20 +42,14 @@ class VehicleModel {
     this.updatedAt,
   });
 
-  /// Penanda ketersediaan unit untuk reservasi baru
-  bool get isAvailable {
-    final tag = availabilityTag.toLowerCase();
-    if (tag.contains('sedang disewa') || tag.contains('tersewa') || tag.contains('perawatan') || tag.contains('tidak tersedia')) {
-      return false;
-    }
-    return tag.contains('tersedia');
-  }
+  /// Status armada hasil pemetaan tag, dipakai semua layar lewat satu sumber.
+  VehicleAvailability get availability => classifyVehicleAvailability(availabilityTag);
 
-  /// Penanda unit sedang terkunci karena telah dibayar atau digunakan penyewa lain
-  bool get isBooked {
-    final tag = availabilityTag.toLowerCase();
-    return tag.contains('sedang disewa') || tag.contains('tersewa');
-  }
+  /// Penanda ketersediaan unit untuk reservasi baru
+  bool get isAvailable => isVehicleRentable(availability);
+
+  /// Penanda unit sedang terkunci karena dipakai pesanan aktif
+  bool get isBooked => availability == VehicleAvailability.disewa;
 
   /// Konversi dari entitas tabel Drift (Vehicle) ke domain model VehicleModel
   factory VehicleModel.fromDrift(Vehicle entry) {
@@ -179,19 +174,31 @@ class VehicleModel {
       detailImg = 'assets/images/hilux_card.png';
     }
 
-    // Evaluasi status ketersediaan armada
+    /* Status ketersediaan diturunkan dari operationalStatus dan pesanan aktif.
+       IN_SERVICE muncul setelah sewa selesai (masa pemeriksaan), jadi unit tidak
+       langsung dianggap bisa dipesan lagi. */
     final opStatus = json['operationalStatus']?.toString().toUpperCase() ?? 'AVAILABLE';
     final bookingsList = json['bookings'] as List<dynamic>?;
     final bool hasActiveBooking = bookingsList != null && bookingsList.isNotEmpty;
 
-    String calculatedAvailability = 'Tersedia • Lepas Kunci';
-    if (opStatus == 'BOOKED' || hasActiveBooking) {
-      calculatedAvailability = 'Tersewa';
+    final VehicleAvailability availability;
+    if (opStatus == 'IN_SERVICE') {
+      availability = VehicleAvailability.pemeriksaan;
+    } else if (opStatus == 'BOOKED' || hasActiveBooking) {
+      availability = VehicleAvailability.disewa;
     } else if (opStatus == 'MAINTENANCE') {
-      calculatedAvailability = 'Perawatan';
+      availability = VehicleAvailability.perawatan;
     } else if (opStatus == 'UNAVAILABLE') {
-      calculatedAvailability = 'Tidak Tersedia';
+      availability = VehicleAvailability.tidakTersedia;
+    } else {
+      availability = VehicleAvailability.tersedia;
     }
+
+    /* Unit tersedia tetap membawa keterangan skema sewa supaya kartu tidak
+       kehilangan konteks; status lain cukup memakai labelnya. */
+    final calculatedAvailability = availability == VehicleAvailability.tersedia
+        ? 'Tersedia • Lepas Kunci'
+        : vehicleAvailabilityLabel(availability);
 
     return VehicleModel(
       id: extId,
@@ -201,7 +208,7 @@ class VehicleModel {
       seatCapacity: seating,
       transmission: trans == 'AUTOMATIC' || trans == 'Matic' ? 'Matic' : 'Manual',
       bodyType: bodyType,
-      condition: hasActiveBooking ? 'Sedang Digunakan' : 'Siap Pakai & Terawat',
+      condition: vehicleConditionLabel(availability),
       availabilityTag: calculatedAvailability,
       isPopular: rawName.toUpperCase().contains('AVANZA'),
       pricePerDay: rate,
