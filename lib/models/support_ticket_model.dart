@@ -163,8 +163,6 @@ class SupportTicketModel {
         return 'Pertanyaan Umum';
     }
   }
-
-  static List<SupportTicketModel> get sampleTickets => const [];
 }
 
 /// Entitas pesan percakapan chat bantuan (AI Handoff & CS Admin)
@@ -193,8 +191,12 @@ class ChatMessageModel {
     this.isFailed = false,
   });
 
-  factory ChatMessageModel.fromJson(Map<String, dynamic> json, {String? conversationKey}) {
-    final isCustomer = json['isCustomer'] == true || json['authorRole'] == 'CUSTOMER';
+  factory ChatMessageModel.fromJson(
+    Map<String, dynamic> json, {
+    String? conversationKey,
+  }) {
+    final isCustomer =
+        json['isCustomer'] == true || json['authorRole'] == 'CUSTOMER';
     final isAi = json['isAi'] == true;
 
     final String authorName;
@@ -203,16 +205,21 @@ class ChatMessageModel {
     } else if (isAi) {
       authorName = 'Asisten AI MobilJuragan';
     } else {
-      authorName = json['sender']?['fullName']?.toString() ??
+      authorName =
+          json['sender']?['fullName']?.toString() ??
           json['author']?['fullName']?.toString() ??
           'Admin Operasional Merauke';
     }
 
     final rawDate = json['sentAt']?.toString() ?? json['createdAt']?.toString();
-    final parsedDate = rawDate != null ? (DateTime.tryParse(rawDate) ?? DateTime.now()) : DateTime.now();
+    final parsedDate = rawDate != null
+        ? (DateTime.tryParse(rawDate) ?? DateTime.now())
+        : DateTime.now();
 
     return ChatMessageModel(
-      id: json['id']?.toString() ?? 'msg-${DateTime.now().millisecondsSinceEpoch}',
+      id:
+          json['id']?.toString() ??
+          'msg-${DateTime.now().millisecondsSinceEpoch}',
       message: json['body']?.toString() ?? json['message']?.toString() ?? '',
       timestamp: parsedDate,
       isFromUser: isCustomer,

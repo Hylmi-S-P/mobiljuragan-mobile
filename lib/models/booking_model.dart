@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
+
 import '../data/local/database/app_database.dart';
 import 'vehicle_model.dart';
 
@@ -27,7 +29,8 @@ enum PaymentMethodType {
 /// Model item penyesuaian biaya / surcharge / deposit / diskon yang diinput dinamis oleh admin dari dashboard website
 class BookingFeeAdjustment {
   final String title;
-  final int amount; // Nilai rupiah (+ untuk surcharge/deposit, - untuk potongan)
+  final int
+  amount; // Nilai rupiah (+ untuk surcharge/deposit, - untuk potongan)
   final String? note; // Keterangan opsional misal "Refundable", "Promo perdana"
 
   const BookingFeeAdjustment({
@@ -39,10 +42,10 @@ class BookingFeeAdjustment {
   bool get isDeduction => amount < 0;
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'amount': amount,
-        if (note != null) 'note': note,
-      };
+    'title': title,
+    'amount': amount,
+    if (note != null) 'note': note,
+  };
 
   factory BookingFeeAdjustment.fromJson(Map<String, dynamic> json) {
     return BookingFeeAdjustment(
@@ -70,18 +73,19 @@ class DriverAssignment {
   });
 
   Map<String, dynamic> toJson() => {
-        'driverName': driverName,
-        'staffId': staffId,
-        'phoneNumber': phoneNumber,
-        'operationalRole': operationalRole,
-      };
+    'driverName': driverName,
+    'staffId': staffId,
+    'phoneNumber': phoneNumber,
+    'operationalRole': operationalRole,
+  };
 
   factory DriverAssignment.fromJson(Map<String, dynamic> json) {
     return DriverAssignment(
       driverName: json['driverName']?.toString() ?? '',
       staffId: json['staffId']?.toString() ?? '',
       phoneNumber: json['phoneNumber']?.toString() ?? '',
-      operationalRole: json['operationalRole']?.toString() ??
+      operationalRole:
+          json['operationalRole']?.toString() ??
           'Staf Pengemudi Tetap MobilJuragan Merauke',
     );
   }
@@ -170,7 +174,10 @@ class BookingModel {
   }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
 
   /// Pemetaan status dari respons backend Prisma ke BookingStatus aplikasi mobile
-  static BookingStatus mapBackendStatus(String backendStatus, String? tariffStatus) {
+  static BookingStatus mapBackendStatus(
+    String backendStatus,
+    String? tariffStatus,
+  ) {
     switch (backendStatus.toUpperCase()) {
       case 'CREATED':
         return BookingStatus.permintaanDiterima;
@@ -214,11 +221,16 @@ class BookingModel {
     }
 
     List<BookingFeeAdjustment> adjustments = [];
-    if (entry.adminAdjustmentsJson != null && entry.adminAdjustmentsJson!.isNotEmpty) {
+    if (entry.adminAdjustmentsJson != null &&
+        entry.adminAdjustmentsJson!.isNotEmpty) {
       try {
         final decoded = jsonDecode(entry.adminAdjustmentsJson!) as List;
         adjustments = decoded
-            .map((e) => BookingFeeAdjustment.fromJson(Map<String, dynamic>.from(e as Map)))
+            .map(
+              (e) => BookingFeeAdjustment.fromJson(
+                Map<String, dynamic>.from(e as Map),
+              ),
+            )
             .toList();
       } catch (_) {}
     } else if (entry.isFinalTariffConfirmed) {
@@ -251,7 +263,8 @@ class BookingModel {
 
   /// Konversi ke Drift BookingsCompanion
   BookingsCompanion toCompanion({int? lastFetchedMillis}) {
-    final nowMillis = lastFetchedMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+    final nowMillis =
+        lastFetchedMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch;
     final adjustmentsJson = adminAdjustments.isNotEmpty
         ? jsonEncode(adminAdjustments.map((a) => a.toJson()).toList())
         : null;
@@ -285,10 +298,17 @@ class BookingModel {
   }
 
   /// Factory untuk mengonversi data JSON resmi dari REST API backend
-  factory BookingModel.fromJson(Map<String, dynamic> json, VehicleModel vehicle) {
-    final rawId = json['bookingCode']?.toString() ?? json['id']?.toString() ?? '';
-    final start = DateTime.tryParse(json['startDateTime']?.toString() ?? '')?.toLocal() ?? DateTime.now();
-    final end = DateTime.tryParse(json['endDateTime']?.toString() ?? '')?.toLocal() ??
+  factory BookingModel.fromJson(
+    Map<String, dynamic> json,
+    VehicleModel vehicle,
+  ) {
+    final rawId =
+        json['bookingCode']?.toString() ?? json['id']?.toString() ?? '';
+    final start =
+        DateTime.tryParse(json['startDateTime']?.toString() ?? '')?.toLocal() ??
+        DateTime.now();
+    final end =
+        DateTime.tryParse(json['endDateTime']?.toString() ?? '')?.toLocal() ??
         start.add(const Duration(days: 1));
     final duration = end.difference(start).inDays;
     final withDriver = json['rentalType'] == 'WITH_DRIVER';
@@ -303,18 +323,24 @@ class BookingModel {
       if (rawQuoted is num) {
         quotedInt = rawQuoted.toInt();
       } else {
-        quotedInt = int.tryParse(rawQuoted.toString().replaceAll(RegExp(r'[^\d]'), ''));
+        quotedInt = int.tryParse(
+          rawQuoted.toString().replaceAll(RegExp(r'[^\d]'), ''),
+        );
       }
     }
 
     final isTariffConfirmed =
-        tariffStatus == 'CONFIRMED' || (quotedInt != null && quotedInt > 0) || rawStatus == 'CONFIRMED';
+        tariffStatus == 'CONFIRMED' ||
+        (quotedInt != null && quotedInt > 0) ||
+        rawStatus == 'CONFIRMED';
 
     final List<BookingFeeAdjustment> adjustments = [];
     if (json['surcharges'] is List) {
       for (final s in json['surcharges'] as List) {
         if (s is Map) {
-          adjustments.add(BookingFeeAdjustment.fromJson(Map<String, dynamic>.from(s)));
+          adjustments.add(
+            BookingFeeAdjustment.fromJson(Map<String, dynamic>.from(s)),
+          );
         }
       }
     }
@@ -325,7 +351,8 @@ class BookingModel {
       final fullName = d['fullName']?.toString().trim();
       if (fullName != null && fullName.isNotEmpty) {
         final phone = d['phoneNumber']?.toString().trim() ?? '';
-        final staffId = d['externalId']?.toString() ?? d['id']?.toString() ?? '';
+        final staffId =
+            d['externalId']?.toString() ?? d['id']?.toString() ?? '';
         final routeScope = d['routeScope']?.toString();
         final role = routeScope == 'LUAR_KOTA'
             ? 'Staf Pengemudi Rute Luar Kota Merauke'
@@ -340,11 +367,14 @@ class BookingModel {
     }
 
     final createdAt =
-        DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now();
+        DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ??
+        DateTime.now();
 
     final doc = json['document'];
     final String? docStatus = doc is Map ? doc['status']?.toString() : null;
-    final String? docRejectionReason = doc is Map ? doc['rejectionReason']?.toString() : null;
+    final String? docRejectionReason = doc is Map
+        ? doc['rejectionReason']?.toString()
+        : null;
     final pay = json['payment'];
     final String? payStatus = pay is Map ? pay['status']?.toString() : null;
 
@@ -356,7 +386,8 @@ class BookingModel {
           '${start.hour.toString().padLeft(2, '0')}.${start.minute.toString().padLeft(2, '0')} WIT',
       durationDays: duration > 0 ? duration : 1,
       withDriver: withDriver,
-      pickupLocation: json['pickupLocation']?.toString() ?? 'Bandara Mopah Merauke',
+      pickupLocation:
+          json['pickupLocation']?.toString() ?? 'Bandara Mopah Merauke',
       note: json['customerRequest']?.toString(),
       status: mappedStatus,
       createdAt: createdAt,
@@ -566,8 +597,4 @@ class BookingModel {
       paymentStatus: paymentStatus ?? this.paymentStatus,
     );
   }
-
-
-  /// Data dummy riwayat pesanan awal (dikosongkan agar riwayat selesai bernilai 0 di awal aplikasi)
-  static List<BookingModel> get initialSampleBookings => const [];
 }

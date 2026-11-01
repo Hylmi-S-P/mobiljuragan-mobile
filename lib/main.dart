@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import 'controllers/auth_controller.dart';
 import 'controllers/booking_controller.dart';
 import 'controllers/support_controller.dart';
@@ -36,15 +37,12 @@ void main() async {
     vehicleDao: appDatabase.vehicleDao,
     settingsService: settingsService,
   );
-  final authRepo = AuthRepository(
-    secureStorage: secureStorage,
-  );
+  final authRepo = AuthRepository(secureStorage: secureStorage);
   final bookingRepo = BookingRepository(
     appDatabase.bookingDao,
+    null,
+    appDatabase.vehicleDao,
   );
-
-  // Seed awal database lokal jika aplikasi baru pertama kali dibuka
-  await vehicleRepo.ensureSeeded();
 
   // Set system overlay style untuk status bar yang bersih dan transparan
   SystemChrome.setSystemUIOverlayStyle(
@@ -75,15 +73,12 @@ void main() async {
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => BookingController(
-            repository: bookingRepo,
-          ),
+          create: (_) => BookingController(repository: bookingRepo),
         ),
         ChangeNotifierProvider(
-          create: (_) => AuthController(
-            repository: authRepo,
-            secureStorage: secureStorage,
-          )..initSession(),
+          create: (_) =>
+              AuthController(repository: authRepo, secureStorage: secureStorage)
+                ..initSession(),
         ),
         ChangeNotifierProvider(
           create: (_) => SupportController()

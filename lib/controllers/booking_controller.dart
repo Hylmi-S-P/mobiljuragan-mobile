@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+
 import '../data/remote/booking_api_service.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
@@ -10,8 +12,12 @@ class BookingController extends ChangeNotifier {
   final BookingRepository? repository;
   final BookingApiService _apiService = BookingApiService();
 
-  // Data formulir wizard pemesanan
-  VehicleModel? _selectedVehicle = VehicleModel.sampleVehicles.first;
+  // Data formulir wizard pemesanan.
+  //
+  // Kosong di awal: pelanggan memilih sendiri unit yang tersedia. Sebelumnya
+  // formulir sudah terisi unit pertama dari daftar contoh, sehingga pesanan
+  // bisa terkirim untuk mobil yang tidak pernah dipilih.
+  VehicleModel? _selectedVehicle;
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String _selectedTime = '09.00 WIT';
   int _durationDays = 2;
@@ -32,15 +38,7 @@ class BookingController extends ChangeNotifier {
   StreamSubscription<List<BookingModel>>? _bookingsSubscription;
 
   BookingController({this.repository}) {
-    _initSampleData();
     _init();
-  }
-
-  void _initSampleData() {
-    _bookingHistory.clear();
-    final samples = BookingModel.initialSampleBookings;
-    _bookingHistory.addAll(samples);
-    _activeBooking = null;
   }
 
   /* Mengambil tarif terbaru satu pesanan dari server.
@@ -65,7 +63,9 @@ class BookingController extends ChangeNotifier {
         final indeks = _bookingHistory.indexWhere((b) => b.id == bookingId);
         if (indeks == -1) return null;
 
-        final diperbarui = _bookingHistory[indeks].copyWith(quotedAmount: tarif);
+        final diperbarui = _bookingHistory[indeks].copyWith(
+          quotedAmount: tarif,
+        );
         _bookingHistory[indeks] = diperbarui;
         if (_activeBooking?.id == bookingId) _activeBooking = diperbarui;
 
@@ -86,9 +86,11 @@ class BookingController extends ChangeNotifier {
         _bookingHistory.clear();
         _bookingHistory.addAll(saved);
         final actives = _bookingHistory
-            .where((b) =>
-                b.status != BookingStatus.selesai &&
-                b.status != BookingStatus.dibatalkan)
+            .where(
+              (b) =>
+                  b.status != BookingStatus.selesai &&
+                  b.status != BookingStatus.dibatalkan,
+            )
             .toList();
         _activeBooking = actives.isNotEmpty ? actives.first : null;
         notifyListeners();
@@ -98,9 +100,11 @@ class BookingController extends ChangeNotifier {
         _bookingHistory.clear();
         _bookingHistory.addAll(updatedList);
         final actives = _bookingHistory
-            .where((b) =>
-                b.status != BookingStatus.selesai &&
-                b.status != BookingStatus.dibatalkan)
+            .where(
+              (b) =>
+                  b.status != BookingStatus.selesai &&
+                  b.status != BookingStatus.dibatalkan,
+            )
             .toList();
         _activeBooking = actives.isNotEmpty ? actives.first : null;
         notifyListeners();
@@ -171,22 +175,30 @@ class BookingController extends ChangeNotifier {
     }
     return null;
   }
+
   List<BookingModel> get bookingHistory => List.unmodifiable(_bookingHistory);
 
   List<BookingModel> get activeBookings => _bookingHistory
-      .where((b) =>
-          b.status != BookingStatus.selesai && b.status != BookingStatus.dibatalkan)
+      .where(
+        (b) =>
+            b.status != BookingStatus.selesai &&
+            b.status != BookingStatus.dibatalkan,
+      )
       .toList();
 
   List<BookingModel> get completedBookings => _bookingHistory
-      .where((b) =>
-          b.status == BookingStatus.selesai || b.status == BookingStatus.dibatalkan)
+      .where(
+        (b) =>
+            b.status == BookingStatus.selesai ||
+            b.status == BookingStatus.dibatalkan,
+      )
       .toList();
 
   // Kalkulasi Biaya Terhitung Resmi (Sistem Dashboard Admin)
   int get dailyRate => _selectedVehicle?.pricePerDay ?? 400000;
   int get vehicleSubtotal => dailyRate * _durationDays;
-  int get driverSubtotal => _withDriver ? (driverCostPerDay * _durationDays) : 0;
+  int get driverSubtotal =>
+      _withDriver ? (driverCostPerDay * _durationDays) : 0;
   int get serviceFee => standardServiceFee;
   int get totalCalculatedCost => vehicleSubtotal + driverSubtotal + serviceFee;
   int get totalEstimatedCost => totalCalculatedCost;
@@ -248,7 +260,12 @@ class BookingController extends ChangeNotifier {
   /// Mengirim pengajuan sewa (Finalisasi dari Frame 06 Tinjau Pesanan)
   /// Mengarahkan pesanan ke tahap 3 Figma: Konfirmasi tarif final (sedang dihitung admin)
   Future<BookingModel> submitBooking() async {
-    final vehicle = _selectedVehicle ?? VehicleModel.sampleVehicles.first;
+    final vehicle = _selectedVehicle;
+    if (vehicle == null) {
+      throw StateError(
+        'Pilih kendaraan terlebih dahulu sebelum mengirim pesanan.',
+      );
+    }
 
     final repo = repository;
     if (repo != null) {
@@ -271,7 +288,8 @@ class BookingController extends ChangeNotifier {
       return remoteBooking;
     }
 
-    final newOrderCode = 'MBJ-2026-${(43 + _bookingHistory.length).toString().padLeft(4, '0')}';
+    final newOrderCode =
+        'MBJ-2026-${(43 + _bookingHistory.length).toString().padLeft(4, '0')}';
     final fallbackBooking = BookingModel(
       id: newOrderCode,
       vehicle: vehicle,
@@ -327,13 +345,13 @@ class BookingController extends ChangeNotifier {
       }
       notifyListeners();
 
-      final justConfirmed = !previouslyConfirmed && updated.isFinalTariffConfirmed;
+      final justConfirmed =
+          !previouslyConfirmed && updated.isFinalTariffConfirmed;
       final statusChanged = previousStatus != updated.status;
       return justConfirmed || statusChanged;
     }
     return false;
   }
-
 
   /// Memproses pemilihan metode pembayaran Tunai di Tempat (COD)
   /// Status langsung beralih ke mobilSiapDigunakan dan E-Ticket terbit dengan tanda COD
@@ -362,7 +380,8 @@ class BookingController extends ChangeNotifier {
   }) {
     final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
-      final ref = referenceCode ??
+      final ref =
+          referenceCode ??
           'TRX-MBJ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
       final updated = _bookingHistory[index].copyWith(
         paymentMethodType: paymentMethod,
@@ -419,14 +438,18 @@ class BookingController extends ChangeNotifier {
     if (index == -1) return;
 
     final target = _bookingHistory[index];
-    final bool isCod = target.paymentMethodType == PaymentMethodType.tunaiDiTempat;
-    final bool isPaidBooking = !isCod &&
+    final bool isCod =
+        target.paymentMethodType == PaymentMethodType.tunaiDiTempat;
+    final bool isPaidBooking =
+        !isCod &&
         (target.status == BookingStatus.pembayaranSelesai ||
             target.status == BookingStatus.verifikasiKantor ||
             target.status == BookingStatus.mobilSiapDigunakan);
 
     final double refundRate = isPaidBooking ? 0.85 : 0.0;
-    final int refundAmount = isPaidBooking ? (target.totalCost * 0.85).round() : 0;
+    final int refundAmount = isPaidBooking
+        ? (target.totalCost * 0.85).round()
+        : 0;
 
     final updated = target.copyWith(
       status: BookingStatus.dibatalkan,
@@ -451,10 +474,7 @@ class BookingController extends ChangeNotifier {
   /// Membatalkan pesanan aktif secara cepat
   void cancelActiveBooking([String reason = 'Dibatalkan oleh pelanggan']) {
     if (_activeBooking != null) {
-      cancelBooking(
-        bookingId: _activeBooking!.id,
-        reason: reason,
-      );
+      cancelBooking(bookingId: _activeBooking!.id, reason: reason);
     }
   }
 
@@ -467,7 +487,6 @@ class BookingController extends ChangeNotifier {
   /// Mengatur ulang seluruh riwayat dan pesanan aktif ke kondisi awal simulasi (0 pesanan aktif & 0 riwayat selesai)
   void resetToInitialState() {
     _bookingHistory.clear();
-    _bookingHistory.addAll(BookingModel.initialSampleBookings);
     _activeBooking = null;
     resetForm();
     notifyListeners();
@@ -475,7 +494,7 @@ class BookingController extends ChangeNotifier {
 
   /// Mengembalikan nilai formulir wizard ke konfigurasi awal
   void resetForm() {
-    _selectedVehicle = VehicleModel.sampleVehicles.first;
+    _selectedVehicle = null;
     _selectedDate = DateTime.now().add(const Duration(days: 1));
     _selectedTime = '09.00 WIT';
     _durationDays = 2;

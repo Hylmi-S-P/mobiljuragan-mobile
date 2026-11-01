@@ -8,6 +8,8 @@ import 'package:mobiljuragan_mobile/screens/vehicle_selection_screen.dart';
 import 'package:mobiljuragan_mobile/widgets/vehicle_card_item.dart';
 import 'package:provider/provider.dart';
 
+import '../support/armada_uji.dart';
+
 void main() {
   group('VehicleModel Availability Tests', () {
     test('isAvailable dan isBooked mengembalikan nilai yang sesuai dengan availabilityTag', () {
@@ -239,7 +241,38 @@ void main() {
   });
 
   group('VehicleSelectionScreen Widget Tests', () {
-    testWidgets('Tombol sticky CTA selalu bertuliskan Lanjutkan untuk unit apa pun yang dipilih', (tester) async {
+    /*
+     * Katalog diisi lewat `updateVehicles`, bukan lewat daftar contoh bawaan.
+     *
+     * Dulu katalog selalu berisi karena sembilan unit contoh menempel di model.
+     * Sekarang isinya hanya berasal dari backend, jadi pengujian menyuntikkan
+     * armadanya sendiri.
+     */
+    testWidgets('Tombol sticky CTA menampilkan unit pertama saat katalog berisi', (tester) async {
+      final vehicleController = VehicleController();
+      vehicleController.updateVehicles(armadaUji);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ChangeNotifierProvider<VehicleController>.value(value: vehicleController),
+          ],
+          child: const MaterialApp(
+            home: VehicleSelectionScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(
+        find.widgetWithText(ElevatedButton, 'Lanjutkan: ${armadaUji.first.name}'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Tanpa armada, yang tampil keadaan kosong dan tidak ada tombol lanjut', (tester) async {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -254,8 +287,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Secara default Avanza terpilih, tombol harus bertuliskan 'Lanjutkan: AVANZA G PUTIH'
-      expect(find.widgetWithText(ElevatedButton, 'Lanjutkan: AVANZA G PUTIH'), findsOneWidget);
+      expect(find.text('Belum Ada Armada'), findsOneWidget);
+      expect(find.byType(ElevatedButton), findsNothing);
     });
   });
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+
 import '../data/local/preferences/app_settings_service.dart';
 import '../data/repositories/vehicle_repository.dart';
 import '../models/vehicle_model.dart';
@@ -10,7 +12,7 @@ class VehicleController extends ChangeNotifier {
   final VehicleRepository? repository;
   final AppSettingsService? settingsService;
 
-  List<VehicleModel> _vehicles = VehicleModel.sampleVehicles;
+  List<VehicleModel> _vehicles = [];
   String _selectedCategory = 'Semua';
   String _searchQuery = '';
   bool _isSyncing = false;
@@ -26,10 +28,7 @@ class VehicleController extends ChangeNotifier {
     'Commercial',
   ];
 
-  VehicleController({
-    this.repository,
-    this.settingsService,
-  }) {
+  VehicleController({this.repository, this.settingsService}) {
     _init();
   }
 
@@ -42,9 +41,6 @@ class VehicleController extends ChangeNotifier {
 
     final repo = repository;
     if (repo != null) {
-      // Pastikan database lokal memiliki seed awal
-      await repo.ensureSeeded();
-
       // Berlangganan Stream reaktif Drift (.watch())
       // Setiap kali ada penulisan data di SQLite lokal (API sync / toggle favorit), UI langsung terupdate!
       _vehiclesSubscription = repo.watchVehicles().listen((updatedVehicles) {
@@ -92,12 +88,16 @@ class VehicleController extends ChangeNotifier {
       final matchesCategory = _selectedCategory == 'Semua'
           ? true
           : (_selectedCategory == 'Favorit'
-              ? vehicle.isFavorite
-              : vehicle.category.toLowerCase() == _selectedCategory.toLowerCase());
+                ? vehicle.isFavorite
+                : vehicle.category.toLowerCase() ==
+                      _selectedCategory.toLowerCase());
 
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           vehicle.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          vehicle.plateNumber.toLowerCase().contains(_searchQuery.toLowerCase());
+          vehicle.plateNumber.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
 
       return matchesCategory && matchesSearch;
     }).toList();

@@ -5,7 +5,8 @@ import 'package:mobiljuragan_mobile/data/local/database/app_database.dart';
 import 'package:mobiljuragan_mobile/data/remote/booking_api_service.dart';
 import 'package:mobiljuragan_mobile/data/repositories/booking_repository.dart';
 import 'package:mobiljuragan_mobile/models/booking_model.dart';
-import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
+
+import '../support/armada_uji.dart';
 
 /// Test double untuk BookingApiService
 class FakeBookingApiService extends BookingApiService {
@@ -76,7 +77,7 @@ void main() {
       final fakeApi = FakeBookingApiService();
       final repository = BookingRepository(database.bookingDao, fakeApi);
 
-      final vehicle = VehicleModel.sampleVehicles.first;
+      final vehicle = armadaUji.first;
       final booking = BookingModel(
         id: 'MBJ-2026-0043',
         vehicle: vehicle,
@@ -113,7 +114,7 @@ void main() {
       );
       final repository = BookingRepository(database.bookingDao, fakeApi);
 
-      final vehicle = VehicleModel.sampleVehicles.first;
+      final vehicle = armadaUji.first;
       final booking = BookingModel(
         id: 'MBJ-2026-0044',
         vehicle: vehicle,

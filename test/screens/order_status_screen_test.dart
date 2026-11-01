@@ -5,9 +5,10 @@ import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/models/booking_document_model.dart';
 import 'package:mobiljuragan_mobile/models/booking_model.dart';
 import 'package:mobiljuragan_mobile/models/payment_model.dart';
-import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
 import 'package:mobiljuragan_mobile/screens/order_status_screen.dart';
 import 'package:mobiljuragan_mobile/theme/app_colors.dart';
+
+import '../support/armada_uji.dart';
 
 void main() {
   Widget createTestWidget({
@@ -29,7 +30,7 @@ void main() {
 
   final completedBooking = BookingModel(
     id: 'MJ-TEST-COMPLETED',
-    vehicle: VehicleModel.sampleVehicles.first,
+    vehicle: armadaUji.first,
     startDate: DateTime(2026, 10, 20),
     startTime: '09.00 WIT',
     durationDays: 3,
@@ -43,7 +44,7 @@ void main() {
 
   final inProgressBooking = BookingModel(
     id: 'MJ-TEST-INPROGRESS',
-    vehicle: VehicleModel.sampleVehicles.first,
+    vehicle: armadaUji.first,
     startDate: DateTime(2026, 10, 20),
     startTime: '09.00 WIT',
     durationDays: 3,
