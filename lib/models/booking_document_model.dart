@@ -15,6 +15,13 @@ class BookingDocumentModel {
   final String? simUrl;
   final DocumentStatus status;
   final String? rejectionReason;
+
+  /// Dokumen yang ditolak admin: `KTP`, `SIM`, dan/atau `STATEMENT`.
+  ///
+  /// Kosong berarti tidak ada penolakan aktif. Sebelum kolom ini ada, aplikasi
+  /// menebak dari kata kunci pada [rejectionReason]; cara itu keliru untuk alasan
+  /// umum seperti "foto buram" karena menandai ketiga dokumen sekaligus.
+  final List<String> rejectionTargets;
   final DateTime? verifiedAt;
   final String? verifiedBy;
   final DateTime createdAt;
@@ -28,11 +35,20 @@ class BookingDocumentModel {
     this.simUrl,
     this.status = DocumentStatus.pendingUpload,
     this.rejectionReason,
+    this.rejectionTargets = const [],
     this.verifiedAt,
     this.verifiedBy,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  static List<String> _parseTargets(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((item) => item.toString().toUpperCase())
+        .where((item) => const {'KTP', 'SIM', 'STATEMENT'}.contains(item))
+        .toList(growable: false);
+  }
 
   bool get hasStatement =>
       statementLetterUrl != null && statementLetterUrl!.trim().isNotEmpty;
@@ -84,6 +100,7 @@ class BookingDocumentModel {
       simUrl: json['simUrl']?.toString(),
       status: parseStatus(json['status']?.toString()),
       rejectionReason: json['rejectionReason']?.toString(),
+      rejectionTargets: _parseTargets(json['rejectionTargets']),
       verifiedAt: json['verifiedAt'] != null
           ? DateTime.tryParse(json['verifiedAt'].toString())
           : null,
@@ -105,6 +122,7 @@ class BookingDocumentModel {
         'simUrl': simUrl,
         'status': status.name,
         'rejectionReason': rejectionReason,
+        'rejectionTargets': rejectionTargets,
         'verifiedAt': verifiedAt?.toIso8601String(),
         'verifiedBy': verifiedBy,
         'createdAt': createdAt.toIso8601String(),
@@ -119,6 +137,7 @@ class BookingDocumentModel {
     String? simUrl,
     DocumentStatus? status,
     String? rejectionReason,
+    List<String>? rejectionTargets,
     DateTime? verifiedAt,
     String? verifiedBy,
     DateTime? createdAt,
@@ -132,6 +151,7 @@ class BookingDocumentModel {
       simUrl: simUrl ?? this.simUrl,
       status: status ?? this.status,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      rejectionTargets: rejectionTargets ?? this.rejectionTargets,
       verifiedAt: verifiedAt ?? this.verifiedAt,
       verifiedBy: verifiedBy ?? this.verifiedBy,
       createdAt: createdAt ?? this.createdAt,

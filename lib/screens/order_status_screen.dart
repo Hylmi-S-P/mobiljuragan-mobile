@@ -2211,7 +2211,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     if (reason == null || reason.trim().isEmpty) {
       return 'Dokumen yang diunggah belum memenuhi syarat. Mohon periksa kejelasan foto dan kelengkapan berkas.';
     }
-    final trimmed = reason.trim();
+    /* Penolakan lama menyimpan target di dalam teks ("[Foto SIM A]: buram").
+       Target itu kini ditampilkan terpisah, jadi awalannya dibuang agar tidak
+       terbaca dua kali. */
+    final trimmed = reason.trim().replaceFirst(RegExp(r'^\[[^\]]*\]\s*:?\s*'), '');
+    if (trimmed.isEmpty) {
+      return 'Dokumen yang diunggah belum memenuhi syarat. Mohon periksa kejelasan foto dan kelengkapan berkas.';
+    }
     if (trimmed.length == 1) return trimmed.toUpperCase();
     return trimmed[0].toUpperCase() + trimmed.substring(1);
   }
@@ -2240,9 +2246,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     final isDraftSimNew = _draftSim != null;
     final isDraftStatementNew = _draftStatement != null;
 
+    /* Admin sekarang mengirim dokumen mana yang ditolak sebagai data
+       (`rejectionTargets`). Penebakan dari kata kunci hanya dipakai untuk
+       penolakan lama yang belum punya data itu. */
     final rejectionReasonRaw = doc?.rejectionReason?.trim() ?? '';
     final reasonLower = rejectionReasonRaw.toLowerCase();
-    final hasSpecificTarget = reasonLower.contains('ktp') ||
+    final structuredTargets = doc?.rejectionTargets ?? const <String>[];
+    final hasStructuredTargets = structuredTargets.isNotEmpty;
+
+    final hasKeywordForAnyDocument = reasonLower.contains('ktp') ||
         reasonLower.contains('identitas') ||
         reasonLower.contains('sim') ||
         reasonLower.contains('pernyataan') ||
@@ -2251,17 +2263,30 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         reasonLower.contains('tanda tangan') ||
         reasonLower.contains('meterai');
 
-    final isKtpTargeted = isRejected &&
-        (reasonLower.contains('ktp') || reasonLower.contains('identitas') || !hasSpecificTarget);
-    final isSimTargeted = isRejected &&
-        (reasonLower.contains('sim') || !hasSpecificTarget);
-    final isStatementTargeted = isRejected &&
-        (reasonLower.contains('pernyataan') ||
-            reasonLower.contains('surat') ||
-            reasonLower.contains('ttd') ||
-            reasonLower.contains('tanda tangan') ||
-            reasonLower.contains('meterai') ||
-            !hasSpecificTarget);
+    /* Catatan umum tanpa kata kunci dokumen dianggap berlaku untuk semua berkas,
+       sama seperti perilaku versi sebelumnya. */
+    bool legacyTargeted(List<bool> keywords) {
+      return isRejected && (keywords.any((matched) => matched) || !hasKeywordForAnyDocument);
+    }
+
+    final isKtpTargeted = hasStructuredTargets
+        ? isRejected && structuredTargets.contains('KTP')
+        : legacyTargeted([
+            reasonLower.contains('ktp'),
+            reasonLower.contains('identitas'),
+          ]);
+    final isSimTargeted = hasStructuredTargets
+        ? isRejected && structuredTargets.contains('SIM')
+        : legacyTargeted([reasonLower.contains('sim')]);
+    final isStatementTargeted = hasStructuredTargets
+        ? isRejected && structuredTargets.contains('STATEMENT')
+        : legacyTargeted([
+            reasonLower.contains('pernyataan'),
+            reasonLower.contains('surat'),
+            reasonLower.contains('ttd'),
+            reasonLower.contains('tanda tangan'),
+            reasonLower.contains('meterai'),
+          ]);
 
     Color badgeBg;
     Color badgeText;

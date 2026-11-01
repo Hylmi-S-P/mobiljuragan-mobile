@@ -402,5 +402,39 @@ void main() {
       // Tombol submit sekarang aktif
       expect(find.text('Kirim Pembaruan Dokumen'), findsOneWidget);
     });
+
+    testWidgets('Menandai dua dokumen yang ditolak dari rejectionTargets, bukan dari kata kunci', (tester) async {
+      final lepasKunciBooking = inProgressBooking.copyWith(
+        withDriver: false,
+        status: BookingStatus.permintaanDiterima,
+        isFinalTariffConfirmed: false,
+      );
+
+      /* Alasan sengaja tidak menyebut nama dokumen: sebelum target dikirim sebagai
+         data, catatan umum seperti ini membuat ketiga baris ditandai merah. */
+      final rejectedDoc = BookingDocumentModel(
+        id: 'DOC-REJ-02',
+        bookingId: lepasKunciBooking.id,
+        ktpUrl: 'https://example.com/ktp.jpg',
+        simUrl: 'https://example.com/sim.jpg',
+        statementLetterUrl: 'https://example.com/statement.jpg',
+        status: DocumentStatus.rejected,
+        rejectionReason: 'Foto buram / tidak fokus',
+        rejectionTargets: const ['KTP', 'SIM'],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(createTestWidget(
+        booking: lepasKunciBooking,
+        initialDocument: rejectedDoc,
+      ));
+      await tester.pumpAndSettle();
+
+      // Dua baris ditolak, surat pernyataan tidak ikut ditandai.
+      expect(find.text('Ditolak • Perlu foto ulang'), findsNWidgets(2));
+      expect(find.text('surat_ttd_basah.jpg • Menunggu verifikasi staf.'), findsOneWidget);
+      expect(find.textContaining('Catatan Staf:'), findsOneWidget);
+    });
   });
 }
