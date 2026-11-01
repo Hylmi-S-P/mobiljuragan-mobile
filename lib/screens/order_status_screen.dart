@@ -45,8 +45,15 @@ class OrderStatusScreen extends StatefulWidget {
   State<OrderStatusScreen> createState() => _OrderStatusScreenState();
 }
 
-class _OrderStatusScreenState extends State<OrderStatusScreen> {
+class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindingObserver {
+  /// Jeda antar pemeriksaan status pesanan.
+  ///
+  /// Lima detik terlalu rapat untuk sekadar menunggu admin; 30 detik sudah cukup
+  /// responsif dan jauh lebih hemat baterai/kuota.
+  static const Duration _statusPollingInterval = Duration(seconds: 30);
+
   Timer? _pollingTimer;
+  bool _pollingFinished = false;
   bool _notificationShown = false;
   bool _isTariffDetailsExpanded = false;
   bool _isRefreshing = false;
@@ -81,9 +88,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     }
     _trackingBookingId = widget.booking?.id ??
         context.read<BookingController>().activeBooking?.id;
+    WidgetsBinding.instance.addObserver(this);
     _checkAndStartPolling();
     _loadBookingDocuments();
     _loadPayment();
+  }
+
+  /* Polling dihentikan saat aplikasi tidak di depan. Sebelumnya timer tetap
+     berjalan di latar belakang: boros kuota dan hasilnya tidak terlihat. */
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!_pollingFinished) _startStatusPolling();
+      _loadPayment();
+      _loadBookingDocuments();
+    } else {
+      _pollingTimer?.cancel();
+    }
   }
 
   Future<void> _loadPayment() async {
@@ -135,12 +156,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   void _startStatusPolling() {
     _pollingTimer?.cancel();
+    _pollingFinished = false;
 
     // Lakukan polling perdana secara asinkron
     _pollBookingStatus();
 
-    // Polling berkala setiap 5 detik selama status masih dalam pemeriksaan atau antrean admin
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _pollingTimer = Timer.periodic(_statusPollingInterval, (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -169,6 +190,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
     if (isFinished) {
       _pollingTimer?.cancel();
+      _pollingFinished = true;
       return;
     }
 
@@ -194,9 +216,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
           // Polling sengaja tetap berlanjut agar penyelesaian sewa oleh admin terdeteksi otomatis
         } else if (updatedBooking.status == BookingStatus.selesai) {
           _pollingTimer?.cancel();
+          _pollingFinished = true;
           _onStatusUpdatedToCompleted(updatedBooking);
         } else if (updatedBooking.status == BookingStatus.dibatalkan) {
           _pollingTimer?.cancel();
+          _pollingFinished = true;
         }
       }
       _loadPayment();
@@ -361,6 +385,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollingTimer?.cancel();
     super.dispose();
   }
@@ -5428,7 +5453,8 @@ class OnlinePaymentSheetModal extends StatefulWidget {
   State<OnlinePaymentSheetModal> createState() => _OnlinePaymentSheetModalState();
 }
 
-class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
+class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
+    with WidgetsBindingObserver {
   int _selectedTab = 0; // 0: QRIS Dinamis, 1: Transfer Bank, 2: Bayar Tunai (COD)
   String _selectedBank = 'Bank BRI';
   bool _isCheckingStatus = false;
@@ -5439,7 +5465,17 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
   PaymentModel? _payment;
   Timer? _countdownTimer;
 
-  late DateTime _expiresAt;
+  /// Batas waktu pembayaran, **hanya** dari server.
+  ///
+  /// Sebelumnya diisi `DateTime.now() + 12 jam` secara lokal, padahal server
+  /// menetapkan 2 jam. Akibatnya hitungan mundur tidak pernah mencerminkan
+  /// tagihan sebenarnya dan ikut ter-reset setiap widget dibuat ulang.
+  DateTime? _expiresAt;
+
+  /// Label hitungan mundur terakhir yang digambar, supaya `setState` hanya
+  /// dipanggil ketika angkanya benar-benar berubah.
+  String? _lastCountdownLabel;
+
   late int _baseAmount;
   late int _uniqueCode;
   late int _totalAmount;
@@ -5459,14 +5495,37 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
     // Hitung alokasi kode unik 3 digit (50-949) untuk ketahanan offline
     _uniqueCode = (widget.booking.id.hashCode.abs() % 900) + 50;
     _totalAmount = _baseAmount + _uniqueCode;
-    _expiresAt = DateTime.now().add(const Duration(hours: 12));
     _qrisPayload = PaymentModel.generateDynamicQris(_totalAmount);
 
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-
+    WidgetsBinding.instance.addObserver(this);
+    _startCountdown();
     _initPayment();
+  }
+
+  /// Ticker milik State ini; angka yang ditampilkan diturunkan dari `_expiresAt`
+  /// milik server, jadi tidak bisa "kembali" hanya karena widget dibangun ulang.
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final label = _formatCountdown();
+      if (label == _lastCountdownLabel) return;
+      _lastCountdownLabel = label;
+      setState(() {});
+    });
+  }
+
+  /* Saat aplikasi kembali ke depan, sisa waktu diambil ulang dari server. Timer
+     lokal saja tidak cukup: perangkat bisa tidur lebih lama daripada sisa waktu
+     yang tersimpan di memori. */
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startCountdown();
+      _initPayment();
+    } else {
+      _countdownTimer?.cancel();
+    }
   }
 
   Future<void> _initPayment() async {
@@ -5486,9 +5545,10 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
           _baseAmount = active.baseAmount;
           _uniqueCode = active.uniqueCode;
           _totalAmount = active.totalAmount;
-          if (active.expiresAt != null) {
-            _expiresAt = active.expiresAt!;
-          }
+          /* Nilai dari server selalu dipakai apa adanya, termasuk saat null:
+             lebih baik menampilkan "Menunggu tagihan" daripada waktu karangan
+             yang membuat pelanggan mengira masih punya 12 jam. */
+          _expiresAt = active.expiresAt;
           if (active.qrisPayload != null && active.qrisPayload!.isNotEmpty) {
             _qrisPayload = active.qrisPayload!;
           }
@@ -5708,7 +5768,11 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
   }
 
   String _formatCountdown() {
-    final diff = _expiresAt.difference(DateTime.now());
+    final expiresAt = _expiresAt;
+    // Belum ada tagihan dari server: jangan menebak sisa waktu.
+    if (expiresAt == null) return 'Menunggu tagihan';
+
+    final diff = expiresAt.difference(DateTime.now());
     if (diff.isNegative) return 'Waktu Habis';
     final hours = diff.inHours.toString().padLeft(2, '0');
     final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
@@ -5992,6 +6056,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _senderNameController.dispose();
     super.dispose();
@@ -5999,7 +6064,8 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal> {
 
   @override
   Widget build(BuildContext context) {
-    final isExpired = _expiresAt.difference(DateTime.now()).isNegative;
+    final expiresAt = _expiresAt;
+    final isExpired = expiresAt != null && expiresAt.isBefore(DateTime.now());
 
     return Container(
       width: double.infinity,
