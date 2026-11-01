@@ -412,7 +412,7 @@ class BookingModel {
   /// Subtotal biaya jasa pengemudi di Merauke
   int get driverSubtotal => withDriver ? (150000 * durationDays) : 0;
 
-  /// Label moda sewa
+  /// Label mode sewa
   String get modeLabel => withDriver ? 'Dengan Sopir' : 'Lepas Kunci';
 
   /// Estimasi biaya dasar sebelum penyesuaian/surcharge admin
