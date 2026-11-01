@@ -5,6 +5,7 @@ import '../controllers/booking_controller.dart';
 import '../controllers/support_controller.dart';
 import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
+import 'create_ticket_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
@@ -147,13 +148,44 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     });
   }
 
+  /// Tiket yang sudah selesai/ditutup bersifat read-only.
+  ///
+  /// Server menolak pesan ke tiket final, jadi menampilkan kolom ketik hanya akan
+  /// membuat pelanggan menulis pesan yang pasti gagal terkirim. Status diambil
+  /// dari versi terbaru di controller (hasil muat ulang dari server), bukan dari
+  /// objek yang dibawa saat layar dibuka — admin bisa menutup tiket kapan saja.
+  SupportTicketModel? get _ticketFinal {
+    final dasar = widget.ticket;
+    if (dasar == null) return null;
+
+    final support = _supportController ?? context.read<SupportController>();
+    final terbaru = support.findTicket(dasar.id) ??
+        _withStatus(dasar, support.statusOf(dasar.id));
+    return terbaru.isFinished ? terbaru : null;
+  }
+
+  /// Menempelkan status hasil muat ulang server ke tiket yang dibawa layar.
+  static SupportTicketModel _withStatus(SupportTicketModel ticket, String? status) {
+    if (status == null || status == ticket.status) return ticket;
+    return ticket.copyWith(status: status);
+  }
+
   void _handleSendMessage(SupportController controller) {
+    if (_ticketFinal != null) return;
+
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
     controller.sendUserMessage(text: text, conversationKey: conversationKey);
     _messageController.clear();
     _scrollToBottom();
+  }
+
+  void _openCreateTicket() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
+    );
   }
 
   String _formatRupiah(int number) {
@@ -186,6 +218,14 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
     // activeTicket hanya ada jika layar ini memang dibuka untuk tiket keluhan tertentu
     final activeTicket = widget.ticket;
+
+    /* Status tiket terbaru dari controller: admin bisa menutup tiket setelah
+       layar ini terbuka, dan composer harus ikut terkunci tanpa perlu restart. */
+    final liveTicket = activeTicket == null
+        ? null
+        : (support.findTicket(activeTicket.id) ??
+            _withStatus(activeTicket, support.statusOf(activeTicket.id)));
+    final isTicketFinal = liveTicket?.isFinished ?? false;
 
     // Ambil daftar pesan dan status handoff terisolasi untuk sesi saat ini
     final messages = support.getMessages(conversationKey);
@@ -230,10 +270,19 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           ? 'Staf Operasional Merauke (Online)'
           : '${currentBooking.vehicle.name} (${currentBooking.vehicle.plateNumber})';
     } else if (activeTicket != null) {
+      /* Nomor tiket hanya muncul di judul. Sebelumnya nomor yang sama diulang di
+         banner ringkasan tepat di bawahnya, sehingga satu layar menampilkan
+         identitas tiket dua kali. */
       screenTitle = 'Tiket #${activeTicket.displayTicketNumber}';
-      screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke (Online)'
-          : 'Asisten AI Respon Cepat (Aktif)';
+      if (isTicketFinal) {
+        screenSubtitle = liveTicket?.isClosed == true
+            ? 'Tiket ditutup — riwayat tersimpan'
+            : 'Tiket selesai — riwayat tersimpan';
+      } else {
+        screenSubtitle = isHandedOff
+            ? 'Staf Operasional Merauke (Online)'
+            : 'Asisten AI Respon Cepat (Aktif)';
+      }
     } else {
       screenTitle = 'Chat Bantuan CS';
       screenSubtitle = isHandedOff
@@ -294,7 +343,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           ],
         ),
         actions: [
-          if (isHandedOff)
+          /* Badge "Staf Aktif" menyesatkan pada tiket final: tidak ada staf yang
+             sedang memantau. Status final sudah dijelaskan di subjudul. */
+          if (isHandedOff && !isTicketFinal)
             Container(
               margin: const EdgeInsets.only(right: 14),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -392,7 +443,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
           // Panel Bawah Terpadu (Saran Cepat + Input Pesan)
           _buildUnifiedBottomArea(
-            suggestions: suggestions,
+            suggestions: isTicketFinal ? const [] : suggestions,
             support: support,
             booking: currentBooking,
             bookingCtrl: bookingCtrl,
@@ -553,23 +604,12 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.badgeNavyBg,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              ticket.displayTicketNumber,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
+          const Icon(
+            Icons.confirmation_number_outlined,
+            size: 16,
+            color: AppColors.textSecondary,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1027,6 +1067,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     final isHandedOff = controller.isAiHandoffToAdminFor(conversationKey) ||
         (widget.ticket?.isHandledByHuman ?? false);
 
+    final finalTicket = _ticketFinal;
+    if (finalTicket != null) {
+      return _buildClosedComposer(finalTicket);
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
@@ -1093,6 +1138,74 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
+  /// Pengganti composer saat tiket sudah selesai: riwayat tetap terbaca,
+  /// tapi tidak ada kolom ketik yang pasti ditolak server.
+  Widget _buildClosedComposer(SupportTicketModel ticket) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    ticket.isClosed ? 'Tiket sudah ditutup' : 'Tiket sudah selesai',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Riwayat percakapan tetap bisa dibaca. Untuk kendala baru, buat tiket baru.',
+              style: TextStyle(
+                fontSize: AppTypography.sizeTiny,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: ElevatedButton.icon(
+                onPressed: _openCreateTicket,
+                icon: const Icon(Icons.add_comment_outlined, size: 16),
+                label: const Text(
+                  'Buat Tiket Baru',
+                  style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Panel Bawah Terpadu: Menggabungkan saran pesan cepat dan kolom input
   /// dalam satu container atomic dengan ClampingScrollPhysics dan SafeArea
   /// agar terangkat secara mulus tanpa jitter saat keyboard muncul.
@@ -1114,9 +1227,12 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildAiRetentionPrompt(support),
-            if (suggestions.isNotEmpty)
-              _buildQuickSuggestionsBar(suggestions, support, booking, bookingCtrl),
+            /* Saran cepat hanya berguna kalau pesan masih bisa dikirim. */
+            if (_ticketFinal == null) ...[
+              _buildAiRetentionPrompt(support),
+              if (suggestions.isNotEmpty)
+                _buildQuickSuggestionsBar(suggestions, support, booking, bookingCtrl),
+            ],
             _buildComposerBar(support),
           ],
         ),

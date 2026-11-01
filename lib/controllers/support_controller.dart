@@ -19,6 +19,13 @@ class SupportController extends ChangeNotifier {
   final Map<String, TicketEventStream> _aliranPeristiwa = {};
   final List<SupportTicketModel> _tickets = [];
 
+  /// Status terakhir yang dilaporkan server per id tiket.
+  ///
+  /// Daftar [_tickets] bisa saja belum memuat tiket yang sedang dibuka (mis. layar
+  /// chat dibuka dari pintasan), jadi status final disimpan terpisah agar composer
+  /// tetap terkunci walau tiketnya tidak ada di daftar.
+  final Map<String, String> _statusServer = {};
+
   /// Peta percakapan terisolasi per sesi (booking, tiket keluhan, atau bantuan umum)
   final Map<String, List<ChatMessageModel>> _conversations = {};
 
@@ -194,6 +201,25 @@ class SupportController extends ChangeNotifier {
   }
 
   List<SupportTicketModel> get tickets => List.unmodifiable(_tickets);
+
+  /// Tiket terbaru dari daftar lokal, atau null bila tidak dikenal.
+  ///
+  /// Dipakai layar chat supaya status yang ditampilkan mengikuti data server
+  /// (mis. tiket sudah ditutup admin), bukan objek yang dibawa saat layar dibuka.
+  SupportTicketModel? findTicket(String ticketId) {
+    final override = _statusServer[ticketId];
+    for (final ticket in _tickets) {
+      if (ticket.id == ticketId) {
+        return override == null || override == ticket.status
+            ? ticket
+            : ticket.copyWith(status: override);
+      }
+    }
+    return null;
+  }
+
+  /// Status terakhir dari server untuk satu tiket, bila sudah pernah dimuat.
+  String? statusOf(String ticketId) => _statusServer[ticketId];
 
   /// Daftar FAQ aktif (fallback awal atau tersinkronisasi dari backend)
   List<FaqModel> get faqs => List.unmodifiable(_faqs);
@@ -566,6 +592,16 @@ class SupportController extends ChangeNotifier {
       // Sinkronkan status apakah tiket dipegang staf atau bot AI
       final handledBy = (detail['handledBy'] as String?)?.toUpperCase();
       _handoffStatus[conversationKey] = handledBy == 'HUMAN';
+
+      /* Status tiket ikut diperbarui dari server. Tanpa ini, tiket yang ditutup
+         admin tetap tampak aktif di layar pelanggan: composer masih muncul
+         padahal setiap pesan akan ditolak backend. */
+      final statusServer = SupportTicketModel.parseStatus(detail['status']?.toString());
+      _statusServer[ticketId] = statusServer;
+      final idx = _tickets.indexWhere((t) => t.id == ticketId);
+      if (idx != -1 && _tickets[idx].status != statusServer) {
+        _tickets[idx] = _tickets[idx].copyWith(status: statusServer);
+      }
 
       notifyListeners();
     } catch (_) {

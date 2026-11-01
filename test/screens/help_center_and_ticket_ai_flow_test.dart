@@ -277,5 +277,93 @@ void main() {
       expect(find.text('Teratasi'), findsOneWidget);
       expect(find.text('Minta Staf'), findsOneWidget);
     });
+
+    testWidgets('Tiket yang sudah ditutup tidak lagi menampilkan kolom ketik', (tester) async {
+      final supportController = MockSupportControllerForChat(
+        aiApiService: MockAiApiService(),
+        ticketApiService: MockTicketApiService(),
+        faqApiService: MockFaqApiService(),
+      );
+
+      final ticket = SupportTicketModel(
+        id: 'tck-closed-ui',
+        ticketNumber: 'TKT-20261101-0009',
+        title: 'Kunci Tertinggal',
+        category: TicketCategory.kendaraan,
+        description: 'Kunci mobil tertinggal di dalam',
+        status: 'Ditutup',
+        handledBy: 'AI',
+        createdAt: DateTime.now(),
+      );
+
+      supportController.sendUserMessage(
+        text: 'Kunci mobil tertinggal',
+        conversationKey: 'ticket_${ticket.id}',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<SupportController>.value(value: supportController),
+              ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ],
+            child: ChatSupportScreen(ticket: ticket),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      /* Server menolak pesan ke tiket final, jadi kolom ketik harus hilang dan
+         diganti jalan keluar yang benar: membuat tiket baru. */
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Buat Tiket Baru'), findsOneWidget);
+      expect(find.text('Tiket sudah ditutup'), findsOneWidget);
+
+      // Saran cepat dan prompt retensi AI tidak relevan lagi.
+      expect(find.text('Apakah solusi AI membantu kendala Anda?'), findsNothing);
+      expect(find.text('Minta Staf'), findsNothing);
+
+      // Riwayat percakapan tetap terbaca.
+      expect(find.text('Kunci mobil tertinggal'), findsOneWidget);
+    });
+
+    testWidgets('Nomor tiket tidak diulang di banner ringkasan', (tester) async {
+      final supportController = MockSupportControllerForChat(
+        aiApiService: MockAiApiService(),
+        ticketApiService: MockTicketApiService(),
+        faqApiService: MockFaqApiService(),
+      );
+
+      final ticket = SupportTicketModel(
+        id: 'tck-dup-ui',
+        ticketNumber: 'TKT-20261101-0010',
+        title: 'Kaca Spion Lepas',
+        category: TicketCategory.kendaraan,
+        description: 'Spion kanan lepas setelah diparkir',
+        status: 'Menunggu',
+        handledBy: 'AI',
+        createdAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<SupportController>.value(value: supportController),
+              ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ],
+            child: ChatSupportScreen(ticket: ticket),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Nomor tiket hanya di judul AppBar, bukan diulang di banner di bawahnya.
+      expect(find.text('Tiket #TKT-20261101-0010'), findsOneWidget);
+      expect(find.text('TKT-20261101-0010'), findsNothing);
+    });
   });
 }
