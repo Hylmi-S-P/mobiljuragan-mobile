@@ -148,7 +148,11 @@ void main() {
       expect(find.text('Bayar Sekarang'), findsOneWidget);
 
       // Stepper menampilkan batas waktu pelunasan
-      expect(find.text('Batas pelunasan hingga 12 jam ke depan'), findsOneWidget);
+      // Batas waktu tidak lagi dipatok 12 jam di klien; acuannya tagihan server.
+      expect(
+        find.text('Batas pelunasan sesuai tagihan yang diterbitkan admin'),
+        findsOneWidget,
+      );
 
       // Tombol bawah: Butuh Bantuan? Chat CS MobilJuragan dan Batalkan Pengajuan Sewa Ini
       expect(find.text('Butuh Bantuan? Chat CS MobilJuragan'), findsOneWidget);

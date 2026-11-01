@@ -36,6 +36,38 @@ class BookingController extends ChangeNotifier {
     _init();
   }
 
+  /// Akun yang cache-nya sedang ditampilkan.
+  ///
+  /// Dipakai untuk mendeteksi pergantian akun: cache lama dibuang, lalu data
+  /// akun baru diambil dari server. Tanpa ini, riwayat baru tidak pernah muncul
+  /// setelah login karena sinkronisasi hanya berjalan saat aplikasi dibuka.
+  String? _sessionUserId;
+
+  /// Bereaksi terhadap perubahan sesi (login/logout/akun berbeda).
+  Future<void> syncIfSessionChanged(String? userId) async {
+    if (userId == _sessionUserId) return;
+    _sessionUserId = userId;
+
+    final repo = repository;
+    if (repo == null) return;
+
+    await repo.refreshSession();
+    if (userId != null) {
+      await repo.purgeOtherAccounts();
+    }
+    await repo.syncAllBookingsFromRemote();
+
+    final tersimpan = await repo.getAllBookings();
+    _bookingHistory
+      ..clear()
+      ..addAll(tersimpan);
+    _activeBooking = _bookingHistory
+        .where((b) => b.status != BookingStatus.selesai && b.status != BookingStatus.dibatalkan)
+        .cast<BookingModel?>()
+        .firstWhere((_) => true, orElse: () => null);
+    notifyListeners();
+  }
+
   void _initSampleData() {
     _bookingHistory.clear();
     final samples = BookingModel.initialSampleBookings;

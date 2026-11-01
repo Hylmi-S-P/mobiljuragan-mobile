@@ -781,12 +781,18 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             else
               Builder(
                 builder: (ctx) {
-                  final deadline = booking.createdAt.add(const Duration(hours: 12));
-                  final remaining = deadline.difference(DateTime.now());
-                  final isOverdue = remaining.isNegative;
-                  final timerString = isOverdue
-                      ? 'Kedaluwarsa'
-                      : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}';
+                  /* Batas waktu diambil dari tagihan yang diterbitkan server.
+                     Sebelumnya dihitung lokal (createdAt + 12 jam), sehingga
+                     angka di header berbeda dengan hitungan di lembar pembayaran
+                     dan tidak pernah mencerminkan tagihan sebenarnya. */
+                  final deadline = _payment?.expiresAt;
+                  final remaining = deadline?.difference(DateTime.now());
+                  final isOverdue = remaining?.isNegative ?? false;
+                  final timerString = remaining == null
+                      ? 'Menunggu tagihan'
+                      : isOverdue
+                          ? 'Kedaluwarsa'
+                          : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}';
 
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1949,7 +1955,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       : (step3Active
                           ? (isProofUploaded
                               ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
-                              : 'Batas pelunasan hingga 12 jam ke depan')
+                              : 'Batas pelunasan sesuai tagihan yang diterbitkan admin')
                           : (isDriver
                               ? 'Menunggu penetapan rincian tarif final'
                               : 'Menunggu konfirmasi tarif dan verifikasi dokumen'))),
@@ -6208,7 +6214,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Batas waktu pembayaran 12 jam telah berakhir. Pesanan dibatalkan secara otomatis oleh sistem operasional.',
+                        'Batas waktu pembayaran telah berakhir. Perbarui status pesanan untuk melihat tagihan terbaru.',
                         style: TextStyle(
                           fontSize: AppTypography.sizeCaption,
                           color: Color(0xFF991B1B),

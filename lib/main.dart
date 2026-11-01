@@ -77,16 +77,24 @@ void main() async {
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => BookingController(
-            repository: bookingRepo,
-          ),
-        ),
-        ChangeNotifierProvider(
           create: (_) => AuthController(
             repository: authRepo,
             secureStorage: secureStorage,
             bookingRepository: bookingRepo,
           )..initSession(),
+        ),
+        /* BookingController mengikuti sesi: saat akun berganti, riwayat akun
+           sebelumnya dibuang dan riwayat akun baru diambil dari server. */
+        ChangeNotifierProxyProvider<AuthController, BookingController>(
+          create: (_) => BookingController(
+            repository: bookingRepo,
+          ),
+          update: (_, auth, booking) {
+            if (booking != null) {
+              booking.syncIfSessionChanged(auth.currentUser?.id);
+            }
+            return booking ?? BookingController(repository: bookingRepo);
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => SupportController()
