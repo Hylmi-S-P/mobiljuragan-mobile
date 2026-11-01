@@ -3170,7 +3170,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          _downloadAutoFilledPdf(booking);
+                          _downloadStatementTemplate();
                         },
                         icon: const Icon(Icons.download_rounded, size: 16),
                         label: const Text('Unduh File PDF'),
@@ -3193,9 +3193,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     );
   }
 
-  Future<void> _downloadAutoFilledPdf(BookingModel booking) async {
+  /*
+   * Mengunduh formulir kosong untuk dicetak, ditandatangani basah, lalu difoto
+   * dan diunggah kembali. Versi PDF yang terisi otomatis sudah dihapus karena
+   * yang diminta memang berkas fisik bertanda tangan, bukan PDF kiriman.
+   */
+  Future<void> _downloadStatementTemplate() async {
     try {
-      final bytes = await _documentApiService.downloadBookingStatementPdf(booking.id);
+      final bytes = await _documentApiService.downloadStatementTemplatePdf();
       if (mounted) {
         final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3204,7 +3209,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             content: Text(
-              'Surat pernyataan resmi untuk ${booking.id} berhasil diunduh ($kbSize KB). Format PDF siap cetak A4.',
+              'Formulir surat pernyataan berhasil diunduh ($kbSize KB). Cetak A4, tanda tangani, lalu foto dan unggah kembali.',
               style: const TextStyle(fontFamily: 'Inter'),
             ),
           ),
