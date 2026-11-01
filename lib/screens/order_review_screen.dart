@@ -106,7 +106,10 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     );
   }
 
-  /// Kartu Ringkasan 1: Armada Kendaraan Terpilih
+  /// Ringkasan 1: Armada terpilih.
+  ///
+  /// Sengaja ringkas (nama + plat) sesuai permintaan revisi: kartu besar dengan
+  /// foto kendaraan diulang dari layar sebelumnya dan tidak menambah informasi.
   Widget _buildVehicleSummaryCard(BuildContext context, VehicleModel vehicle) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -128,7 +131,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   Icon(Icons.directions_car_outlined, size: 18, color: AppColors.primaryTeal),
                   SizedBox(width: 8),
                   Text(
-                    'Armada Kendaraan',
+                    'Armada',
                     style: TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
@@ -160,55 +163,34 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                width: 64,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    vehicle.imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.directions_car,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vehicle.name,
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeTitle,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.bodyType}',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            vehicle.name,
+            style: const TextStyle(
+              fontSize: AppTypography.sizeTitle,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Plat ${vehicle.plateNumber}',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeBody,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.category}',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
           ),
         ],
       ),

@@ -42,6 +42,8 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
   Widget build(BuildContext context) {
     final vehicleController = context.watch<VehicleController>();
     final filteredVehicles = vehicleController.filteredVehicles;
+    final availableVehicles = filteredVehicles.where((v) => v.isAvailable).toList();
+    final rentedVehicles = filteredVehicles.where((v) => !v.isAvailable).toList();
 
     final selectedVehicle = filteredVehicles.firstWhere(
       (v) => v.id == _selectedVehicleId,
@@ -108,14 +110,14 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     const SizedBox(height: 12),
                     if (filteredVehicles.isEmpty)
                       _buildEmptyState(vehicleController)
-                    else
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredVehicles.length,
-                        itemBuilder: (context, index) {
-                          final vehicle = filteredVehicles[index];
-                          return VehicleCardItem(
+                    else ...[
+                      /* Unit yang sedang disewa dipisah dari yang bisa dipesan.
+                         Sebelumnya keduanya bercampur, sehingga pelanggan harus
+                         membuka satu per satu untuk tahu mana yang tersedia. */
+                      if (availableVehicles.isNotEmpty) ...[
+                        _buildSectionLabel('Tersedia (${availableVehicles.length})'),
+                        ...availableVehicles.map(
+                          (vehicle) => VehicleCardItem(
                             vehicle: vehicle,
                             isSelected: vehicle.id == _selectedVehicleId,
                             onTap: () {
@@ -127,9 +129,29 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                             onToggleFavorite: () {
                               vehicleController.toggleFavorite(vehicle.id);
                             },
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      ],
+                      if (rentedVehicles.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _buildSectionLabel('Sedang disewa (${rentedVehicles.length})'),
+                        ...rentedVehicles.map(
+                          (vehicle) => VehicleCardItem(
+                            vehicle: vehicle,
+                            isSelected: vehicle.id == _selectedVehicleId,
+                            onTap: () {
+                              setState(() {
+                                _selectedVehicleId = vehicle.id;
+                              });
+                              context.read<BookingController>().selectVehicle(vehicle);
+                            },
+                            onToggleFavorite: () {
+                              vehicleController.toggleFavorite(vehicle.id);
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -267,6 +289,22 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             child: const Text('Tampilkan Semua Armada'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Judul pemisah antar kelompok unit pada daftar.
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: AppTypography.sizeBody,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          fontFamily: 'Inter',
+        ),
       ),
     );
   }

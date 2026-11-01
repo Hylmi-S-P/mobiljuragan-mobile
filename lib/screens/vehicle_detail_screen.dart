@@ -21,7 +21,6 @@ class VehicleDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bookingController = context.watch<BookingController>();
     final vehicleController = context.watch<VehicleController>();
     final currentVehicle = vehicleController.getById(vehicle.id) ?? vehicle;
 
@@ -140,10 +139,6 @@ class VehicleDetailScreen extends StatelessWidget {
                   _buildVehicleImageCard(currentVehicle),
                   const SizedBox(height: 16),
                   _buildSpecsGrid(currentVehicle),
-                  const SizedBox(height: 16),
-                  _buildTariffInfoBox(bookingController),
-                  const SizedBox(height: 12),
-                  _buildRequirementNoteBox(),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -227,82 +222,6 @@ class VehicleDetailScreen extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildTariffInfoBox(BookingController bookingController) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF), // Soft Blue tint
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFBFDBFE), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Wrap, bukan Row: saat ukuran teks sistem diperbesar, nominal tarif
-          // turun ke baris berikutnya alih-alih bertabrakan dengan labelnya.
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 2,
-            children: [
-              const Text(
-                'Tarif Sewa Terhitung',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1D4ED8),
-                  fontFamily: 'Inter',
-                ),
-              ),
-              Text(
-                'Rp ${vehicle.pricePerDay ~/ 1000}.000 / hari',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1D4ED8),
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Tarif resmi terhubung langsung dengan sistem reservasi MobilJuragan Merauke.',
-            style: TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              fontWeight: FontWeight.w400,
-              color: Color(0xFF3B82F6),
-              fontFamily: 'Inter',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRequirementNoteBox() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSubtle, width: 1),
-      ),
-      child: const Text(
-        'Pastikan tipe mobil dan plat nomor sesuai kebutuhan sebelum menentukan opsi rental.',
-        style: TextStyle(
-          fontSize: AppTypography.sizeCaption,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textSecondary,
-          fontFamily: 'Inter',
-        ),
-      ),
     );
   }
 

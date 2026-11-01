@@ -1117,6 +1117,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 const SizedBox(height: 8),
                 _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
               ],
+              _buildTariffGapRow(booking),
               if (booking.adminAdjustments.isNotEmpty) ...[
                 const Divider(height: 20, color: AppColors.borderSubtle),
                 const Text(
@@ -1765,6 +1766,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       const SizedBox(height: 6),
                       _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
                     ],
+                    _buildTariffGapRow(booking),
 
                     // Penyesuaian Biaya Operasional jika ada
                     if (booking.adminAdjustments.isNotEmpty) ...[
@@ -3608,6 +3610,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
 
 
+
+  /// Baris penyeimbang antara rincian dan total tagihan.
+  ///
+  /// Tarif dari admin bersifat final (flat), sedangkan rincian dihitung dari
+  /// harga katalog. Tanpa baris ini jumlah rincian bisa berbeda dengan total
+  /// yang harus dibayar — sumber pertanyaan "kok totalnya beda?".
+  Widget _buildTariffGapRow(BookingModel booking) {
+    final displayed = booking.vehicleSubtotal +
+        (booking.withDriver ? booking.driverSubtotal : 0) +
+        booking.serviceFee +
+        booking.adjustmentsTotal;
+    final gap = booking.totalCost - displayed;
+    if (gap == 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: _buildTariffRow(
+        'Penyesuaian tarif dari admin',
+        '${gap < 0 ? '-Rp ' : '+Rp '}${_formatRupiah(gap.abs())}',
+      ),
+    );
+  }
 
   Widget _buildTariffRow(String label, String value) {
     return Row(

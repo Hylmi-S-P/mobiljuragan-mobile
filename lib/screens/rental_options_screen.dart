@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
+import '../core/network/pickup_point_api_service.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -24,72 +25,69 @@ class RentalOptionsScreen extends StatefulWidget {
 }
 
 class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
-  // Preset lokasi khusus Lepas Kunci (fokus titik serah terima resmi)
-  final List<Map<String, dynamic>> _selfDriveLocations = [
-    {
-      'name': 'Pool Kantor MobilJuragan (Gratis)',
-      'shortName': 'Pool Kantor',
-      'desc': 'Jl. Brawijaya No. 88, Merauke Kota',
-      'coords': const LatLng(-8.4905, 140.3995),
-      'isFree': true,
-    },
-    {
-      'name': 'Diantar ke Bandara Mopah Merauke',
-      'shortName': 'Bandara Mopah',
-      'desc': 'Lobi Kedatangan & Parkir VIP Bandara',
-      'coords': const LatLng(-8.5202, 140.4180),
-      'isFree': false,
-    },
-    {
-      'name': 'Diantar ke Swiss-Belhotel Merauke',
-      'shortName': 'Swiss-Belhotel',
-      'desc': 'Jl. Raya Mandala No. 53, Merauke',
-      'coords': const LatLng(-8.4845, 140.3878),
-      'isFree': false,
-    },
-    {
-      'name': 'Diantar ke Hotel Grand Merauke',
-      'shortName': 'Hotel Grand',
-      'desc': 'Jl. Raya Mandala No. 12, Merauke',
-      'coords': const LatLng(-8.4950, 140.4020),
-      'isFree': false,
-    },
+  /* Titik serah terima berasal dari backend (GET /pickup-points).
+     Daftar lokal hanya cadangan saat server tidak dapat dihubungi, dan sengaja
+     tanpa alamat karangan: yang ditampilkan cukup nama tempat resmi. */
+  static const List<PickupPoint> _fallbackPickupPoints = [
+    PickupPoint(
+      id: 'kantor-mobiljuragan',
+      label: 'Kantor MobilJuragan',
+      address: null,
+      latitude: -8.4905,
+      longitude: 140.3995,
+      isFree: true,
+    ),
+    PickupPoint(
+      id: 'bandara-mopah',
+      label: 'Bandara Mopah Merauke',
+      address: 'Lobi Kedatangan & Parkir VIP Bandara Mopah',
+      latitude: -8.5202,
+      longitude: 140.4180,
+      isFree: true,
+    ),
   ];
 
-  // Preset lokasi khusus Dengan Sopir (fleksibel di mana saja di Merauke)
-  final List<Map<String, dynamic>> _withDriverLocations = [
-    {
-      'name': 'Bandara Mopah Merauke',
-      'shortName': 'Bandara Mopah',
-      'desc': 'Lobi Kedatangan & Parkir VIP Bandara Mopah',
-      'coords': const LatLng(-8.5202, 140.4180),
-    },
-    {
-      'name': 'Swiss-Belhotel Merauke',
-      'shortName': 'Swiss-Belhotel',
-      'desc': 'Jl. Raya Mandala No. 53, Merauke',
-      'coords': const LatLng(-8.4845, 140.3878),
-    },
-    {
-      'name': 'Hotel Grand Merauke',
-      'shortName': 'Hotel Grand',
-      'desc': 'Jl. Raya Mandala No. 12, Merauke',
-      'coords': const LatLng(-8.4950, 140.4020),
-    },
-    {
-      'name': 'Pool Kantor MobilJuragan',
-      'shortName': 'Pool Kantor',
-      'desc': 'Jl. Brawijaya No. 88, Merauke Kota',
-      'coords': const LatLng(-8.4905, 140.3995),
-    },
-    {
-      'name': 'Alamat / Titik Lain di Merauke',
-      'shortName': 'Titik Lain',
-      'desc': 'Tentukan titik jemput bebas pada peta di bawah',
-      'coords': const LatLng(-8.4991, 140.4011),
-      'isCustom': true,
-    },
-  ];
+  final PickupPointApiService _pickupPointApiService = PickupPointApiService();
+  List<PickupPoint> _pickupPoints = _fallbackPickupPoints;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPickupPoints();
+  }
+
+  Future<void> _loadPickupPoints() async {
+    try {
+      final points = await _pickupPointApiService.fetchPickupPoints();
+      if (!mounted || points.isEmpty) return;
+      setState(() => _pickupPoints = points);
+    } catch (_) {
+      // Offline: daftar cadangan sudah dipakai, tidak perlu mengganggu pengguna.
+    }
+  }
+
+  /// Titik serah terima untuk lepas kunci.
+  List<Map<String, dynamic>> get _selfDriveLocations => _pickupPoints
+      .map((point) => {
+            'name': point.label,
+            'shortName': point.label,
+            'desc': point.address,
+            'coords': LatLng(point.latitude, point.longitude),
+            'isFree': point.isFree,
+          })
+      .toList();
+
+  /// Titik serah terima untuk layanan dengan sopir, ditambah opsi titik bebas.
+  List<Map<String, dynamic>> get _withDriverLocations => [
+        ..._selfDriveLocations,
+        {
+          'name': 'Alamat / Titik Lain di Merauke',
+          'shortName': 'Titik Lain',
+          'desc': 'Tentukan titik jemput bebas pada peta di bawah',
+          'coords': const LatLng(-8.4991, 140.4011),
+          'isCustom': true,
+        },
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -163,8 +161,8 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         InkWell(
           onTap: () {
             booking.toggleDriver(false);
-            // Default titik serah terima lepas kunci: Pool Kantor (gratis)
-            booking.setPickupLocation('Pool Kantor MobilJuragan (Gratis)', -8.4905, 140.3995);
+            // Default titik serah terima lepas kunci: Kantor MobilJuragan (gratis)
+            booking.setPickupLocation('Kantor MobilJuragan', -8.4905, 140.3995);
           },
           borderRadius: BorderRadius.circular(14),
           child: Container(
@@ -458,7 +456,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 Text(
                   isDriver
                       ? 'Pilih lokasi populer atau ketuk titik bebas di peta untuk penjemputan.'
-                      : 'Pilih ambil di garasi pool MobilJuragan (gratis) atau diantar ke bandara/hotel.',
+                      : 'Pilih titik serah terima resmi MobilJuragan di Merauke.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
@@ -491,10 +489,12 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
 
                 // Ikon sesuai kategori
                 IconData iconData = Icons.place_outlined;
-                if (isFree || name.toLowerCase().contains('pool')) {
+                if (isFree || name.toLowerCase().contains('kantor')) {
                   iconData = Icons.storefront_outlined;
                 } else if (name.toLowerCase().contains('bandara')) {
                   iconData = Icons.flight_land;
+                } else if (name.toLowerCase().contains('pelabuhan')) {
+                  iconData = Icons.directions_boat_outlined;
                 } else if (name.toLowerCase().contains('hotel')) {
                   iconData = Icons.hotel_outlined;
                 } else if (isCustom) {
