@@ -3026,7 +3026,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'PT MOBILJURAGAN TRANS MERAUKE • Ref: ${booking.id}',
+                                  'CV. MOBIL JURAGAN EXPRESS TRANSPORT • Ref: ${booking.id}',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: AppTypography.sizeTiny,
