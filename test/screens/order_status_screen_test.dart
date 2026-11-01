@@ -201,7 +201,7 @@ void main() {
       expect(find.text('1. Foto e-KTP Asli'), findsOneWidget);
       expect(find.text('2. Foto SIM A Aktif'), findsOneWidget);
       expect(find.text('3. Surat Pernyataan Penyewa'), findsOneWidget);
-      expect(find.text('Unduh PDF'), findsOneWidget);
+      expect(find.text('Unduh Template'), findsOneWidget);
       expect(find.text('Unggah TTD'), findsOneWidget);
 
       // Memastikan catatan ketiadaan printer telah dihapus dan diganti catatan syarat resmi
@@ -384,7 +384,7 @@ void main() {
 
       // Smart targeting: SIM A targeted, KTP tidak targeted
       expect(find.text('Ditolak • Perlu foto ulang'), findsOneWidget);
-      expect(find.text('ktp_pemesan.jpg • Telah diunggah'), findsOneWidget);
+      expect(find.text('Foto e-KTP terunggah'), findsOneWidget);
 
       // Tombol submit terkunci jika belum ada draft baru dipilih
       expect(find.text('Pilih Berkas Baru Terlebih Dahulu'), findsOneWidget);
@@ -397,7 +397,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Feedback draft baru dipilih
-      expect(find.text('✓ File baru dipilih (Siap dikirim)'), findsOneWidget);
+      expect(find.text('✓ Berkas baru dipilih, siap dikirim'), findsOneWidget);
 
       // Tombol submit sekarang aktif
       expect(find.text('Kirim Pembaruan Dokumen'), findsOneWidget);

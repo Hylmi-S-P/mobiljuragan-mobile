@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
 import '../core/network/api_client.dart';
@@ -52,6 +51,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   /// responsif dan jauh lebih hemat baterai/kuota.
   static const Duration _statusPollingInterval = Duration(seconds: 30);
 
+  /// Batas ukuran berkas yang diterima server (lihat `image-processing.ts`).
+  static const int _maxDocumentBytes = 5 * 1024 * 1024;
+
   Timer? _pollingTimer;
   bool _pollingFinished = false;
   bool _notificationShown = false;
@@ -62,9 +64,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   final DocumentApiService _documentApiService = DocumentApiService();
   BookingDocumentModel? _bookingDocument;
   bool _isUploadingDocument = false;
-  String? _draftStatementUrl;
-  String? _draftKtpUrl;
-  String? _draftSimUrl;
+  /* Berkas yang dipilih tapi belum dikirim.
+     Disimpan sebagai XFile (bukan base64) karena unggahan kini multipart, dan
+     supaya pratinjau bisa langsung memakai berkas aslinya. Setelah berhasil
+     dikirim, draft dikosongkan — status server yang menentukan tampilan. */
+  XFile? _draftStatement;
+  XFile? _draftKtp;
+  XFile? _draftSim;
 
   final PaymentApiService _paymentApiService = PaymentApiService();
   PaymentModel? _payment;
@@ -79,9 +85,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     super.initState();
     if (widget.initialDocument != null) {
       _bookingDocument = widget.initialDocument;
-      _draftStatementUrl = widget.initialDocument?.statementLetterUrl;
-      _draftKtpUrl = widget.initialDocument?.ktpUrl;
-      _draftSimUrl = widget.initialDocument?.simUrl;
     }
     if (widget.initialPayment != null) {
       _payment = widget.initialPayment;
@@ -137,9 +140,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         setState(() {
           _bookingDocument = doc;
           if (doc != null) {
-            _draftStatementUrl ??= doc.statementLetterUrl;
-            _draftKtpUrl ??= doc.ktpUrl;
-            _draftSimUrl ??= doc.simUrl;
           }
         });
       }
@@ -2221,17 +2221,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     final doc = _bookingDocument;
     final status = doc?.status ?? DocumentStatus.pendingUpload;
 
-    final hasStatement = (_draftStatementUrl != null && _draftStatementUrl!.isNotEmpty) ||
-        (doc?.statementLetterUrl != null && doc!.statementLetterUrl!.isNotEmpty);
-    final hasKtp = (_draftKtpUrl != null && _draftKtpUrl!.isNotEmpty) ||
-        (doc?.ktpUrl != null && doc!.ktpUrl!.isNotEmpty);
-    final hasSim = (_draftSimUrl != null && _draftSimUrl!.isNotEmpty) ||
-        (doc?.simUrl != null && doc!.simUrl!.isNotEmpty);
+    /* "Terunggah" hanya dihitung dari data server. Draft lokal tidak boleh
+       dihitung, kalau tidak tombol kirim ikut hilang setelah berkas terkirim. */
+    final hasStatement = doc?.statementLetterUrl != null && doc!.statementLetterUrl!.isNotEmpty;
+    final hasKtp = doc?.ktpUrl != null && doc!.ktpUrl!.isNotEmpty;
+    final hasSim = doc?.simUrl != null && doc!.simUrl!.isNotEmpty;
 
     final isVerified = status == DocumentStatus.verified;
-    final hasAnyDraft = (_draftStatementUrl != null && _draftStatementUrl != doc?.statementLetterUrl) ||
-        (_draftKtpUrl != null && _draftKtpUrl != doc?.ktpUrl) ||
-        (_draftSimUrl != null && _draftSimUrl != doc?.simUrl);
+    final hasAnyDraft = _draftStatement != null || _draftKtp != null || _draftSim != null;
 
     int uploadedCount = 0;
     if (hasKtp) uploadedCount++;
@@ -2239,9 +2236,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     if (hasStatement) uploadedCount++;
 
     final isRejected = status == DocumentStatus.rejected;
-    final isDraftKtpNew = _draftKtpUrl != null && _draftKtpUrl != doc?.ktpUrl;
-    final isDraftSimNew = _draftSimUrl != null && _draftSimUrl != doc?.simUrl;
-    final isDraftStatementNew = _draftStatementUrl != null && _draftStatementUrl != doc?.statementLetterUrl;
+    final isDraftKtpNew = _draftKtp != null;
+    final isDraftSimNew = _draftSim != null;
+    final isDraftStatementNew = _draftStatement != null;
 
     final rejectionReasonRaw = doc?.rejectionReason?.trim() ?? '';
     final reasonLower = rejectionReasonRaw.toLowerCase();
@@ -2522,16 +2519,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Silakan unggah ulang dokumen yang ditolak di bawah, lalu tekan Kirim Pembaruan.',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      color: Color(0xFF475569),
-                      fontFamily: 'Inter',
-                      height: 1.3,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -2543,15 +2530,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           _buildCleanDocRow(
             title: '1. Foto e-KTP Asli',
             subtitle: isDraftKtpNew
-                ? '✓ File baru dipilih (Siap dikirim)'
+                ? '✓ Berkas baru dipilih, siap dikirim'
                 : (isKtpTargeted
                     ? 'Ditolak • Perlu foto ulang'
                     : (hasKtp
                         ? (isVerified
                             ? 'Terverifikasi oleh staf'
                             : (isRejected
-                                ? 'ktp_pemesan.jpg • Telah diunggah'
-                                : 'ktp_pemesan.jpg • Menunggu verifikasi'))
+                                ? 'Foto e-KTP terunggah'
+                                : 'Foto e-KTP menunggu verifikasi'))
                         : 'Belum diunggah • Wajib sesuai nama penyewa')),
             isUploaded: hasKtp,
             isVerified: isVerified,
@@ -2566,15 +2553,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           _buildCleanDocRow(
             title: '2. Foto SIM A Aktif',
             subtitle: isDraftSimNew
-                ? '✓ File baru dipilih (Siap dikirim)'
+                ? '✓ Berkas baru dipilih, siap dikirim'
                 : (isSimTargeted
                     ? 'Ditolak • Perlu foto ulang'
                     : (hasSim
                         ? (isVerified
                             ? 'Terverifikasi oleh staf'
                             : (isRejected
-                                ? 'sim_a_pemesan.jpg • Telah diunggah'
-                                : 'sim_a_pemesan.jpg • Menunggu verifikasi'))
+                                ? 'Foto SIM A terunggah'
+                                : 'Foto SIM A menunggu verifikasi'))
                         : 'Belum diunggah • Masa berlaku masih aktif')),
             isUploaded: hasSim,
             isVerified: isVerified,
@@ -2802,7 +2789,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       borderColor = const Color(0xFFE2E8F0);
       iconBg = const Color(0xFFF1F5F9);
       iconColor = AppColors.primaryTeal;
-      statementSubtitle = '✓ File baru dipilih (Siap dikirim)';
+      statementSubtitle = '✓ Berkas baru dipilih, siap dikirim';
       subtitleColor = AppColors.primaryTeal;
       subtitleWeight = FontWeight.w600;
       uploadButtonLabel = 'Ganti File';
@@ -2842,7 +2829,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       borderColor = AppColors.borderSubtle;
       iconBg = const Color(0xFFF1F5F9);
       iconColor = AppColors.textSecondary;
-      statementSubtitle = 'Pernyataan bebas alkohol/narkoba & tanggung jawab unit. Unduh PDF, cetak & tanda tangani, lalu unggah fotonya.';
+      statementSubtitle = 'Unduh template, cetak, isi & tanda tangan basah, lalu unggah fotonya.';
       subtitleColor = AppColors.textSecondary;
       uploadButtonLabel = 'Unggah TTD';
       uploadTextColor = AppColors.primaryNavy;
@@ -2910,12 +2897,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _showStatementPdfModal(context, booking),
+                  onPressed: () => _showStatementTemplateModal(context),
                   icon: const Icon(Icons.download_rounded, size: 14),
                   label: const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Unduh PDF',
+                      'Unduh Template',
                       maxLines: 1,
                       style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600),
                     ),
@@ -2958,7 +2945,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
-  void _showStatementPdfModal(BuildContext context, BookingModel booking) {
+  /* Surat pernyataan diisi tangan, bukan dicetak terisi: yang dibagikan ke
+     penyewa hanya blanko resmi. Sebelumnya layar ini menampilkan nama, unit,
+     dan periode yang diklaim "terisi otomatis", padahal berkas yang benar-benar
+     dipakai admin adalah hasil pindaian bertanda tangan basah. */
+  void _showStatementTemplateModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2969,12 +2960,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.88,
-          ),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.88),
           child: Column(
             children: [
-              // Modal Header
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: const BoxDecoration(
@@ -2982,16 +2970,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'PRATINJAU DOKUMEN PDF (TERISI OTOMATIS)',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Text(
+                            'TEMPLATE SURAT PERNYATAAN',
                             style: TextStyle(
                               fontSize: AppTypography.sizeTiny,
                               fontWeight: FontWeight.w800,
@@ -3000,11 +2985,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                               fontFamily: 'Inter',
                             ),
                           ),
+                          SizedBox(height: 2),
                           Text(
-                            'SURAT_PERNYATAAN_${booking.id}.pdf',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            'Blanko kosong: cetak, isi, tanda tangan, lalu foto',
+                            style: TextStyle(
                               fontSize: AppTypography.sizeCaption,
                               color: Colors.white70,
                               fontFamily: 'Inter',
@@ -3020,168 +3004,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   ],
                 ),
               ),
-
-              // Modal Sheet Body: A4 Paper Preview
-              Expanded(
-                child: Container(
-                  color: const Color(0xFFF1F5F9),
-                  padding: const EdgeInsets.all(16),
-                  child: SingleChildScrollView(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Column(
-                              children: [
-                                const Text(
-                                  'SURAT PERNYATAAN PENYEWA LEPAS KUNCI',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeCaption,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'PT MOBILJURAGAN TRANS MERAUKE • Ref: ${booking.id}',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: AppTypography.sizeTiny,
-                                    color: AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 16, color: Color(0xFFCBD5E1)),
-
-                          const Text(
-                            'Saya yang bertanda tangan di bawah ini:',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Nama Lengkap  : ${context.read<AuthController>().currentUser?.name ?? 'Budi Santoso'} (Otomatis dari Akun)',
-                                  style: const TextStyle(fontSize: AppTypography.sizeTiny, fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'NIK / No. SIM : .....................................................................',
-                                  style: TextStyle(fontSize: AppTypography.sizeTiny, color: AppColors.textSecondary),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Unit Kendaraan: ${booking.vehicle.name} (Plat: ${booking.vehicle.plateNumber})',
-                                  style: const TextStyle(fontSize: AppTypography.sizeTiny, fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Periode Sewa  : ${booking.startDate.day}/${booking.startDate.month}/${booking.startDate.year} - ${booking.endDate.day}/${booking.endDate.month}/${booking.endDate.year} (${booking.durationDays} Hari)',
-                                  style: const TextStyle(fontSize: AppTypography.sizeTiny, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          const Text(
-                            'Dengan ini menyatakan secara sadar dan mengikat secara hukum:',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            '1. Menyatakan dalam keadaan sehat serta TIDAK PERNAH DAN TIDAK AKAN mengemudikan kendaraan dalam pengaruh minuman keras (alkohol), narkotika, psikotropika, atau obat terlarang.\n'
-                            '2. Tidak menggunakan kendaraan untuk tindak pidana, balap liar, ataupun menggadaikan/memindahtangankan armada kepada pihak lain.\n'
-                            '3. Bersedia bertanggung jawab penuh secara hukum (perdata dan pidana) serta menanggung biaya perbaikan apabila terjadi kelalaian atau insiden selama masa sewa.',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              height: 1.4,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'Dicetak dari aplikasi MobilJuragan',
-                                style: TextStyle(fontSize: AppTypography.sizeMicro, color: AppColors.textSecondary),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Merauke, ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                                    style: const TextStyle(fontSize: AppTypography.sizeMicro, color: AppColors.textSecondary),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: const Color(0xFF94A3B8), style: BorderStyle.solid),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'Meterai Rp10.000 &\nTTD Basah',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: AppTypography.sizeMicro, color: AppColors.textSecondary),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    '( ${context.read<AuthController>().currentUser?.name ?? 'Budi Santoso'} )',
-                                    style: const TextStyle(fontSize: AppTypography.sizeMicro, fontWeight: FontWeight.w700),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Modal Footer
+              Expanded(child: _buildStatementTemplatePreview()),
               Padding(
                 padding: const EdgeInsets.all(14),
                 child: Row(
@@ -3203,10 +3026,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          _downloadAutoFilledPdf(booking);
+                          _downloadStatementTemplate();
                         },
                         icon: const Icon(Icons.download_rounded, size: 16),
-                        label: const Text('Unduh File PDF'),
+                        label: const Text('Unduh Template'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryTeal,
                           foregroundColor: Colors.white,
@@ -3226,57 +3049,191 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
-  Future<void> _downloadAutoFilledPdf(BookingModel booking) async {
-    try {
-      final bytes = await _documentApiService.downloadBookingStatementPdf(booking.id);
-      if (mounted) {
-        final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.primaryNavy,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            content: Text(
-              'Surat pernyataan resmi untuk ${booking.id} berhasil diunduh ($kbSize KB). Format PDF siap cetak A4.',
-              style: const TextStyle(fontFamily: 'Inter'),
+  /// Pratinjau blanko diambil dari server supaya teks klausul tidak disalin
+  /// ganda di klien dan selalu sama dengan berkas PDF yang diunduh.
+  Widget _buildStatementTemplatePreview() {
+    return Container(
+      color: const Color(0xFFF1F5F9),
+      padding: const EdgeInsets.all(16),
+      child: FutureBuilder<Map<String, dynamic>>(
+        future: _documentApiService.fetchStatementTemplateText(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final data = snapshot.data ?? const <String, dynamic>{};
+          final clauses = (data['clauses'] as List?) ?? const [];
+          final instructions = (data['instructions'] as List?) ?? const [];
+
+          return SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          (data['title'] ?? 'FORM KESANGGUPAN SEWA ARMADA LEPAS KUNCI').toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          (data['company'] ?? 'PT MOBILJURAGAN TRANS MERAUKE').toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeTiny,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 16, color: Color(0xFFCBD5E1)),
+                  Text(
+                    (data['introduction'] ?? '').toString(),
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      height: 1.4,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  for (final clause in clauses) ...[
+                    Text(
+                      '${clause['number']}. ${clause['title']}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTiny,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      (clause['text'] ?? '').toString(),
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTiny,
+                        height: 1.4,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  const Divider(height: 16, color: Color(0xFFCBD5E1)),
+                  const Text(
+                    'Cara mengisi',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  for (var i = 0; i < instructions.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text(
+                        '${i + 1}. ${instructions[i]}',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeTiny,
+                          height: 1.35,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  if (snapshot.hasError)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Pratinjau tidak dapat dimuat. Tombol unduh tetap bisa dipakai.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeTiny,
+                          color: Color(0xFFB45309),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFFB91C1C),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            content: Text(
-              'Gagal mengunduh PDF: ${e.toString().replaceAll('ApiException: ', '')}',
-              style: const TextStyle(fontFamily: 'Inter'),
-            ),
-          ),
-        );
-      }
-    }
+          );
+        },
+      ),
+    );
   }
 
+  Future<void> _downloadStatementTemplate() async {
+    try {
+      final bytes = await _documentApiService.downloadStatementTemplatePdf();
+      if (!mounted) return;
+      final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primaryNavy,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            'Template surat pernyataan terunduh ($kbSize KB). Cetak, isi, tanda tangan, lalu foto dan unggah.',
+            style: const TextStyle(fontFamily: 'Inter'),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFB91C1C),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            'Gagal mengunduh template: ${e.toString().replaceAll('ApiException: ', '')}',
+            style: const TextStyle(fontFamily: 'Inter'),
+          ),
+        ),
+      );
+    }
+  }
   final ImagePicker _imagePicker = ImagePicker();
 
   Future<void> _pickDocument(String slotType, String slotTitle) async {
+    /* Di lingkungan pengujian tidak ada kamera/galeri. Draft diisi berkas
+       contoh di memori supaya alur "pilih berkas -> kirim" tetap bisa diuji. */
     if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      final sample = XFile.fromData(
+        Uint8List.fromList(const [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46]),
+        name: '$slotType.jpg',
+      );
       setState(() {
-        const sampleBase64 =
-            'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...contoh_dokumen_resmi.jpg';
         if (slotType == 'statement') {
-          _draftStatementUrl = sampleBase64;
+          _draftStatement = sample;
         } else if (slotType == 'ktp') {
-          _draftKtpUrl = sampleBase64;
+          _draftKtp = sample;
         } else if (slotType == 'sim') {
-          _draftSimUrl = sampleBase64;
+          _draftSim = sample;
         }
       });
       return;
     }
+
 
     final ImageSource? source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -3351,26 +3308,44 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     if (source == null) return;
 
     try {
+      /* Batas server 5 MB. Perekam gambar sudah mengecilkan dimensi dan
+         menurunkan kualitas; kalau hasilnya masih terlalu besar, berkas
+         ditolak di sini supaya pengguna tidak menunggu unggahan yang pasti
+         gagal. */
       final XFile? file = await _imagePicker.pickImage(
         source: source,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 85,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 72,
       );
 
       if (file == null) return;
 
-      final bytes = await file.readAsBytes();
-      final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      final sizeBytes = await file.length();
+      if (sizeBytes > _maxDocumentBytes) {
+        if (!mounted) return;
+        final sizeMb = (sizeBytes / (1024 * 1024)).toStringAsFixed(1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Foto $sizeMb MB, melebihi batas 5 MB. Ambil ulang dari jarak lebih dekat atau pilih foto lain.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
 
       if (!mounted) return;
       setState(() {
         if (slotType == 'statement') {
-          _draftStatementUrl = base64String;
+          _draftStatement = file;
         } else if (slotType == 'ktp') {
-          _draftKtpUrl = base64String;
+          _draftKtp = file;
         } else if (slotType == 'sim') {
-          _draftSimUrl = base64String;
+          _draftSim = file;
         }
       });
 
@@ -3397,9 +3372,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   }
 
   Future<void> _submitDocuments(BookingModel booking) async {
-    final statement = _draftStatementUrl ?? _bookingDocument?.statementLetterUrl;
-    final ktp = _draftKtpUrl ?? _bookingDocument?.ktpUrl;
-    final sim = _draftSimUrl ?? _bookingDocument?.simUrl;
+    final statement = _draftStatement;
+    final ktp = _draftKtp;
+    final sim = _draftSim;
 
     if (statement == null && ktp == null && sim == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3411,19 +3386,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       return;
     }
 
+    /* Controller diambil sebelum ada await: memakai context setelah unggahan
+       selesai berisiko kalau layar sudah ditutup pengguna. */
+    final bookingController = context.read<BookingController>();
     setState(() => _isUploadingDocument = true);
     try {
       final updated = await _documentApiService.uploadBookingDocuments(
         bookingId: booking.id,
-        statementLetterUrl: statement,
-        ktpUrl: ktp,
-        simUrl: sim,
+        statementLetter: statement,
+        ktp: ktp,
+        sim: sim,
       );
 
       if (mounted) {
         setState(() {
           _bookingDocument = updated;
           _isUploadingDocument = false;
+          /* Draft dikosongkan setelah server menyimpan berkas. Kalau dibiarkan,
+             tombol kirim tetap dianggap "ada berkas baru" dan pengguna bisa
+             mengirim ulang berkas yang sama tanpa sadar. */
+          _draftStatement = null;
+          _draftKtp = null;
+          _draftSim = null;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3437,6 +3421,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             ),
           ),
         );
+
+        /* Respons unggah hanya memuat data dokumen. Status pesanan bisa berubah
+           bersamaan (mis. admin sudah memverifikasi), jadi data server diambil
+           ulang alih-alih menebak dari respons tadi. */
+        await _loadBookingDocuments();
+        if (mounted) {
+          await bookingController.refreshActiveBookingStatus(booking.id);
+        }
       }
     } catch (e) {
       if (mounted) {

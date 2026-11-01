@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../models/booking_document_model.dart';
@@ -80,28 +81,47 @@ class DocumentApiService {
     return null;
   }
 
-  /// Mengunggah dokumen persyaratan sewa lepas kunci (Surat pernyataan, KTP, SIM A)
+  /// Mengunggah dokumen persyaratan sewa lepas kunci sebagai multipart.
+  ///
+  /// Berkas dikirim apa adanya (JPG/PNG/WebP). Server yang memvalidasi isi,
+  /// mengubahnya ke WebP, dan membuang metadata — klien tidak perlu mengurus
+  /// konversi atau base64 lagi.
   Future<BookingDocumentModel> uploadBookingDocuments({
     required String bookingId,
-    String? statementLetterUrl,
-    String? ktpUrl,
-    String? simUrl,
+    XFile? statementLetter,
+    XFile? ktp,
+    XFile? sim,
   }) async {
-    final response = await _client.post(
+    final files = <String, http.MultipartFile>{};
+
+    Future<void> add(String field, XFile? file) async {
+      if (file == null) return;
+      /* Dikirim dari byte, bukan path: berkas hasil kamera bisa berada di cache
+         sementara, dan `XFile.fromData` (dipakai pengujian) tidak punya path. */
+      final bytes = await file.readAsBytes();
+      files[field] = http.MultipartFile.fromBytes(
+        field,
+        bytes,
+        filename: file.name.isEmpty ? '$field.jpg' : file.name,
+      );
+    }
+
+    await add('statementLetter', statementLetter);
+    await add('ktp', ktp);
+    await add('sim', sim);
+
+    if (files.isEmpty) {
+      throw ApiException('Pilih minimal satu berkas untuk diunggah.');
+    }
+
+    final response = await _client.postMultipart(
       '${ApiConstants.bookingsEndpoint}/$bookingId/documents',
+      files: files,
       requiresAuth: true,
-      body: {
-        if (statementLetterUrl != null && statementLetterUrl.isNotEmpty)
-          'statementLetterUrl': statementLetterUrl,
-        if (ktpUrl != null && ktpUrl.isNotEmpty) 'ktpUrl': ktpUrl,
-        if (simUrl != null && simUrl.isNotEmpty) 'simUrl': simUrl,
-      },
     );
 
     if (response is Map) {
-      return BookingDocumentModel.fromJson(
-        Map<String, dynamic>.from(response),
-      );
+      return BookingDocumentModel.fromJson(Map<String, dynamic>.from(response));
     }
     throw ApiException('Respons server tidak valid saat mengunggah dokumen.');
   }

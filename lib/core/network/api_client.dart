@@ -67,6 +67,45 @@ class ApiClient {
     }
   }
 
+  /// Request POST multipart (unggahan berkas).
+  ///
+  /// Header `Content-Type` sengaja tidak diisi manual: `MultipartRequest`
+  /// menuliskan boundary-nya sendiri, dan menimpanya membuat body tidak terbaca
+  /// server.
+  Future<dynamic> postMultipart(
+    String path, {
+    required Map<String, http.MultipartFile> files,
+    Map<String, String> fields = const {},
+    bool requiresAuth = false,
+    Duration? timeout,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$path');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields.addAll(fields)
+        ..files.addAll(files.values);
+
+      request.headers['Accept'] = 'application/json';
+      if (requiresAuth) {
+        final token = await _secureStorage.getAccessToken();
+        if (token != null && token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+
+      final streamed = await _client.send(request).timeout(timeout ?? ApiConstants.timeoutDuration);
+      final response = await http.Response.fromStream(streamed);
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
+    } on TimeoutException {
+      throw ApiException('Koneksi waktu habis (Timeout).');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Terjadi kesalahan jaringan: $e');
+    }
+  }
+
   /// Request POST terstandar
   Future<dynamic> post(
     String path, {
