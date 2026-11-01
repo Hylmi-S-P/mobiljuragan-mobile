@@ -378,7 +378,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 ],
               ),
             )
-          else
+          else if (!isTicketFinal)
             Container(
               margin: const EdgeInsets.only(right: 14),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -417,7 +417,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       body: Column(
         children: [
           // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
-          if (activeTicket != null) _buildTicketSummaryBanner(activeTicket),
+          if (activeTicket != null) _buildTicketSummaryBanner(liveTicket ?? activeTicket),
 
           // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
           if (currentBooking != null)

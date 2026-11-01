@@ -327,6 +327,10 @@ void main() {
 
       // Riwayat percakapan tetap terbaca.
       expect(find.text('Kunci mobil tertinggal'), findsOneWidget);
+
+      // Badge penanganan (Staf Aktif / Asisten AI) tidak boleh muncul pada tiket final.
+      expect(find.text('Asisten AI'), findsNothing);
+      expect(find.text('Staf Aktif'), findsNothing);
     });
 
     testWidgets('Nomor tiket tidak diulang di banner ringkasan', (tester) async {
