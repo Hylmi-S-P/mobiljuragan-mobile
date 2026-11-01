@@ -76,6 +76,16 @@ Future<void> _muatFont() async {
     );
   }
   await loader.load();
+
+  /* Ikon akan tampil sebagai kotak kosong bila font Material Icons tidak
+     didaftarkan; tes memakai font bawaan SDK Flutter, bukan aset aplikasi. */
+  final ikon = FontLoader('MaterialIcons');
+  ikon.addFont(
+    File('C:/flutter/bin/cache/artifacts/material_fonts/materialicons-regular.otf')
+        .readAsBytes()
+        .then((b) => ByteData.view(b.buffer)),
+  );
+  await ikon.load();
 }
 
 Future<void> _simpan(WidgetTester tester, GlobalKey key, String nama) async {

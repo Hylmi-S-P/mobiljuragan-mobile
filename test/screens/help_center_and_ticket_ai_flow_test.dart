@@ -226,7 +226,7 @@ void main() {
   });
 
   group('ChatSupportScreen - UI Verifikasi & Tanpa Tombol Panggil Staf Manual', () {
-    testWidgets('Tidak menampilkan tombol Panggil Staf di AppBar dan menampilkan kartu prompt retensi', (tester) async {
+    testWidgets('Header memakai judul tiket + satu penanda lawan bicara, tanpa kartu retensi', (tester) async {
       final mockAi = MockAiApiService();
       final mockTicket = MockTicketApiService();
       final mockFaq = MockFaqApiService();
@@ -269,13 +269,16 @@ void main() {
       // Pastikan tombol manual "Panggil Staf" TIDAK ADA di AppBar
       expect(find.widgetWithText(OutlinedButton, 'Panggil Staf'), findsNothing);
 
-      // Pastikan status penanganan AI ditampilkan
-      expect(find.text('Asisten AI'), findsOneWidget);
+      /* Peran lawan bicara sekarang ditandai satu kali lewat subjudul + avatar
+         header, bukan badge terpisah yang mengulang hal yang sama. */
+      expect(find.text('Asisten AI MobilJuragan · membalas otomatis'), findsOneWidget);
 
-      // Pastikan kartu prompt retensi muncul
-      expect(find.text('Apakah solusi AI membantu kendala Anda?'), findsOneWidget);
-      expect(find.text('Teratasi'), findsOneWidget);
-      expect(find.text('Minta Staf'), findsOneWidget);
+      /* Kartu tawaran retensi dihapus: penawaran bicara dengan staf akan datang
+         dari AI sendiri saat percakapan tidak berprogress, bukan dari tombol
+         permanen di atas kolom ketik. */
+      expect(find.textContaining('Apakah solusi AI membantu'), findsNothing);
+      expect(find.text('Teratasi'), findsNothing);
+      expect(find.text('Minta Staf'), findsNothing);
     });
 
     testWidgets('Tiket yang sudah ditutup tidak lagi menampilkan kolom ketik', (tester) async {
@@ -333,7 +336,7 @@ void main() {
       expect(find.text('Staf Aktif'), findsNothing);
     });
 
-    testWidgets('Nomor tiket tidak diulang di banner ringkasan', (tester) async {
+    testWidgets('Judul tiket jadi judul header dan tidak diulang di banner', (tester) async {
       final supportController = MockSupportControllerForChat(
         aiApiService: MockAiApiService(),
         ticketApiService: MockTicketApiService(),
@@ -365,9 +368,56 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Nomor tiket hanya di judul AppBar, bukan diulang di banner di bawahnya.
-      expect(find.text('Tiket #TKT-20261101-0010'), findsOneWidget);
-      expect(find.text('TKT-20261101-0010'), findsNothing);
+      /* Judul header adalah judul tiket, bukan nomor tiket: nomor tidak memberi
+         tahu apa pun soal isi percakapan. Nomornya tetap ada di daftar riwayat. */
+      expect(find.text('Kaca Spion Lepas'), findsOneWidget);
+      expect(find.textContaining('TKT-20261101-0010'), findsNothing);
+
+      // Banner ringkasan hanya memuat kategori dan status, bukan judul lagi.
+      expect(find.text('Kondisi Unit Armada · Menunggu'), findsOneWidget);
+    });
+
+    testWidgets('Pesan berurutan dari pengirim sama digabung jadi satu rangkaian', (tester) async {
+      final supportController = MockSupportControllerForChat(
+        aiApiService: MockAiApiService(),
+        ticketApiService: MockTicketApiService(),
+        faqApiService: MockFaqApiService(),
+      );
+
+      final ticket = SupportTicketModel(
+        id: 'tck-group-ui',
+        ticketNumber: 'TKT-20261101-0011',
+        title: 'Ban Kempes',
+        category: TicketCategory.kendaraan,
+        description: 'Ban belakang kempes',
+        status: 'Menunggu',
+        handledBy: 'AI',
+        createdAt: DateTime.now(),
+      );
+
+      final key = 'ticket_${ticket.id}';
+      supportController.sendUserMessage(text: 'Ban belakang kempes', conversationKey: key);
+      supportController.sendUserMessage(text: 'Terjadi di jalan raya', conversationKey: key);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<SupportController>.value(value: supportController),
+              ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ],
+            child: ChatSupportScreen(ticket: ticket),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      /* Dua pesan pengguna berurutan tampil tanpa nama pengirim sama sekali,
+         dan penanda sistem tampil sebagai keterangan, bukan gelembung. */
+      expect(find.text('Ban belakang kempes'), findsOneWidget);
+      expect(find.text('Terjadi di jalan raya'), findsOneWidget);
+      expect(find.text('Anda'), findsNothing);
     });
   });
 }

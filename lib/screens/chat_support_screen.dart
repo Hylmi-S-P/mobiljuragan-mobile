@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../controllers/booking_controller.dart';
 import '../controllers/support_controller.dart';
 import '../models/booking_model.dart';
@@ -14,11 +16,7 @@ class ChatSupportScreen extends StatefulWidget {
   final SupportTicketModel? ticket;
   final BookingModel? booking;
 
-  const ChatSupportScreen({
-    super.key,
-    this.ticket,
-    this.booking,
-  });
+  const ChatSupportScreen({super.key, this.ticket, this.booking});
 
   @override
   State<ChatSupportScreen> createState() => _ChatSupportScreenState();
@@ -122,12 +120,12 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   @override
   void dispose() {
-      /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
+    /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
          sambungan tetap hidup di latar belakang dan terus memakai baterai
          serta kuota. */
-      if (widget.ticket != null) {
-        _supportController?.berhentiDengarkanTiket(widget.ticket!.id);
-      }
+    if (widget.ticket != null) {
+      _supportController?.berhentiDengarkanTiket(widget.ticket!.id);
+    }
 
     _keyboardScrollTimer?.cancel();
     _messageController.dispose();
@@ -159,8 +157,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     if (dasar == null) return null;
 
     final support = _supportController ?? context.read<SupportController>();
-    final terbaru = support.findTicket(dasar.id) ??
-        _withStatus(dasar, support.statusOf(dasar.id));
+    final terbaru = support.findTicket(dasar.id) ?? _withStatus(dasar, support.statusOf(dasar.id));
     return terbaru.isFinished ? terbaru : null;
   }
 
@@ -182,10 +179,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   }
 
   void _openCreateTicket() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateTicketScreen()));
   }
 
   String _formatRupiah(int number) {
@@ -224,21 +218,19 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     final liveTicket = activeTicket == null
         ? null
         : (support.findTicket(activeTicket.id) ??
-            _withStatus(activeTicket, support.statusOf(activeTicket.id)));
+              _withStatus(activeTicket, support.statusOf(activeTicket.id)));
     final isTicketFinal = liveTicket?.isFinished ?? false;
 
     // Ambil daftar pesan dan status handoff terisolasi untuk sesi saat ini
     final messages = support.getMessages(conversationKey);
-    final isHandedOff = support.isAiHandoffToAdminFor(conversationKey) || (activeTicket?.isHandledByHuman ?? false);
+    final isHandedOff =
+        support.isAiHandoffToAdminFor(conversationKey) || (activeTicket?.isHandledByHuman ?? false);
 
     // Rekomendasi pesan cepat sesuai konteks sesi
     final List<String> suggestions;
     if (currentBooking != null) {
       if (currentBooking.status == BookingStatus.menungguPembayaran) {
-        suggestions = [
-          'No. Rekening Bank BRI',
-          'Lokasi jemput Bandara Mopah',
-        ];
+        suggestions = ['No. Rekening Bank BRI', 'Lokasi jemput Bandara Mopah'];
       } else {
         suggestions = [
           'Lokasi jemput Bandara Mopah',
@@ -248,46 +240,43 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         ];
       }
     } else if (activeTicket != null) {
-      suggestions = [
-        'Kendala sudah teratasi',
-        'Hubungkan ke staf operasional',
-        'Cek status penanganan',
-      ];
+      /* Saran hanya untuk hal yang benar-benar bisa dijawab tiket ini. Opsi
+         "Hubungkan ke staf operasional" dibuang dari sini: penawaran berbicara
+         dengan staf akan datang dari AI saat percakapan tidak berprogress, dan
+         menaruhnya permanen di layar membuatnya jadi tombol pelarian. */
+      suggestions = ['Cek status penanganan', 'Ubah jadwal penjemputan'];
     } else {
-      suggestions = [
-        'Lokasi jemput Bandara Mopah',
-        'Verifikasi KTP & SIM A',
-        'Tarif sewa & supir',
-      ];
+      suggestions = ['Lokasi jemput Bandara Mopah', 'Verifikasi KTP & SIM A', 'Tarif sewa & supir'];
     }
 
-    // Tentukan judul dan subjudul header AppBar
+    /* Judul header adalah judul tiket, bukan nomor tiket.
+       Nomor tiket tidak memberi tahu apa pun tentang isi percakapan, sementara
+       judul tiket justru satu-satunya pengingat konteks saat pelanggan punya
+       beberapa tiket. Nomornya tetap tersedia di daftar riwayat bantuan. */
     final String screenTitle;
     final String screenSubtitle;
+
     if (currentBooking != null) {
-      screenTitle = 'CS Pesanan #${currentBooking.id}';
+      screenTitle = currentBooking.vehicle.name;
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke (Online)'
-          : '${currentBooking.vehicle.name} (${currentBooking.vehicle.plateNumber})';
+          ? 'Staf Operasional Merauke · online'
+          : 'Asisten AI MobilJuragan · membalas otomatis';
     } else if (activeTicket != null) {
-      /* Nomor tiket hanya muncul di judul. Sebelumnya nomor yang sama diulang di
-         banner ringkasan tepat di bawahnya, sehingga satu layar menampilkan
-         identitas tiket dua kali. */
-      screenTitle = 'Tiket #${activeTicket.displayTicketNumber}';
+      screenTitle = (liveTicket ?? activeTicket).title;
       if (isTicketFinal) {
-        screenSubtitle = liveTicket?.isClosed == true
-            ? 'Tiket ditutup — riwayat tersimpan'
-            : 'Tiket selesai — riwayat tersimpan';
+        screenSubtitle = (liveTicket ?? activeTicket).isClosed
+            ? 'Tiket ditutup · riwayat tersimpan'
+            : 'Tiket selesai · riwayat tersimpan';
       } else {
         screenSubtitle = isHandedOff
-            ? 'Staf Operasional Merauke (Online)'
-            : 'Asisten AI Respon Cepat (Aktif)';
+            ? 'Staf Operasional Merauke · online'
+            : 'Asisten AI MobilJuragan · membalas otomatis';
       }
     } else {
-      screenTitle = 'Chat Bantuan CS';
+      screenTitle = 'Bantuan MobilJuragan';
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke (Online)'
-          : 'Asisten AI Respon Cepat';
+          ? 'Staf Operasional Merauke · online'
+          : 'Asisten AI MobilJuragan · membalas otomatis';
     }
 
     return Scaffold(
@@ -299,118 +288,125 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        titleSpacing: 0,
+        title: Row(
           children: [
-            Text(
-              screenTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeAmount,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textWhite,
-                fontFamily: 'Inter',
+            /* Avatar lawan bicara: penanda "sedang chat dengan siapa" yang lazim
+               di aplikasi pesan. Sebelumnya peran ini dipegang badge di kanan
+               sekaligus subjudul, jadi satu informasi ditulis dua kali. */
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: isTicketFinal
+                    ? const Color(0xFF334155)
+                    : (isHandedOff ? const Color(0xFF065F46) : const Color(0xFF1E4B63)),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(
+                  isTicketFinal
+                      ? Icons.lock_outline_rounded
+                      : (isHandedOff ? Icons.support_agent_rounded : Icons.smart_toy_outlined),
+                  size: 18,
+                  color: isHandedOff || isTicketFinal
+                      ? AppColors.textWhite
+                      : const Color(0xFF7DD3FC),
+                ),
               ),
             ),
-            Row(
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: isHandedOff ? const Color(0xFF22C55E) : const Color(0xFF38BDF8),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                // Flexible + ellipsis: subjudul menyusut dengan aman
-                Flexible(
-                  child: Text(
-                    screenSubtitle,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    screenTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      color: AppColors.tealLight,
+                      fontSize: AppTypography.sizeAmount,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textWhite,
                       fontFamily: 'Inter',
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isTicketFinal
+                              ? const Color(0xFF94A3B8)
+                              : (isHandedOff ? const Color(0xFF22C55E) : const Color(0xFF38BDF8)),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          screenSubtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            color: Color(0xFFCBD5E1),
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        /* Eskalasi ke staf dipindah ke menu, bukan kartu permanen di atas kolom
+         ketik. Penawaran "mau dipanggilkan staf?" akan datang dari AI saat
+         percakapan tidak berprogress; menu ini hanya memastikan pelanggan masih
+         punya jalan keluar bila ia ingin memintanya lebih dulu. */
+        actions: [
+          if (!isTicketFinal)
+            PopupMenuButton<String>(
+              tooltip: 'Opsi lain',
+              icon: const Icon(Icons.more_vert, color: AppColors.textWhite),
+              color: AppColors.cardWhite,
+              onSelected: (nilai) async {
+                if (nilai != 'staf') return;
+                await support.handoffToAdmin(conversationKey: conversationKey);
+                if (!mounted) return;
+                _scrollToBottom();
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  value: 'staf',
+                  enabled: !isHandedOff,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.support_agent_rounded,
+                      size: 18,
+                      color: isHandedOff ? AppColors.textMuted : AppColors.primaryNavy,
+                    ),
+                    title: Text(
+                      isHandedOff ? 'Sudah ditangani staf' : 'Hubungi staf operasional',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBody,
+                        fontWeight: FontWeight.w500,
+                        color: isHandedOff ? AppColors.textMuted : AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
                     ),
                   ),
                 ),
               ],
-            ),
-          ],
-        ),
-        actions: [
-          /* Badge "Staf Aktif" menyesatkan pada tiket final: tidak ada staf yang
-             sedang memantau. Status final sudah dijelaskan di subjudul. */
-          if (isHandedOff && !isTicketFinal)
-            Container(
-              margin: const EdgeInsets.only(right: 14),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF064E3B),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF059669), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Staf Aktif',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF6EE7B7),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
             )
-          else if (!isTicketFinal)
-            Container(
-              margin: const EdgeInsets.only(right: 14),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF334155), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF38BDF8),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Asisten AI',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFBAE6FD),
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          else
+            const SizedBox(width: 8),
         ],
       ),
       resizeToAvoidBottomInset: true,
@@ -436,7 +432,19 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   return _buildAiThinkingIndicator(maxBubbleWidth);
                 }
                 final msg = messages[index];
-                return _buildMessageItem(msg, support, maxBubbleWidth);
+
+                /* Pengelompokan ala aplikasi pesan: nama pengirim dan avatar
+                   hanya muncul pada pesan pertama rangkaian berurutan, dan sudut
+                   bubble menyesuaikan posisi di dalam rangkaian. */
+                final sebelum = index > 0 ? messages[index - 1] : null;
+                final sesudah = index + 1 < messages.length ? messages[index + 1] : null;
+
+                return _buildMessageItem(
+                  msg,
+                  maxBubbleWidth,
+                  tampilkanKepala: !_sameSender(sebelum, msg),
+                  ekorRapat: _sameSender(msg, sesudah),
+                );
               },
             ),
           ),
@@ -497,11 +505,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 6,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Text(
                       isWaiting
@@ -573,18 +581,15 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 );
                 _scrollToBottom();
               },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF15803D),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF15803D),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 minimumSize: const Size(44, 32),
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
-              child: const Text(
-                'Sudah Bayar',
-                style: AppTypography.captionBold,
-              ),
+              child: const Text('Sudah Bayar', style: AppTypography.captionBold),
             ),
           ],
         ],
@@ -592,48 +597,33 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
+  /// Keterangan konteks tiket di atas percakapan.
+  ///
+  /// Isinya hanya yang tidak terbaca dari layar lain: kategori dan status.
+  /// Judul tiket sudah menjadi judul header, jadi mengulangnya di sini membuat
+  /// satu layar menampilkan hal yang sama dua kali.
   Widget _buildTicketSummaryBanner(SupportTicketModel ticket) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       decoration: const BoxDecoration(
         color: AppColors.cardWhite,
-        border: Border(
-          bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle, width: 1)),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.confirmation_number_outlined,
-            size: 16,
-            color: AppColors.textSecondary,
-          ),
-          const SizedBox(width: 8),
+          const Icon(Icons.label_outline_rounded, size: 14, color: AppColors.textMuted),
+          const SizedBox(width: 6),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ticket.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                Text(
-                  'Kategori: ${ticket.categoryLabel} · Status: ${ticket.status}',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
+            child: Text(
+              '${ticket.categoryLabel} · ${ticket.status}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
             ),
           ),
         ],
@@ -644,59 +634,30 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   Widget _buildAiThinkingIndicator(double maxBubbleWidth) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  color: AppColors.tealLight,
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.headset_mic_rounded,
-                    size: 12,
-                    color: AppColors.primaryTeal,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Asisten AI MobilJuragan',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
+          Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(color: AppColors.tealLight, shape: BoxShape.circle),
+            child: const Center(
+              child: Icon(Icons.smart_toy_outlined, size: 14, color: AppColors.primaryTeal),
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(width: 8),
           Container(
             constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.cardWhite,
+              color: const Color(0xFFF1F5F9),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(14),
-                topRight: Radius.circular(14),
-                bottomLeft: Radius.circular(2),
-                bottomRight: Radius.circular(14),
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
               ),
               border: Border.all(color: AppColors.borderSubtle, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -711,7 +672,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 ),
                 SizedBox(width: 10),
                 Text(
-                  'Sedang menyiapkan jawaban...',
+                  'Sedang menulis...',
                   style: TextStyle(
                     fontSize: AppTypography.sizeBody,
                     color: AppColors.textSecondary,
@@ -727,165 +688,152 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
-  Widget _buildMessageItem(ChatMessageModel msg, SupportController controller, double maxBubbleWidth) {
-    final isUser = msg.isFromUser;
-    final isSystemNotice = msg.senderName == 'Sistem';
+  /// Dua pesan dianggap satu rangkaian bila datang dari pihak yang sama dan
+  /// tidak dipisahkan penanda sistem.
+  bool _sameSender(ChatMessageModel? a, ChatMessageModel? b) {
+    if (a == null || b == null) return false;
+    if (a.senderName == 'Sistem' || b.senderName == 'Sistem') return false;
+    return a.isFromUser == b.isFromUser && a.isAI == b.isAI && a.senderName == b.senderName;
+  }
 
-    if (isSystemNotice) {
-      return Container(
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                msg.message,
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF1E40AF),
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+  Widget _buildMessageItem(
+    ChatMessageModel msg,
+    double maxBubbleWidth, {
+    required bool tampilkanKepala,
+    required bool ekorRapat,
+  }) {
+    final isUser = msg.isFromUser;
+
+    if (msg.senderName == 'Sistem') {
+      return _buildSystemNotice(msg);
     }
 
-    final timeString = '${msg.timestamp.hour.toString().padLeft(2, '0')}.${msg.timestamp.minute.toString().padLeft(2, '0')} WIT';
+    final jam =
+        '${msg.timestamp.hour.toString().padLeft(2, '0')}.'
+        '${msg.timestamp.minute.toString().padLeft(2, '0')}';
+
+    /* Sudut bubble: sisi dekat pengirim mengecil saat pesan menyambung, supaya
+       rangkaian terbaca sebagai satu blok, bukan tumpukan kotak terpisah. */
+    final radius = BorderRadius.only(
+      topLeft: Radius.circular(isUser ? 16 : (tampilkanKepala ? 16 : 4)),
+      topRight: Radius.circular(isUser ? (tampilkanKepala ? 16 : 4) : 16),
+      bottomLeft: Radius.circular(isUser ? 16 : (ekorRapat ? 4 : 16)),
+      bottomRight: Radius.circular(isUser ? (ekorRapat ? 4 : 16) : 16),
+    );
+
+    final warnaLatar = isUser
+        ? AppColors.primaryNavy
+        : (msg.isAI ? const Color(0xFFF1F5F9) : const Color(0xFFF0FDF4));
+    final warnaGaris = isUser
+        ? AppColors.primaryNavy
+        : (msg.isAI ? AppColors.borderSubtle : const Color(0xFFBBF7D0));
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      padding: EdgeInsets.only(top: tampilkanKepala ? 10 : 2, bottom: ekorRapat ? 0 : 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          // Header Pengirim (Untuk Admin / AI)
+          /* Kolom avatar selebar tetap: pesan lanjutan tetap sejajar walau
+             avatarnya tidak digambar. */
           if (!isUser) ...[
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: msg.isAI ? AppColors.tealLight : AppColors.primaryNavy,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Icon(
-                      msg.isAI ? Icons.headset_mic_rounded : Icons.person,
-                      size: 12,
-                      color: msg.isAI ? AppColors.primaryTeal : AppColors.textWhite,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // Flexible: nama pengirim panjang menyusut dengan ellipsis
-                // saat ukuran teks sistem diperbesar.
-                Flexible(
-                  child: Text(
-                    msg.senderName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: tampilkanKepala
+                  ? Container(
+                      decoration: BoxDecoration(
+                        color: msg.isAI ? AppColors.tealLight : const Color(0xFFDCFCE7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          msg.isAI ? Icons.smart_toy_outlined : Icons.support_agent_rounded,
+                          size: 14,
+                          color: msg.isAI ? AppColors.primaryTeal : const Color(0xFF15803D),
+                        ),
+                      ),
+                    )
+                  : null,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(width: 8),
           ],
-
-          // Bubble Chat
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: maxBubbleWidth,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isUser
-                  ? AppColors.primaryNavy
-                  : (msg.isAI ? AppColors.cardWhite : const Color(0xFFF0FDF4)),
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(14),
-                topRight: const Radius.circular(14),
-                bottomLeft: Radius.circular(isUser ? 14 : 2),
-                bottomRight: Radius.circular(isUser ? 2 : 14),
-              ),
-              border: Border.all(
-                color: isUser
-                    ? AppColors.primaryNavy
-                    : (msg.isAI ? AppColors.borderSubtle : const Color(0xFFBBF7D0)),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+          Flexible(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Text(
-                  msg.message,
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBodyLarge,
-                    height: 1.4,
-                    color: isUser ? AppColors.textWhite : AppColors.textPrimary,
-                    fontFamily: 'Inter',
+                if (tampilkanKepala && !isUser)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4, left: 2),
+                    child: Text(
+                      msg.senderName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                Container(
+                  constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                  padding: const EdgeInsets.fromLTRB(12, 9, 12, 7),
+                  decoration: BoxDecoration(
+                    color: warnaLatar,
+                    borderRadius: radius,
+                    border: Border.all(color: warnaGaris),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Pesan yang gagal sampai ke server diberi penanda supaya
-                      // pelanggan tidak menunggu balasan atas pesan yang tidak
-                      // pernah diterima tim.
-                      if (msg.isFailed) ...[
-                        Icon(
-                          Icons.error_outline_rounded,
-                          size: 12,
-                          color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Gagal terkirim',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeMicro,
-                            fontWeight: FontWeight.w600,
-                            color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
                       Text(
-                        timeString,
+                        msg.message,
                         style: TextStyle(
-                          fontSize: AppTypography.sizeMicro,
-                          color: isUser
-                              ? AppColors.textWhite.withValues(alpha: 0.7)
-                              : AppColors.textSecondary,
+                          fontSize: AppTypography.sizeBodyLarge,
+                          height: 1.4,
+                          color: isUser ? AppColors.textWhite : AppColors.textPrimary,
                           fontFamily: 'Inter',
                         ),
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          // Pesan yang gagal sampai ke server diberi penanda supaya
+                          // pelanggan tidak menunggu balasan atas pesan yang tidak
+                          // pernah diterima tim.
+                          if (msg.isFailed) ...[
+                            Icon(
+                              Icons.error_outline_rounded,
+                              size: 12,
+                              color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Gagal terkirim',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeMicro,
+                                fontWeight: FontWeight.w600,
+                                color: isUser ? const Color(0xFFFCA5A5) : const Color(0xFFB42318),
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(
+                            jam,
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeMicro,
+                              color: isUser
+                                  ? AppColors.textWhite.withValues(alpha: 0.65)
+                                  : AppColors.textMuted,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -894,6 +842,33 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Penanda sistem (tiket dibuat, ditutup, dialihkan) tampil di tengah sebagai
+  /// keterangan, bukan sebagai gelembung percakapan — tidak ada yang mengirimnya.
+  Widget _buildSystemNotice(ChatMessageModel msg) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            msg.message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              height: 1.35,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -946,26 +921,15 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                           controller.pesanBelumTerkirim
                               ? 'Laporan belum terkirim. Periksa koneksi lalu coba lagi.'
                               : 'Laporan sudah dikirim. Staf akan memeriksa pembayaran Anda.',
-                          style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: AppTypography.sizeBody,
+                          ),
                         ),
                       ),
                     );
-                  } else if (suggestion == 'Hubungkan ke staf operasional') {
-                    await controller.handoffToAdmin(conversationKey: conversationKey);
-                  } else if (suggestion == 'Kendala sudah teratasi') {
-                    if (widget.ticket != null) {
-                      await controller.closeTicket(widget.ticket!.id);
-                    } else {
-                      controller.sendUserMessage(
-                        text: 'Terima kasih, kendala saya sudah teratasi.',
-                        conversationKey: conversationKey,
-                      );
-                    }
                   } else {
-                    controller.sendUserMessage(
-                      text: suggestion,
-                      conversationKey: conversationKey,
-                    );
+                    controller.sendUserMessage(text: suggestion, conversationKey: conversationKey);
                   }
                   _scrollToBottom();
                 },
@@ -977,94 +941,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     );
   }
 
-  /// Kartu interaktif evaluasi solusi AI sebelum terjadi eskalasi otomatis
-  Widget _buildAiRetentionPrompt(SupportController controller) {
-    if (widget.ticket == null) return const SizedBox.shrink();
-    if (controller.isAiThinking(conversationKey)) return const SizedBox.shrink();
-    if (controller.isAiHandoffToAdminFor(conversationKey)) return const SizedBox.shrink();
-
-    final msgs = controller.getMessages(conversationKey);
-    final hasAiReply = msgs.any((m) => m.isAI);
-    if (!hasAiReply) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFBBF7D0)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.help_outline, size: 16, color: Color(0xFF15803D)),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Apakah solusi AI membantu kendala Anda?',
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                color: Color(0xFF14532D),
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
-          InkWell(
-            onTap: () async {
-              await controller.closeTicket(widget.ticket!.id);
-            },
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDCFCE7),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: const Color(0xFF86EFAC)),
-              ),
-              child: const Text(
-                'Teratasi',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeTiny,
-                  color: Color(0xFF15803D),
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          InkWell(
-            onTap: () async {
-              await controller.handoffToAdmin(conversationKey: conversationKey);
-              _scrollToBottom();
-            },
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: const Color(0xFFBFDBFE)),
-              ),
-              child: const Text(
-                'Minta Staf',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeTiny,
-                  color: Color(0xFF1D4ED8),
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildComposerBar(SupportController controller) {
-    final isHandedOff = controller.isAiHandoffToAdminFor(conversationKey) ||
+    final isHandedOff =
+        controller.isAiHandoffToAdminFor(conversationKey) ||
         (widget.ticket?.isHandledByHuman ?? false);
 
     final finalTicket = _ticketFinal;
@@ -1072,65 +951,76 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       return _buildClosedComposer(finalTicket);
     }
 
+    final adaTeks = _messageController.text.trim().isNotEmpty;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: TextField(
-                    controller: _messageController,
-                    focusNode: _focusNode,
-                    minLines: 1,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _handleSendMessage(controller),
-                    decoration: const InputDecoration(
-                      hintText: 'Ketik pesan bantuan atau konfirmasi...',
-                      hintStyle: TextStyle(
-                        fontSize: AppTypography.sizeBodyLarge,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
-                  ),
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              focusNode: _focusNode,
+              minLines: 1,
+              maxLines: 4,
+              textCapitalization: TextCapitalization.sentences,
+              keyboardType: TextInputType.multiline,
+              /* Enter mengirim, seperti aplikasi pesan pada umumnya. Di layar
+                 sentuh, baris baru tetap bisa lewat tombol enter di keyboard
+                 fisik dengan Shift. */
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _handleSendMessage(controller),
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(
+                fontSize: AppTypography.sizeBodyLarge,
+                height: 1.4,
+                fontFamily: 'Inter',
+              ),
+              decoration: InputDecoration(
+                hintText: isHandedOff ? 'Tulis pesan untuk staf operasional' : 'Tulis pesan',
+                hintStyle: const TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  color: AppColors.textMuted,
+                  fontFamily: 'Inter',
+                ),
+                filled: true,
+                fillColor: AppColors.surfaceLight,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryTeal,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.send, color: AppColors.textWhite, size: 18),
-                  onPressed: () => _handleSendMessage(controller),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            isHandedOff
-                ? 'Pesan terhubung langsung dengan staf operasional MobilJuragan Merauke.'
-                : 'Dijawab otomatis oleh asisten virtual. Dialihkan ke staf jika kendala berlanjut.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: AppTypography.sizeTiny,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
+          const SizedBox(width: 8),
+          /* Tombol kirim hanya menyala saat ada isi. Sebelumnya selalu menyala
+             dan menekannya tanpa teks tidak melakukan apa pun. */
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: Material(
+              color: adaTeks ? AppColors.primaryNavy : AppColors.surfaceLight,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: adaTeks ? () => _handleSendMessage(controller) : null,
+                child: Icon(
+                  Icons.send_rounded,
+                  size: 19,
+                  color: adaTeks ? AppColors.textWhite : AppColors.textMuted,
+                ),
+              ),
             ),
           ),
         ],
@@ -1190,7 +1080,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 icon: const Icon(Icons.add_comment_outlined, size: 16),
                 label: const Text(
                   'Buat Tiket Baru',
-                  style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryNavy,
@@ -1218,9 +1111,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.cardWhite,
-        border: Border(
-          top: BorderSide(color: AppColors.borderSubtle, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -1228,11 +1119,8 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             /* Saran cepat hanya berguna kalau pesan masih bisa dikirim. */
-            if (_ticketFinal == null) ...[
-              _buildAiRetentionPrompt(support),
-              if (suggestions.isNotEmpty)
-                _buildQuickSuggestionsBar(suggestions, support, booking, bookingCtrl),
-            ],
+            if (_ticketFinal == null && suggestions.isNotEmpty)
+              _buildQuickSuggestionsBar(suggestions, support, booking, bookingCtrl),
             _buildComposerBar(support),
           ],
         ),
