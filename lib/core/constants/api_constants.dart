@@ -26,6 +26,22 @@ class ApiConstants {
     return 'http://127.0.0.1:4000/api/v1';
   }
 
+  /// Mengubah path media dari backend menjadi alamat lengkap yang bisa dimuat.
+  ///
+  /// Backend mengirim `/api/v1/media/<uuid>` tanpa host, jadi nilainya perlu
+  /// digabung dengan origin (tanpa `/api/v1`) sebelum bisa dibuka Image.network.
+  /// URL penuh dan path aset dibiarkan apa adanya.
+  static String alamatMedia(String sumber) {
+    if (sumber.startsWith('http://') || sumber.startsWith('https://')) {
+      return sumber;
+    }
+    if (sumber.startsWith('assets/')) return sumber;
+
+    final origin = baseUrl.replaceAll(RegExp(r'/api/v1/?$'), '');
+    final path = sumber.startsWith('/') ? sumber : '/$sumber';
+    return '$origin$path';
+  }
+
   // Endpoints Katalog Armada
   static const String vehiclesEndpoint = '/vehicles';
   static const String vehicleCategoriesEndpoint = '/vehicles/categories';

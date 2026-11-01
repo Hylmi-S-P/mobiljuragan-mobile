@@ -171,6 +171,17 @@ class VehicleModel {
       bodyType = 'Pick-up Niaga';
     }
 
+    /*
+     * Foto yang diunggah admin lewat dashboard, kalau ada.
+     *
+     * Bentuknya path relatif seperti '/api/v1/media/<uuid>'. Nilainya masih
+     * perlu digabung dengan alamat backend sebelum bisa dimuat.
+     */
+    final fotoServerMentah = json['imageUrl']?.toString();
+    final fotoServer = (fotoServerMentah != null && fotoServerMentah.isNotEmpty)
+        ? fotoServerMentah
+        : null;
+
     // Pemetaan gambar aset lokal fallback
     String cardImg = 'assets/images/avanza_card.png';
     String? heroImg = 'assets/images/avanza_hero.png';
@@ -228,9 +239,17 @@ class VehicleModel {
       availabilityTag: calculatedAvailability,
       isPopular: rawName.toUpperCase().contains('AVANZA'),
       pricePerDay: rate,
-      imageUrl: json['imageUrl']?.toString() ?? cardImg,
-      heroImageUrl: heroImg,
-      detailImageUrl: detailImg,
+      /*
+       * Foto dari server menang atas aset lokal.
+       *
+       * Aset di bawah hanya cadangan untuk unit yang belum punya foto di
+       * server. Dulu nilainya selalu dipakai apa pun isinya, sehingga foto yang
+       * sudah diunggah admin tidak pernah tampil, dan semua unit menampilkan
+       * gambar Avanza.
+       */
+      imageUrl: fotoServer ?? cardImg,
+      heroImageUrl: fotoServer ?? heroImg,
+      detailImageUrl: fotoServer ?? detailImg,
       isFavorite: isFavorite,
       lastFetched: DateTime.now().toUtc().millisecondsSinceEpoch,
     );

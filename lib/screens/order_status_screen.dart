@@ -24,6 +24,7 @@ import 'chat_support_screen.dart';
 import 'date_time_screen.dart';
 import 'main_navigation_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Layar pelacakan status pesanan (Frame 07)
 /// Mengikuti alur stepper Figma dengan penambahan tahap Menunggu Pembayaran
@@ -815,15 +816,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.asset(
-                    booking.vehicle.imageUrl,
+                  child: GambarKendaraan(
+                    sumber: booking.vehicle.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
+                    cadangan: const Icon(
                       Icons.directions_car_filled_outlined,
                       size: 20,
                       color: AppColors.textSecondary,
-                    ),
-                  ),
+                    )),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1270,15 +1270,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.asset(
-                    booking.vehicle.imageUrl,
+                  child: GambarKendaraan(
+                    sumber: booking.vehicle.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
+                    cadangan: const Icon(
                       Icons.directions_car_filled_outlined,
                       size: 20,
                       color: AppColors.textSecondary,
-                    ),
-                  ),
+                    )),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1505,14 +1504,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      booking.vehicle.imageUrl,
+                    child: GambarKendaraan(
+                      sumber: booking.vehicle.imageUrl,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
+                      cadangan: const Icon(
                         Icons.directions_car,
                         color: AppColors.textSecondary,
-                      ),
-                    ),
+                      )),
                   ),
                 ),
                 const SizedBox(width: 14),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import 'gambar_kendaraan.dart';
 
 /// Kartu pilihan kendaraan di katalog dengan state seleksi aktif dan tombol favorit interaktif
 class VehicleCardItem extends StatelessWidget {
@@ -154,18 +155,16 @@ class VehicleCardItem extends StatelessWidget {
                     width: 106,
                     height: 74,
                     color: AppColors.surfaceLight,
-                    child: Image.asset(
-                      vehicle.imageUrl,
+                    child: GambarKendaraan(
+                      sumber: vehicle.imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(
-                            Icons.directions_car,
-                            color: AppColors.textSecondary.withValues(alpha: 0.5),
-                            size: 32,
-                          ),
-                        );
-                      },
+                      cadangan: Center(
+                        child: Icon(
+                          Icons.directions_car,
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                          size: 32,
+                        ),
+                      ),
                     ),
                   ),
                 ),
