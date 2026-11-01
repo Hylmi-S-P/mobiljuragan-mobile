@@ -5482,7 +5482,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 }
 
 /// Modal lembar pembayaran dinamis dengan integrasi Dynamic QRIS (EMVCo),
-/// rincian kode unik 3 digit, countdown timer kedaluwarsa, tombol cek status otomatis,
+/// rincian tarif apa adanya dari server, countdown timer kedaluwarsa, tombol cek status otomatis,
 /// dan ketahanan offline saat server backend tidak dapat dijangkau.
 class OnlinePaymentSheetModal extends StatefulWidget {
   final BookingModel booking;
@@ -5524,7 +5524,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   String? _lastCountdownLabel;
 
   late int _baseAmount;
-  late int _uniqueCode;
   late int _totalAmount;
   late String _qrisPayload;
 
@@ -5539,9 +5538,12 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   void initState() {
     super.initState();
     _baseAmount = widget.booking.totalCost;
-    // Hitung alokasi kode unik 3 digit (50-949) untuk ketahanan offline
-    _uniqueCode = (widget.booking.id.hashCode.abs() % 900) + 50;
-    _totalAmount = _baseAmount + _uniqueCode;
+    /* Tidak ada lagi tambahan angka lokal. Sebelumnya layar ini menambahkan
+       "kode unik" 3 digit hasil hash id pesanan ke total tagihan, sementara
+       server memakai kode 1-100 miliknya sendiri — dua angka berbeda, dan
+       keduanya tidak pernah cocok dengan mutasi bank. Nominal kini murni dari
+       server, diverifikasi manual oleh admin. */
+    _totalAmount = _baseAmount;
     _qrisPayload = PaymentModel.generateDynamicQris(_totalAmount);
 
     WidgetsBinding.instance.addObserver(this);
@@ -5590,7 +5592,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
         setState(() {
           _payment = active;
           _baseAmount = active.baseAmount;
-          _uniqueCode = active.uniqueCode;
           _totalAmount = active.totalAmount;
           /* Nilai dari server selalu dipakai apa adanya, termasuk saat null:
              lebih baik menampilkan "Menunggu tagihan" daripada waktu karangan
@@ -6955,31 +6956,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Kode Unik Verifikasi',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-              Text(
-                '+Rp ${_formatRupiah(_uniqueCode)}',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0D9488),
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
             child: Divider(height: 1, color: Color(0xFFE2E8F0)),
@@ -7058,7 +7034,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                 SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Wajib transfer tepat 3 digit terakhir agar sistem mendeteksi pembayaran secara otomatis.',
+                    'Transfer sesuai nominal di atas, tanpa dibulatkan. Admin memeriksa bukti transfer secara manual.',
                     style: TextStyle(
                       fontSize: AppTypography.sizeMicro,
                       color: Color(0xFF92400E),

@@ -68,7 +68,7 @@ void main() {
       expect(find.text('Salin String QRIS'), findsOneWidget);
     });
 
-    testWidgets('Merender rincian breakdown tarif sewa, kode unik, dan tombol salin nominal pas', (tester) async {
+    testWidgets('Merender rincian breakdown tarif sewa tanpa kode unik dan tombol salin nominal pas', (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       addTearDown(tester.view.resetPhysicalSize);
 
@@ -76,7 +76,9 @@ void main() {
       await tester.pump();
 
       expect(find.text('Tarif Sewa Pokok'), findsOneWidget);
-      expect(find.text('Kode Unik Verifikasi'), findsOneWidget);
+      // Kode unik sudah dihapus: nominal yang tampil harus sama dengan tarif.
+      expect(find.text('Kode Unik Verifikasi'), findsNothing);
+      expect(find.textContaining('3 digit'), findsNothing);
       expect(find.text('Total Transfer Pas:'), findsOneWidget);
       expect(find.text('Salin Nominal Pas'), findsOneWidget);
 

@@ -108,7 +108,13 @@ class PaymentModel {
   final String id;
   final String bookingId;
   final int baseAmount;
+
+  /// USANG: dulu berisi kode 1-100 untuk mencocokkan mutasi. Server selalu
+  /// mengirim 0 sekarang. Dipertahankan hanya supaya respons lama tidak gagal
+  /// dibaca; jangan dipakai menghitung nominal.
   final int uniqueCode;
+
+  /// Nominal yang harus dibayar, apa adanya dari server.
   final int totalAmount;
   final PaymentMethod method;
   final PaymentStatus status;
@@ -176,8 +182,9 @@ class PaymentModel {
     }
 
     final base = parseInt(json['baseAmount']);
+    // Kode unik tidak dipakai lagi untuk menghitung apa pun.
     final code = parseInt(json['uniqueCode']);
-    final total = parseInt(json['totalAmount'], base + code);
+    final total = parseInt(json['totalAmount'], base);
 
     return PaymentModel(
       id: json['id']?.toString() ?? '',
