@@ -50,45 +50,48 @@ void main() {
       expect(find.byIcon(Icons.schedule), findsOneWidget);
     });
 
-    testWidgets('Merender tab switcher: QRIS Dinamis, Transfer Bank, dan Bayar di Tempat', (tester) async {
+    testWidgets('Merender tab switcher: QRIS, Transfer Bank, dan Bayar di Tempat', (tester) async {
       await tester.pumpWidget(createTestWidget(booking: testBooking));
       await tester.pump();
 
-      expect(find.text('QRIS Dinamis'), findsOneWidget);
+      expect(find.text('QRIS'), findsOneWidget);
       expect(find.text('Transfer Bank'), findsOneWidget);
       expect(find.text('Bayar di Tempat'), findsOneWidget);
     });
 
-    testWidgets('Merender komponen QrImageView pada tab QRIS Dinamis', (tester) async {
+    testWidgets('Merender kode QR pada tab QRIS tanpa jargon teknis', (tester) async {
       await tester.pumpWidget(createTestWidget(booking: testBooking));
       await tester.pump();
 
       expect(find.byType(QrImageView), findsOneWidget);
-      expect(find.text('STANDAR PEMBAYARAN NASIONAL'), findsOneWidget);
-      expect(find.text('Salin String QRIS'), findsOneWidget);
+      expect(find.textContaining('Pindai dengan m-banking'), findsOneWidget);
+      // String payload QRIS adalah urusan teknis, bukan untuk penyewa.
+      expect(find.text('Salin String QRIS'), findsNothing);
+      expect(find.text('QRIS Dinamis'), findsNothing);
     });
 
-    testWidgets('Merender rincian breakdown tarif sewa tanpa kode unik dan tombol salin nominal pas', (tester) async {
+    testWidgets('Nominal tagihan hanya muncul sekali di kartu Total Tagihan', (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createTestWidget(booking: testBooking));
       await tester.pump();
 
-      expect(find.text('Tarif Sewa Pokok'), findsOneWidget);
-      // Kode unik sudah dihapus: nominal yang tampil harus sama dengan tarif.
+      expect(find.text('TOTAL TAGIHAN'), findsOneWidget);
+      // Satu sumber angka: tidak ada rincian duplikat di bawah.
+      expect(find.textContaining('Tarif Sewa Pokok'), findsNothing);
+      expect(find.textContaining('Total Transfer Pas'), findsNothing);
       expect(find.text('Kode Unik Verifikasi'), findsNothing);
       expect(find.textContaining('3 digit'), findsNothing);
-      expect(find.text('Total Transfer Pas:'), findsOneWidget);
-      expect(find.text('Salin Nominal Pas'), findsOneWidget);
 
-      // Ketuk tombol Salin Nominal Pas
-      await tester.ensureVisible(find.text('Salin Nominal Pas'));
-      await tester.tap(find.text('Salin Nominal Pas'));
+      // Salin nominal lewat ikon di kartu tagihan.
+      await tester.ensureVisible(find.byIcon(Icons.copy_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.copy_rounded));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.textContaining('Nominal pas Rp'), findsOneWidget);
+      expect(find.textContaining('disalin'), findsOneWidget);
     });
 
     testWidgets('Beralih ke tab Transfer Bank menampilkan opsi bank resmi dan tombol salin rekening', (tester) async {
@@ -127,23 +130,22 @@ void main() {
       expect(find.text('Pilih Bayar di Tempat (COD)'), findsOneWidget);
     });
 
-    testWidgets('Tombol Cek Status Pembayaran dapat ditekan dan tombol bypass simulasi tidak ada', (tester) async {
+    testWidgets('Tidak ada tombol cek status otomatis maupun tombol simulasi', (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       addTearDown(tester.view.resetPhysicalSize);
 
       await tester.pumpWidget(createTestWidget(booking: testBooking));
       await tester.pump();
 
-      expect(find.text('Cek Status Pembayaran (Otomatis)'), findsOneWidget);
+      /* Pemeriksaan status manual sudah tidak ditonjolkan: pelanggan tidak
+         seharusnya disuruh "mengecek" pembayaran yang belum ia kirim buktinya. */
+      expect(find.textContaining('Cek Status Pembayaran'), findsNothing);
       expect(find.text('Simulasikan Pembayaran Berhasil (Demo Sandbox)'), findsNothing);
 
-      // Ketuk tombol Cek Status Pembayaran
-      await tester.ensureVisible(find.text('Cek Status Pembayaran (Otomatis)'));
-      await tester.tap(find.text('Cek Status Pembayaran (Otomatis)'));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
-
-      // Pastikan ada respon interaktif (tidak crash)
+      // Yang tersedia hanya ajakan mengunggah bukti.
+      expect(find.text('Sudah melakukan pembayaran?'), findsOneWidget);
+      expect(find.text('Kirim Bukti Pembayaran'), findsOneWidget);
+      expect(find.text('Unggah bukti pembayaran'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
