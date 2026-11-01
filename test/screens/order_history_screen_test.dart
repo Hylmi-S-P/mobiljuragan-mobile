@@ -3,12 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/models/booking_model.dart';
-import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
 import 'package:mobiljuragan_mobile/screens/order_history_screen.dart';
 import 'package:mobiljuragan_mobile/screens/order_status_screen.dart';
 
+import '../support/armada_uji.dart';
+
 void main() {
-  final sampleVehicle = VehicleModel.sampleVehicles.first;
+  final sampleVehicle = armadaUji.first;
 
   final bookingKonfirmasi = BookingModel(
     id: 'MJ-TEST-KONFIRMASI',

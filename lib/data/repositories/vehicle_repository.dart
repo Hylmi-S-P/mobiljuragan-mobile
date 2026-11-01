@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import '../../models/vehicle_model.dart';
 import '../local/database/daos/vehicle_dao.dart';
 import '../local/preferences/app_settings_service.dart';
@@ -20,20 +21,19 @@ class VehicleRepository {
     required this.vehicleDao,
     VehicleApiService? apiService,
     required this.settingsService,
-  })  : _apiService = apiService ?? VehicleApiService();
+  }) : _apiService = apiService ?? VehicleApiService();
 
-  /// Memastikan database lokal memiliki data dasar armada Merauke saat aplikasi pertama kali dijalankan
-  Future<void> ensureSeeded() async {
-    final count = await vehicleDao.countVehicles();
-    if (count == 0) {
-      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-      final seedEntries = VehicleModel.sampleVehicles
-          .map((v) => v.toCompanion(lastFetchedMillis: now))
-          .toList();
-      await vehicleDao.upsertVehiclesBatch(seedEntries);
-      await settingsService.setLastSyncTime(now);
-    }
-  }
+  /*
+   * Tidak ada lagi penyemaian armada contoh ke database lokal.
+   *
+   * Sebelumnya, saat basis data lokal masih kosong, aplikasi menyalin sembilan
+   * unit contoh ke SQLite. Akibatnya katalog selalu tampak berisi walaupun admin
+   * belum menambahkan satu unit pun, dan unit contoh itu tidak pernah hilang
+   * walaupun backend sudah punya data sebenarnya.
+   *
+   * Sekarang katalog sepenuhnya mengikuti hasil sinkronisasi dari backend.
+   * Kalau belum ada data, yang tampil adalah keadaan kosong.
+   */
 
   /// Stream reaktif seluruh armada kendaraan yang langsung bersumber dari database SQLite lokal
   Stream<List<VehicleModel>> watchVehicles({String category = 'Semua'}) {

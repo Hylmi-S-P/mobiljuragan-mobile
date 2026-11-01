@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/models/booking_model.dart';
-import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
 import 'package:mobiljuragan_mobile/screens/order_status_screen.dart';
+
+import '../support/armada_uji.dart';
 
 void main() {
   Widget createTestWidget({required BookingModel booking}) {
@@ -28,7 +29,7 @@ void main() {
 
   final testBooking = BookingModel(
     id: 'MBJ-TEST-2026',
-    vehicle: VehicleModel.sampleVehicles.first,
+    vehicle: armadaUji.first,
     startDate: DateTime(2026, 10, 22),
     startTime: '09.00 WIT',
     durationDays: 2,

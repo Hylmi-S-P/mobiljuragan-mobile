@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
@@ -30,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final vehicleController = context.watch<VehicleController>();
     final featuredVehicle = vehicleController.vehicles.isNotEmpty
         ? vehicleController.vehicles.first
-        : VehicleModel.sampleVehicles.first;
+        : null;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -42,7 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildTopHeader(),
               const SizedBox(height: 18),
-              _buildFeaturedCard(featuredVehicle),
+              if (featuredVehicle != null)
+                _buildFeaturedCard(featuredVehicle)
+              else
+                _buildKartuKosong(),
               const SizedBox(height: 22),
               _buildReservationStatusSection(),
               const SizedBox(height: 16),
@@ -99,9 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 12),
         InkWell(
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            );
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
           },
           borderRadius: BorderRadius.circular(24),
           child: SizedBox(
@@ -111,27 +114,84 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 width: 40,
                 height: 40,
-            decoration: BoxDecoration(
-              color: isLoggedIn ? AppColors.primaryTeal : AppColors.surfaceLight,
-              shape: BoxShape.circle,
-              border: isLoggedIn ? null : Border.all(color: AppColors.borderSubtle, width: 1.5),
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: TextStyle(
-                  color: isLoggedIn ? AppColors.textWhite : AppColors.textSecondary,
-                  fontSize: AppTypography.sizeTitle,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
+                decoration: BoxDecoration(
+                  color: isLoggedIn
+                      ? AppColors.primaryTeal
+                      : AppColors.surfaceLight,
+                  shape: BoxShape.circle,
+                  border: isLoggedIn
+                      ? null
+                      : Border.all(color: AppColors.borderSubtle, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: isLoggedIn
+                          ? AppColors.textWhite
+                          : AppColors.textSecondary,
+                      fontSize: AppTypography.sizeTitle,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    ),
       ],
+    );
+  }
+
+  /*
+   * Ditampilkan saat katalog masih kosong.
+   *
+   * Sebelumnya bagian ini selalu terisi karena ada sembilan unit contoh di
+   * dalam kode. Sekarang, kalau admin belum menambahkan armada, pelanggan
+   * melihat keterangan yang jujur dan tombol muat ulang.
+   */
+  Widget _buildKartuKosong() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Armada belum tersedia',
+            style: TextStyle(
+              fontSize: AppTypography.sizeHeading,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Daftar kendaraan akan tampil di sini setelah admin menambahkan unit ke katalog.',
+            style: TextStyle(
+              fontSize: AppTypography.sizeBody,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () {
+              context.read<VehicleController>().refreshCatalog(force: true);
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Muat ulang katalog'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -246,7 +306,9 @@ class _HomeScreenState extends State<HomeScreen> {
             color: isSelected ? AppColors.primaryTeal : AppColors.cardWhite,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? AppColors.primaryTeal : AppColors.borderSubtle,
+              color: isSelected
+                  ? AppColors.primaryTeal
+                  : AppColors.borderSubtle,
               width: 1,
             ),
           ),
@@ -275,11 +337,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
             const Text(
               'Status Reservasi',
@@ -331,8 +393,8 @@ class _HomeScreenState extends State<HomeScreen> {
               border: Border.all(
                 color: hasActive
                     ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
-                        ? const Color(0xFF16A34A)
-                        : AppColors.primaryTeal)
+                          ? const Color(0xFF16A34A)
+                          : AppColors.primaryTeal)
                     : AppColors.borderSubtle,
                 width: hasActive ? 1.5 : 1,
               ),
@@ -353,23 +415,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: hasActive
-                        ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
-                            ? const Color(0xFFDCFCE7)
-                            : AppColors.badgeNavyBg)
+                        ? (activeOrder.status ==
+                                  BookingStatus.mobilSiapDigunakan
+                              ? const Color(0xFFDCFCE7)
+                              : AppColors.badgeNavyBg)
                         : AppColors.tealLight,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
                     child: Icon(
                       hasActive
-                          ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
-                              ? Icons.key
-                              : Icons.directions_car)
+                          ? (activeOrder.status ==
+                                    BookingStatus.mobilSiapDigunakan
+                                ? Icons.key
+                                : Icons.directions_car)
                           : Icons.receipt_long,
                       color: hasActive
-                          ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
-                              ? const Color(0xFF15803D)
-                              : AppColors.textWhite)
+                          ? (activeOrder.status ==
+                                    BookingStatus.mobilSiapDigunakan
+                                ? const Color(0xFF15803D)
+                                : AppColors.textWhite)
                           : AppColors.primaryTeal,
                       size: 22,
                     ),
@@ -410,7 +475,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(
                             fontSize: AppTypography.sizeTiny,
                             fontWeight: FontWeight.w500,
-                            color: activeOrder.status == BookingStatus.mobilSiapDigunakan
+                            color:
+                                activeOrder.status ==
+                                    BookingStatus.mobilSiapDigunakan
                                 ? const Color(0xFF15803D)
                                 : AppColors.primaryTeal,
                             fontFamily: 'Inter',
@@ -421,8 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (hasActive)
-                  _buildReservationStatusBadge(activeOrder.status),
+                if (hasActive) _buildReservationStatusBadge(activeOrder.status),
               ],
             ),
           ),

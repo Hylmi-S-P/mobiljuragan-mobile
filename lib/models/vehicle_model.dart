@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+
 import '../data/local/database/app_database.dart';
 
 /// Model data kendaraan untuk katalog dan detail rental MobilJuragan
@@ -44,7 +45,10 @@ class VehicleModel {
   /// Penanda ketersediaan unit untuk reservasi baru
   bool get isAvailable {
     final tag = availabilityTag.toLowerCase();
-    if (tag.contains('sedang disewa') || tag.contains('tersewa') || tag.contains('perawatan') || tag.contains('tidak tersedia')) {
+    if (tag.contains('sedang disewa') ||
+        tag.contains('tersewa') ||
+        tag.contains('perawatan') ||
+        tag.contains('tidak tersedia')) {
       return false;
     }
     return tag.contains('tersedia');
@@ -81,7 +85,8 @@ class VehicleModel {
 
   /// Konversi ke Drift VehiclesCompanion untuk penulisan ke database SQLite lokal
   VehiclesCompanion toCompanion({int? lastFetchedMillis}) {
-    final nowMillis = lastFetchedMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+    final nowMillis =
+        lastFetchedMillis ?? DateTime.now().toUtc().millisecondsSinceEpoch;
     return VehiclesCompanion(
       id: Value(id),
       name: Value(name),
@@ -104,11 +109,17 @@ class VehicleModel {
   }
 
   /// Konversi dari JSON backend API
-  factory VehicleModel.fromJson(Map<String, dynamic> json, {bool isFavorite = false}) {
-    final extId = json['externalId']?.toString() ?? json['id']?.toString() ?? '';
+  factory VehicleModel.fromJson(
+    Map<String, dynamic> json, {
+    bool isFavorite = false,
+  }) {
+    final extId =
+        json['externalId']?.toString() ?? json['id']?.toString() ?? '';
     final rawName = json['name']?.toString() ?? 'Armada MobilJuragan';
     final rawCategory = json['category']?.toString() ?? 'MPV';
-    final seating = json['seatingCapacity'] != null ? '${json['seatingCapacity']} Penumpang' : '7 Penumpang';
+    final seating = json['seatingCapacity'] != null
+        ? '${json['seatingCapacity']} Penumpang'
+        : '7 Penumpang';
     final trans = json['transmission']?.toString() ?? 'Manual';
     final rawPlate = json['licensePlate']?.toString() ?? 'PA-MKQ';
 
@@ -116,7 +127,9 @@ class VehicleModel {
     final apiPrice = json['pricePerDay'] ?? json['dailyPrice'];
     int rate = 400000;
     if (apiPrice != null) {
-      rate = (apiPrice is num) ? apiPrice.toInt() : (int.tryParse(apiPrice.toString()) ?? 400000);
+      rate = (apiPrice is num)
+          ? apiPrice.toInt()
+          : (int.tryParse(apiPrice.toString()) ?? 400000);
     } else {
       final upName = rawName.toUpperCase();
       if (upName.contains('FORTUNER')) {
@@ -131,7 +144,9 @@ class VehicleModel {
         rate = 500000;
       } else if (upName.contains('VELOZ')) {
         rate = 450000;
-      } else if (upName.contains('CARRY') || upName.contains('PICKUP') || rawCategory.toUpperCase() == 'COMMERCIAL') {
+      } else if (upName.contains('CARRY') ||
+          upName.contains('PICKUP') ||
+          rawCategory.toUpperCase() == 'COMMERCIAL') {
         rate = 350000;
       }
     }
@@ -161,28 +176,34 @@ class VehicleModel {
     String? heroImg = 'assets/images/avanza_hero.png';
     String? detailImg = 'assets/images/avanza_detail.png';
 
-    if (extId.contains('fortuner') || rawName.toUpperCase().contains('FORTUNER')) {
+    if (extId.contains('fortuner') ||
+        rawName.toUpperCase().contains('FORTUNER')) {
       cardImg = 'assets/images/fortuner_card.png';
       heroImg = null;
       detailImg = 'assets/images/fortuner_card.png';
-    } else if (extId.contains('hilux') || rawName.toUpperCase().contains('HILUX')) {
+    } else if (extId.contains('hilux') ||
+        rawName.toUpperCase().contains('HILUX')) {
       cardImg = 'assets/images/hilux_card.png';
       heroImg = null;
       detailImg = 'assets/images/hilux_card.png';
-    } else if (extId.contains('innova') || rawName.toUpperCase().contains('INNOVA')) {
+    } else if (extId.contains('innova') ||
+        rawName.toUpperCase().contains('INNOVA')) {
       cardImg = 'assets/images/innova_card.png';
       heroImg = null;
       detailImg = 'assets/images/innova_card.png';
-    } else if (extId.contains('carry') || rawName.toUpperCase().contains('CARRY')) {
+    } else if (extId.contains('carry') ||
+        rawName.toUpperCase().contains('CARRY')) {
       cardImg = 'assets/images/hilux_card.png';
       heroImg = null;
       detailImg = 'assets/images/hilux_card.png';
     }
 
     // Evaluasi status ketersediaan armada
-    final opStatus = json['operationalStatus']?.toString().toUpperCase() ?? 'AVAILABLE';
+    final opStatus =
+        json['operationalStatus']?.toString().toUpperCase() ?? 'AVAILABLE';
     final bookingsList = json['bookings'] as List<dynamic>?;
-    final bool hasActiveBooking = bookingsList != null && bookingsList.isNotEmpty;
+    final bool hasActiveBooking =
+        bookingsList != null && bookingsList.isNotEmpty;
 
     String calculatedAvailability = 'Tersedia • Lepas Kunci';
     if (opStatus == 'BOOKED' || hasActiveBooking) {
@@ -199,7 +220,9 @@ class VehicleModel {
       plateNumber: rawPlate,
       category: normalizedCategory,
       seatCapacity: seating,
-      transmission: trans == 'AUTOMATIC' || trans == 'Matic' ? 'Matic' : 'Manual',
+      transmission: trans == 'AUTOMATIC' || trans == 'Matic'
+          ? 'Matic'
+          : 'Manual',
       bodyType: bodyType,
       condition: hasActiveBooking ? 'Sedang Digunakan' : 'Siap Pakai & Terawat',
       availabilityTag: calculatedAvailability,
@@ -252,153 +275,4 @@ class VehicleModel {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-
-  /// Data 9 armada riil resmi MobilJuragan Merauke untuk seed awal offline
-  static const List<VehicleModel> sampleVehicles = [
-    VehicleModel(
-      id: 'avanza-g-putih-ps1692b',
-      name: 'AVANZA G PUTIH',
-      plateNumber: 'PS1692B',
-      category: 'MPV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Manual',
-      bodyType: 'MPV Keluarga',
-      condition: 'Siap Pakai',
-      availabilityTag: 'Tersedia • Lepas Kunci',
-      isPopular: true,
-      pricePerDay: 400000,
-      imageUrl: 'assets/images/avanza_card.png',
-      heroImageUrl: 'assets/images/avanza_hero.png',
-      detailImageUrl: 'assets/images/avanza_detail.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'veloz-merah-ps1693b',
-      name: 'VELOZ MERAH',
-      plateNumber: 'PS1693B',
-      category: 'MPV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Matic',
-      bodyType: 'MPV Keluarga',
-      condition: 'Siap & Nyaman',
-      availabilityTag: 'Tersedia • Lepas Kunci/Supir',
-      isPopular: false,
-      pricePerDay: 450000,
-      imageUrl: 'assets/images/avanza_card.png',
-      detailImageUrl: 'assets/images/avanza_detail.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'rush-g-all-new-coklat-pa1696gg',
-      name: 'RUSH G ALL NEW COKLAT',
-      plateNumber: 'PA1696GG',
-      category: 'SUV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Manual',
-      bodyType: 'SUV Tangguh',
-      condition: 'Siap Pakai',
-      availabilityTag: 'Tersedia • Lepas Kunci/Supir',
-      isPopular: false,
-      pricePerDay: 500000,
-      imageUrl: 'assets/images/fortuner_card.png',
-      detailImageUrl: 'assets/images/fortuner_card.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'terios-x-hijau-matic-b2534krb',
-      name: 'TERIOS X HIJAU MATIC',
-      plateNumber: 'B2534KRB',
-      category: 'SUV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Matic',
-      bodyType: 'SUV Tangguh',
-      condition: 'Siap Pakai',
-      availabilityTag: 'Tersedia • Lepas Kunci/Supir',
-      isPopular: false,
-      pricePerDay: 500000,
-      imageUrl: 'assets/images/fortuner_card.png',
-      detailImageUrl: 'assets/images/fortuner_card.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'xpander-exceed-hitam-ps1691b',
-      name: 'XPANDER EXCEED HITAM',
-      plateNumber: 'PS1691B',
-      category: 'MPV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Manual',
-      bodyType: 'MPV Keluarga',
-      condition: 'Sedang Beroperasi',
-      availabilityTag: 'Sedang Disewa',
-      isPopular: false,
-      pricePerDay: 550000,
-      imageUrl: 'assets/images/innova_card.png',
-      detailImageUrl: 'assets/images/innova_card.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'innova-reborn-g-hitam-pa1504g',
-      name: 'INNOVA REBORN G HITAM',
-      plateNumber: 'PA1504G',
-      category: 'MPV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Matic',
-      bodyType: 'Premium MPV',
-      condition: 'Siap & Nyaman',
-      availabilityTag: 'Tersedia • Premium MPV',
-      isPopular: false,
-      pricePerDay: 600000,
-      imageUrl: 'assets/images/innova_card.png',
-      detailImageUrl: 'assets/images/innova_card.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'hilux-g-hitam-pa8593gz',
-      name: 'HILUX G HITAM',
-      plateNumber: 'PA8593GZ',
-      category: 'Pickup',
-      seatCapacity: '5 Penumpang (Double Cabin)',
-      transmission: 'Manual',
-      bodyType: 'D-Cab Ekspedisi',
-      condition: 'Siap & Tangguh Proyek',
-      availabilityTag: 'Tersedia • Tangguh Proyek',
-      isPopular: false,
-      pricePerDay: 850000,
-      imageUrl: 'assets/images/hilux_card.png',
-      detailImageUrl: 'assets/images/hilux_card.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'fortuner-vrz-trd-hitam-b8833aku',
-      name: 'FORTUNER VRZ TRD HITAM',
-      plateNumber: 'B8833AKU',
-      category: 'SUV',
-      seatCapacity: '7 Penumpang',
-      transmission: 'Matic',
-      bodyType: 'SUV Tangguh',
-      condition: 'Siap & AC Dingin',
-      availabilityTag: 'Tersedia • Lepas Kunci/Supir',
-      isPopular: false,
-      pricePerDay: 900000,
-      imageUrl: 'assets/images/fortuner_card.png',
-      detailImageUrl: 'assets/images/fortuner_card.png',
-      isFavorite: false,
-    ),
-    VehicleModel(
-      id: 'pickup-suzuki-carry-hitam-b9762bay',
-      name: 'PICKUP SUZUKI CARRY HITAM',
-      plateNumber: 'B9762BAY',
-      category: 'Commercial',
-      seatCapacity: '3 Penumpang',
-      transmission: 'Manual',
-      bodyType: 'Pick-up Niaga',
-      condition: 'Siap Angkut Barang',
-      availabilityTag: 'Tersedia • Lepas Kunci',
-      isPopular: false,
-      pricePerDay: 350000,
-      imageUrl: 'assets/images/hilux_card.png',
-      detailImageUrl: 'assets/images/hilux_card.png',
-      isFavorite: false,
-    ),
-  ];
 }
