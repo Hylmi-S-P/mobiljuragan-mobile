@@ -801,11 +801,14 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 ),
                 child: FutureBuilder<Map<String, dynamic>>(
                   /*
-                   * Isi pratinjau diambil dari template yang sedang aktif di
-                   * server, bukan ditulis ulang di sini. Sebelumnya layar ini
-                   * menampilkan empat klausul ringkas yang berbeda dari surat
-                   * resmi sepuluh butir, sehingga pelanggan menyetujui hal yang
-                   * tidak sama dengan berkas yang ditandatanganinya.
+                   * Yang ditampilkan adalah keterangan dokumen resmi yang sedang
+                   * aktif di server: nama berkas, jenis, ukuran, dan versinya.
+                   *
+                   * Sebelumnya layar ini menampilkan empat klausul ringkas yang
+                   * ditulis ulang di aplikasi, berbeda dari surat resmi sepuluh
+                   * butir. Sekarang dokumennya berupa berkas unggahan admin yang
+                   * bisa PDF atau Word, jadi isinya tidak mungkin dibaca sebagai
+                   * teks. Pelanggan membaca berkas hasil unduhan.
                    */
                   future: _documentApiService.fetchStatementTemplateText(),
                   builder: (context, snapshot) {
@@ -823,11 +826,10 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     }
 
                     final data = snapshot.data;
-                    final clauses = (data?['clauses'] as List?) ?? const [];
 
-                    if (snapshot.hasError || clauses.isEmpty) {
+                    if (snapshot.hasError || data == null || data.isEmpty) {
                       return Text(
-                        'Pratinjau tidak dapat dimuat saat ini. Ketentuan lengkap tetap tercantum pada Form Kesanggupan yang Anda unduh dan tandatangani.',
+                        'Keterangan dokumen tidak dapat dimuat saat ini. Dokumen lengkap tetap bisa Anda unduh dan tandatangani lewat tombol di bawah.',
                         style: TextStyle(
                           fontSize: AppTypography.sizeCaption,
                           height: 1.4,
@@ -837,11 +839,15 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                       );
                     }
 
+                    final namaBerkas = data['namaBerkas']?.toString();
+                    final versi = data['versi']?.toString();
+                    final byte = data['byte'];
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          data?['title']?.toString() ?? 'Form Kesanggupan',
+                          data['judul']?.toString() ?? 'Form Kesanggupan',
                           style: const TextStyle(
                             fontSize: AppTypography.sizeCaption,
                             fontWeight: FontWeight.w700,
@@ -849,22 +855,31 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                             fontFamily: 'Inter',
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        Text(
+                          [
+                            if (namaBerkas != null && namaBerkas.isNotEmpty) namaBerkas,
+                            if (byte is int)
+                              '${(byte / 1024).toStringAsFixed(0)} KB',
+                            if (versi != null) 'versi $versi',
+                          ].join(' · '),
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
                         const SizedBox(height: 8),
-                        ...clauses.map((item) {
-                          final map = item as Map;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              '${map['number']}. ${map['text']}',
-                              style: const TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                height: 1.4,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          );
-                        }),
+                        Text(
+                          'Dokumen ini yang akan Anda cetak, isi, dan tandatangani. Bacalah dengan saksama sebelum menyetujui.',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
                       ],
                     );
                   },
