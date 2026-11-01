@@ -80,17 +80,23 @@ class VehicleRepository {
 
     try {
       final rawList = await _apiService.fetchCatalog();
-      if (rawList.isNotEmpty) {
-        final companions = rawList.map((json) {
-          final model = VehicleModel.fromJson(json);
-          return model.toCompanion(lastFetchedMillis: now);
-        }).toList();
 
-        // Atomic Batch Upsert di dalam Drift transaction
-        await vehicleDao.upsertVehiclesBatch(companions);
-        await settingsService.setLastSyncTime(now);
-        return true;
-      }
+      /*
+       * Daftar kosong dari server tetap diproses.
+       *
+       * Sebelumnya ada syarat `rawList.isNotEmpty`, sehingga kalau admin
+       * menghapus semua armada, aplikasi pelanggan tetap menampilkan unit lama
+       * dari cache dan tidak pernah tahu katalognya sudah kosong.
+       */
+      final companions = rawList.map((json) {
+        final model = VehicleModel.fromJson(json);
+        return model.toCompanion(lastFetchedMillis: now);
+      }).toList();
+
+      // Samakan isi lokal dengan server: tambah, perbarui, dan buang yang hilang.
+      await vehicleDao.gantiSeluruhArmada(companions);
+      await settingsService.setLastSyncTime(now);
+      return true;
     } catch (_) {
       // Offline fallback: jangan lempar exception agar aplikasi tetap jalan dengan cache lokal
     }
