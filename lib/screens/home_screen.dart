@@ -12,6 +12,7 @@ import 'profile_screen.dart';
 import 'vehicle_detail_screen.dart';
 import 'vehicle_selection_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Halaman utama aplikasi pelanggan MobilJuragan
 class HomeScreen extends StatefulWidget {
@@ -259,18 +260,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 130,
                 width: double.infinity,
                 color: AppColors.surfaceLight,
-                child: Image.asset(
-                  vehicle.heroImageUrl ?? vehicle.imageUrl,
+                child: GambarKendaraan(
+                  sumber: vehicle.heroImageUrl ?? vehicle.imageUrl,
                   fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(
-                      child: Icon(
-                        Icons.directions_car,
-                        color: AppColors.textSecondary,
-                        size: 48,
-                      ),
-                    );
-                  },
+                  cadangan: const Center(
+                    child: Icon(
+                      Icons.directions_car,
+                      color: AppColors.textSecondary,
+                      size: 48,
+                    ),
+                  ),
                 ),
               ),
             ),

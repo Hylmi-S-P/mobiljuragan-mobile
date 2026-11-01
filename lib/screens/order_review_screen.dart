@@ -14,6 +14,7 @@ import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
 /// Menampilkan 3 kartu ringkasan pesanan dengan tombol Ubah dan rincian tarif resmi
@@ -171,14 +172,13 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    vehicle.imageUrl,
+                  child: GambarKendaraan(
+                    sumber: vehicle.imageUrl,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
+                    cadangan: const Icon(
                       Icons.directions_car,
                       color: AppColors.textSecondary,
-                    ),
-                  ),
+                    )),
                 ),
               ),
               const SizedBox(width: 14),
