@@ -34,7 +34,13 @@ class SupportTicketModel {
   final String? handledBy; // 'AI', 'HUMAN'
   final DateTime? handoverAt;
   final DateTime createdAt;
-  final String? attachmentName;
+
+  /// Nomor tiket sementara yang dibuat aplikasi saat server belum/tidak menjawab.
+  ///
+  /// Tiket seperti ini tidak ada di database: tidak muncul di dashboard dan tidak
+  /// bisa dibalas siapa pun. Sebelumnya keadaan itu tidak dibedakan, sehingga
+  /// pelanggan diantar ke ruang obrolan untuk tiket yang tidak pernah ada.
+  final bool tersimpanDiServer;
 
   const SupportTicketModel({
     required this.id,
@@ -46,7 +52,7 @@ class SupportTicketModel {
     this.handledBy,
     this.handoverAt,
     required this.createdAt,
-    this.attachmentName,
+    this.tersimpanDiServer = true,
   });
 
   String get displayTicketNumber => ticketNumber ?? id;
@@ -69,7 +75,7 @@ class SupportTicketModel {
     String? handledBy,
     DateTime? handoverAt,
     DateTime? createdAt,
-    String? attachmentName,
+    bool? tersimpanDiServer,
   }) {
     return SupportTicketModel(
       id: id ?? this.id,
@@ -81,7 +87,7 @@ class SupportTicketModel {
       handledBy: handledBy ?? this.handledBy,
       handoverAt: handoverAt ?? this.handoverAt,
       createdAt: createdAt ?? this.createdAt,
-      attachmentName: attachmentName ?? this.attachmentName,
+      tersimpanDiServer: tersimpanDiServer ?? this.tersimpanDiServer,
     );
   }
 
@@ -145,7 +151,7 @@ class SupportTicketModel {
       createdAt: json['createdAt'] != null
           ? (DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
-      attachmentName: json['attachmentName']?.toString(),
+      tersimpanDiServer: true,
     );
   }
 

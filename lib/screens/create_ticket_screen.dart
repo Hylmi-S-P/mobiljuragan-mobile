@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../controllers/booking_controller.dart';
+
 import '../controllers/support_controller.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
-import 'chat_support_screen.dart';
 import '../theme/app_typography.dart';
+import 'chat_support_screen.dart';
 
-/// Formulir pembuatan tiket kendala dan pengaduan layanan sewa (Frame 10)
+/// Formulir pengajuan tiket bantuan pelanggan.
+///
+/// Tiket di sini tidak harus soal sewa yang sedang berjalan: orang bisa bertanya
+/// soal tarif, syarat lepas kunci, atau titik jemput sebelum memesan. Karena itu
+/// formulirnya sengaja tidak meminta nomor booking maupun armada — dulu kedua
+/// isian itu ada (bahkan terisi otomatis dari pesanan aktif), sehingga pertanyaan
+/// pra-sewa terpaksa membawa data pesanan yang tidak ada hubungannya.
+///
+/// Lampiran foto juga dihapus: yang tersimpan dulu hanya *nama berkas karangan*,
+/// bukan gambar, jadi pelanggan mengira sudah melampirkan bukti padahal tidak ada
+/// berkas yang terkirim.
 class CreateTicketScreen extends StatefulWidget {
   const CreateTicketScreen({super.key});
 
@@ -16,591 +27,363 @@ class CreateTicketScreen extends StatefulWidget {
 }
 
 class _CreateTicketScreenState extends State<CreateTicketScreen> {
+  /// Sama dengan batas di server (`MAKS_PANJANG_JUDUL`), supaya klien dan API
+  /// tidak saling menyalahkan. Server tetap memeriksa sendiri.
+  static const int _maxTitleLength = 100;
+
+  /// Deskripsi dipakai server sebagai pesan pertama percakapan.
+  static const int _maxDescriptionLength = 2000;
+
+  /// Di bawah ini deskripsi belum bisa ditindaklanjuti siapa pun.
+  static const int _minDescriptionLength = 10;
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _bookingIdController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final FocusNode _titleFocus = FocusNode();
+  final FocusNode _descriptionFocus = FocusNode();
 
   TicketCategory _selectedCategory = TicketCategory.reservasi;
-  String? _attachedFileName;
   bool _isSubmitting = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // Auto-fill nomor booking aktif jika tersedia
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final booking = context.read<BookingController>();
-      if (booking.hasActiveBooking && booking.activeBooking != null) {
-        _bookingIdController.text = booking.activeBooking!.id;
-      }
-    });
+    /* Penghitung karakter ikut berubah saat mengetik. */
+    _titleController.addListener(_refreshCounters);
+    _descriptionController.addListener(_refreshCounters);
   }
 
   @override
   void dispose() {
+    _titleController.removeListener(_refreshCounters);
+    _descriptionController.removeListener(_refreshCounters);
     _titleController.dispose();
-    _bookingIdController.dispose();
     _descriptionController.dispose();
+    _titleFocus.dispose();
+    _descriptionFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+  void _refreshCounters() {
+    if (mounted) setState(() {});
+  }
 
+  Future<void> _handleSubmit() async {
+    if (_isSubmitting) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    FocusScope.of(context).unfocus();
     setState(() {
       _isSubmitting = true;
+      _errorMessage = null;
     });
 
     final support = context.read<SupportController>();
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
-    final bookingId = _bookingIdController.text.trim();
-    final booking = context.read<BookingController>();
-    final activeBooking = booking.hasActiveBooking ? booking.activeBooking : null;
-    final vehicleContext = (activeBooking != null && (bookingId.isEmpty || bookingId == activeBooking.id))
-        ? 'Armada Terkait: ${activeBooking.vehicle.name} (${activeBooking.vehicle.plateNumber})\n'
-        : '';
 
-    final effectiveBookingId = bookingId.isNotEmpty
-        ? bookingId
-        : (activeBooking != null ? activeBooking.id : '');
-
-    final fullDesc = effectiveBookingId.isNotEmpty
-        ? 'Ref Booking: $effectiveBookingId\n$vehicleContext$description'
-        : description;
-
-    final newTicket = await support.createTicket(
+    final ticket = await support.createTicket(
       title: title,
       category: _selectedCategory,
-      description: fullDesc,
-      attachmentName: _attachedFileName,
+      description: description,
     );
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Tiket bantuan berhasil diajukan. Membuka ruang obrolan...',
-                style: TextStyle(fontFamily: 'Inter'),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF15803D),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    /* Server tidak menerima tiketnya. Dulu kasus ini didiamkan: sebuah tiket
+       karangan tetap masuk daftar dan layar langsung pindah ke ruang obrolan,
+       padahal tidak ada admin yang bisa melihatnya dan tiketnya hilang begitu
+       aplikasi ditutup. Sekarang formulir tetap terisi dan pelanggan diberi tahu
+       apa yang gagal. */
+    if (!ticket.tersimpanDiServer) {
+      support.buangTiketBelumTersimpan(ticket.id);
+      setState(() {
+        _isSubmitting = false;
+        _errorMessage =
+            'Tiket belum terkirim karena koneksi ke server gagal. Isian Anda masih tersimpan di formulir ini — periksa jaringan lalu kirim ulang.';
+      });
+      return;
+    }
 
-    // Navigasi langsung ke ruang chat bantuan dengan tiket yang baru dibuat
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => ChatSupportScreen(ticket: newTicket),
-      ),
+      MaterialPageRoute(builder: (_) => ChatSupportScreen(ticket: ticket)),
     );
-  }
-
-  void _toggleAttachmentSimulation() {
-    setState(() {
-      if (_attachedFileName == null) {
-        _attachedFileName = 'foto_kendala_lapangan_${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}.jpg';
-      } else {
-        _attachedFileName = null;
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final judulTerisi = _titleController.text.trim().isNotEmpty;
+    final deskripsiLength = _descriptionController.text.trim().length;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.scaffoldBackground,
       appBar: AppBar(
         backgroundColor: AppColors.primaryNavy,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
+          tooltip: 'Kembali',
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Buat Tiket Bantuan',
-              style: TextStyle(
-                fontSize: AppTypography.sizeHeading,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textWhite,
-                fontFamily: 'Inter',
-              ),
-            ),
-            Text(
-              'Layanan Operasional Merauke',
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                color: AppColors.tealLight,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
+        title: const Text(
+          'Buat Tiket Bantuan',
+          style: TextStyle(
+            fontSize: AppTypography.sizeHeading,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textWhite,
+            fontFamily: 'Inter',
+          ),
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Card Utama Formulir
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardWhite,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.borderSubtle),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Formulir Kendala Layanan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeAmount,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Sampaikan pertanyaan atau masalah selama masa sewa unit di Merauke.',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Divider(color: AppColors.borderSubtle, height: 1),
-                      const SizedBox(height: 16),
-
-                      // Input 1: Judul Tiket
-                      const Text(
-                        'Judul Tiket',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _titleController,
-                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
-                        decoration: InputDecoration(
-                          hintText: 'Contoh: Mobil belum tiba di Bandara Mopah',
-                          hintStyle: const TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderMedium),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderMedium),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Judul tiket tidak boleh kosong';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Input 2: Kategori / Jenis Bantuan
-                      const Text(
-                        'Jenis Bantuan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: TicketCategory.values.map((cat) {
-                          final isSelected = _selectedCategory == cat;
-                          return ChoiceChip(
-                            label: Text(
-                              _getCategoryShortLabel(cat),
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: AppColors.primaryNavy,
-                            backgroundColor: const Color(0xFFF1F5F9),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(
-                                color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-                              ),
-                            ),
-                            showCheckmark: false,
-                            onSelected: (val) {
-                              if (val) {
-                                setState(() {
-                                  _selectedCategory = cat;
-                                });
-                              }
-                            },
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Input 3: Nomor Booking Terkait (Opsional)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Nomor Booking Terkait (Opsional)',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeBody,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ),
-                          if (context.watch<BookingController>().hasActiveBooking)
-                            const Text(
-                              'Armada Aktif',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryTeal,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _bookingIdController,
-                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
-                        decoration: InputDecoration(
-                          hintText: 'Contoh: MBJ-2026-0042',
-                          hintStyle: const TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderMedium),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderMedium),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) return null;
-                          final regex = RegExp(r'^(MBJ|MJ)-[A-Za-z0-9-]+$', caseSensitive: false);
-                          if (!regex.hasMatch(value.trim())) {
-                            return 'Format nomor booking tidak valid (Contoh: MBJ-2026-0042)';
-                          }
-                          return null;
-                        },
-                      ),
-                      if (context.watch<BookingController>().hasActiveBooking &&
-                          context.watch<BookingController>().activeBooking != null) ...[
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppColors.borderSubtle),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.directions_car_outlined, size: 14, color: AppColors.primaryNavy),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${context.watch<BookingController>().activeBooking!.vehicle.name} (${context.watch<BookingController>().activeBooking!.vehicle.plateNumber})',
-                                style: const TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  color: AppColors.primaryNavy,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-
-                      // Input 4: Detail Kendala
-                      const Text(
-                        'Detail Kendala atau Pertanyaan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _descriptionController,
-                        maxLines: 4,
-                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontFamily: 'Inter'),
-                        decoration: InputDecoration(
-                          hintText: 'Tuliskan rincian situasi di lapangan, kendala unit, atau waktu penjemputan...',
-                          hintStyle: const TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.all(14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderMedium),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.borderMedium),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().length < 5) {
-                            return 'Mohon berikan rincian kendala minimal 5 karakter';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Lampiran Foto (Opsional)
-                      InkWell(
-                        onTap: _toggleAttachmentSimulation,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: _attachedFileName != null ? AppColors.primaryTeal : AppColors.borderSubtle,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _attachedFileName != null ? Icons.check_circle : Icons.camera_alt_outlined,
-                                size: 18,
-                                color: _attachedFileName != null ? AppColors.primaryTeal : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _attachedFileName ?? 'Lampirkan Foto Kondisi Kendala (Opsional)',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeBody,
-                                    fontWeight: _attachedFileName != null ? FontWeight.w600 : FontWeight.w400,
-                                    color: _attachedFileName != null ? AppColors.primaryTeal : AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                              if (_attachedFileName != null)
-                                const Icon(Icons.close, size: 16, color: AppColors.textSecondary),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // AI Assistant Notice Box (Peningkatan visual & icon badge profesional)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0FDF4),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFBBF7D0)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDCFCE7),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFF86EFAC)),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.headset_mic_rounded,
-                                  color: Color(0xFF15803D),
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Dukungan Cepat Layanan Bantuan',
-                                    style: TextStyle(
-                                      fontSize: AppTypography.sizeBody,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF15803D),
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Tiket bantuan terhubung dengan sistem layanan respons cepat. Jika membutuhkan penanganan fisik di lapangan, sistem otomatis mengalihkan ke staf operasional Merauke.',
-                                    style: TextStyle(
-                                      fontSize: AppTypography.sizeCaption,
-                                      height: 1.35,
-                                      fontWeight: FontWeight.w400,
-                                      color: Color(0xFF166534),
-                                      fontFamily: 'Inter',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            children: [
+              const Text(
+                'Ceritakan kendala atau pertanyaan Anda. Bisa soal sewa yang sedang berjalan, atau rencana sewa yang belum dipesan.',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  height: 1.45,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
                 ),
-                const SizedBox(height: 20),
+              ),
+              const SizedBox(height: 24),
 
-                // Tombol Submit Form
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _handleSubmit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      foregroundColor: AppColors.textWhite,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Flexible + ellipsis: label menyusut agar tidak
-                              // meluber saat ukuran teks sistem diperbesar.
-                              Flexible(
-                                child: Text(
-                                  'Kirim Tiket & Buka Chat',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTypography.sectionTitle,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward, size: 18),
-                            ],
-                          ),
-                  ),
+              _buildLabel('Jenis Bantuan'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: TicketCategory.values.map(_buildCategoryChip).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              _buildLabel('Judul'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _titleController,
+                focusNode: _titleFocus,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.sentences,
+                inputFormatters: [LengthLimitingTextInputFormatter(_maxTitleLength)],
+                onFieldSubmitted: (_) => _descriptionFocus.requestFocus(),
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  fontFamily: 'Inter',
                 ),
-                const SizedBox(height: 10),
-                const Center(
-                  child: Text(
-                    'Tiket terhubung langsung ke layanan bantuan & staf operasional Merauke.',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+                decoration: _inputDecoration(
+                  hint: _titleHintFor(_selectedCategory),
+                  counter: '${_titleController.text.characters.length}/$_maxTitleLength',
                 ),
-                const SizedBox(height: 24),
+                validator: (value) {
+                  final judul = value?.trim() ?? '';
+                  if (judul.isEmpty) return 'Judul belum diisi.';
+                  if (judul.length < 5) return 'Judul terlalu pendek — tulis minimal 5 karakter.';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+
+              _buildLabel('Detail'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _descriptionController,
+                focusNode: _descriptionFocus,
+                maxLines: 6,
+                minLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                inputFormatters: [LengthLimitingTextInputFormatter(_maxDescriptionLength)],
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBodyLarge,
+                  height: 1.45,
+                  fontFamily: 'Inter',
+                ),
+                decoration: _inputDecoration(
+                  hint: 'Contoh: Saya rencana sewa Avanza lepas kunci tanggal 5, '
+                      'bisa dijemput di Bandara Mopah?',
+                  counter:
+                      '$deskripsiLength/$_maxDescriptionLength',
+                ),
+                validator: (value) {
+                  final detail = value?.trim() ?? '';
+                  if (detail.isEmpty) return 'Detail belum diisi.';
+                  if (detail.length < _minDescriptionLength) {
+                    return 'Detail terlalu pendek — tulis minimal $_minDescriptionLength karakter.';
+                  }
+                  return null;
+                },
+              ),
+
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 18),
+                _buildErrorBox(_errorMessage!),
               ],
-            ),
+
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: (_isSubmitting || !judulTerisi) ? null : _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    foregroundColor: AppColors.textWhite,
+                    disabledBackgroundColor: AppColors.borderMedium,
+                    disabledForegroundColor: AppColors.textWhite,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          _errorMessage == null ? 'Kirim Tiket' : 'Kirim Ulang',
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeTitle,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  String _getCategoryShortLabel(TicketCategory category) {
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: AppTypography.sizeBody,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+        fontFamily: 'Inter',
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(TicketCategory category) {
+    final isSelected = _selectedCategory == category;
+    return ChoiceChip(
+      label: Text(
+        _categoryLabel(category),
+        style: TextStyle(
+          fontSize: AppTypography.sizeCaption,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+          fontFamily: 'Inter',
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: AppColors.primaryNavy,
+      backgroundColor: AppColors.surfaceLight,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
+        ),
+      ),
+      showCheckmark: false,
+      onSelected: (selected) {
+        if (!selected) return;
+        setState(() => _selectedCategory = category);
+      },
+    );
+  }
+
+  InputDecoration _inputDecoration({required String hint, required String counter}) {
+    const radius = BorderRadius.all(Radius.circular(8));
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        fontSize: AppTypography.sizeBody,
+        height: 1.45,
+        color: AppColors.textMuted,
+        fontFamily: 'Inter',
+      ),
+      helperText: '',
+      counterText: counter,
+      counterStyle: const TextStyle(
+        fontSize: AppTypography.sizeCaption,
+        color: AppColors.textMuted,
+        fontFamily: 'Inter',
+      ),
+      filled: true,
+      fillColor: AppColors.cardWhite,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: const OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: AppColors.borderMedium),
+      ),
+      enabledBorder: const OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: AppColors.borderMedium),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: AppColors.primaryTeal, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildErrorBox(String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.statusCancelledBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, size: 18, color: AppColors.statusCancelled),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: AppTypography.sizeBody,
+                height: 1.4,
+                color: Color(0xFF991B1B),
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Contoh judul mengikuti jenis bantuan yang dipilih, supaya pelanggan tidak
+  /// menulis "tanya" atau "kendala" saja.
+  String _titleHintFor(TicketCategory category) {
+    switch (category) {
+      case TicketCategory.reservasi:
+        return 'Contoh: Minta jemput di Bandara Mopah';
+      case TicketCategory.pembayaran:
+        return 'Contoh: Bukti transfer belum diverifikasi';
+      case TicketCategory.kendaraan:
+        return 'Contoh: AC tidak dingin sejak kemarin';
+      case TicketCategory.layananSopir:
+        return 'Contoh: Supir datang terlambat';
+      case TicketCategory.lainnya:
+        return 'Contoh: Apakah bisa sewa tiga hari saja?';
+    }
+  }
+
+  String _categoryLabel(TicketCategory category) {
     switch (category) {
       case TicketCategory.reservasi:
         return 'Jadwal & Reservasi';

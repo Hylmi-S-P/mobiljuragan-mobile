@@ -301,8 +301,14 @@ class SupportController extends ChangeNotifier {
         }
       }
 
-      _tickets.clear();
-      _tickets.addAll(remoteTickets);
+      /* Tiket yang belum tersimpan di server ikut dipertahankan. Daftar ini
+         dipakai bersama layar bantuan, jadi menghapusnya membuat tiket yang
+         ditandai "belum terkirim" lenyap hanya karena ada penyegaran daftar. */
+      final belumTersimpan = _tickets.where((t) => !t.tersimpanDiServer).toList();
+      _tickets
+        ..clear()
+        ..addAll(remoteTickets)
+        ..addAll(belumTersimpan);
     } catch (e) {
       _ticketError = e.toString();
     } finally {
@@ -316,7 +322,6 @@ class SupportController extends ChangeNotifier {
     required String title,
     required TicketCategory category,
     required String description,
-    String? attachmentName,
   }) async {
     final tempId = 'TCK-2026-${(82 + _tickets.length).toString().padLeft(3, '0')}';
     SupportTicketModel createdTicket = SupportTicketModel(
@@ -328,7 +333,7 @@ class SupportController extends ChangeNotifier {
       status: 'Menunggu',
       handledBy: 'AI',
       createdAt: DateTime.now(),
-      attachmentName: attachmentName,
+      tersimpanDiServer: false,
     );
 
     try {
@@ -345,11 +350,14 @@ class SupportController extends ChangeNotifier {
         createdTicket = SupportTicketModel.fromJson(res).copyWith(
           title: effectiveTitle,
           handledBy: res['handledBy']?.toString() ?? 'AI',
-          attachmentName: attachmentName,
+          tersimpanDiServer: true,
         );
       }
     } catch (_) {
-      // Offline fallback: data lokal tetap tersimpan di controller
+      /* Server tidak menjawab. Tiket tetap ditandai belum tersimpan
+         (`tersimpanDiServer: false`) supaya layar formulir bisa memberi tahu
+         pelanggan dan menawarkan kirim ulang, bukan mengantar ke ruang obrolan
+         untuk tiket yang tidak ada di database. */
     }
 
     final existingIdx = _tickets.indexWhere((t) => t.id == createdTicket.id || t.id == tempId);
@@ -374,7 +382,7 @@ class SupportController extends ChangeNotifier {
       ),
       ChatMessageModel(
         id: 'tck-usr-${createdTicket.id}',
-        message: attachmentName != null ? '$description\n\n[Lampiran Dokumen/Foto: $attachmentName]' : description,
+        message: description,
         timestamp: createdTicket.createdAt,
         isFromUser: true,
         senderName: 'Anda',
@@ -385,10 +393,31 @@ class SupportController extends ChangeNotifier {
 
     notifyListeners();
 
-    // Picu respon awal asisten AI secara otomatis
-    unawaited(inisialisasiResponAiTiket(ticket: createdTicket));
+    /* Respons AI hanya dipicu untuk tiket yang benar-benar ada di server; id
+       sementara tidak dikenali backend sehingga panggilannya pasti gagal. */
+    if (createdTicket.tersimpanDiServer) {
+      unawaited(inisialisasiResponAiTiket(ticket: createdTicket));
+    }
 
     return createdTicket;
+  }
+
+  /// Menghapus tiket yang gagal dibuat di server.
+  ///
+  /// Tanpa ini, setiap percobaan kirim yang gagal meninggalkan satu entri palsu di
+  /// daftar riwayat pelanggan — entri yang tidak pernah ada di database.
+  void buangTiketBelumTersimpan(String ticketId) {
+    final idx = _tickets.indexWhere((t) => t.id == ticketId);
+    if (idx == -1) return;
+
+    _tickets.removeAt(idx);
+
+    final ticketKey = 'ticket_$ticketId';
+    _conversations.remove(ticketKey);
+    _handoffStatus.remove(ticketKey);
+    _ticketTurnCounts.remove(ticketKey);
+    _isAiThinking.remove(ticketKey);
+    notifyListeners();
   }
 
   /// Menginisialisasi respon awal otomatis oleh asisten AI untuk tiket kendala baru

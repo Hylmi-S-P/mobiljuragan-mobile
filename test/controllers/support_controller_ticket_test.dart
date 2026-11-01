@@ -139,7 +139,7 @@ void main() {
       expect(createdTicket.title, contains('TKT-20261022-0099'));
     });
 
-    test('createTicket tahan terhadap galat offline tanpa melempar exception crash', () async {
+    test('createTicket menandai tiket gagal kirim dan bisa dibuang kembali', () async {
       final fakeService = FakeTicketApiService(
         exceptionToThrow: ApiException('Server tidak dapat dijangkau (Offline).', statusCode: 503),
       );
@@ -147,17 +147,39 @@ void main() {
 
       final initialLength = controller.tickets.length;
 
-      await controller.createTicket(
+      final gagal = await controller.createTicket(
         title: 'Kendala AC Panas',
         category: TicketCategory.kendaraan,
         description: 'AC mobil kurang dingin saat siang hari',
       );
 
       expect(fakeService.createTicketCount, equals(1));
-      // Tiket tetap tersimpan secara lokal di controller (offline-first)
+      expect(gagal.id, startsWith('TCK-2026-'));
+
+      /* Tiket yang tidak sampai ke server harus bisa dikenali. Sebelumnya
+         keadaan ini tidak dibedakan, sehingga layar formulir mengantar pelanggan
+         ke ruang obrolan untuk tiket yang tidak ada di database. */
+      expect(gagal.tersimpanDiServer, isFalse);
       expect(controller.tickets.length, equals(initialLength + 1));
-      final fallbackTicket = controller.tickets.first;
-      expect(fallbackTicket.id, startsWith('TCK-2026-'));
+
+      controller.buangTiketBelumTersimpan(gagal.id);
+
+      expect(controller.tickets.length, equals(initialLength));
+      expect(controller.tickets.any((t) => t.id == gagal.id), isFalse);
+    });
+
+    test('createTicket sukses menandai tiket tersimpan di server', () async {
+      final fakeService = FakeTicketApiService();
+      final controller = SupportController(ticketApiService: fakeService);
+
+      final berhasil = await controller.createTicket(
+        title: 'Penjemputan Bandara',
+        category: TicketCategory.reservasi,
+        description: 'Mohon jemput di Gate Kedatangan',
+      );
+
+      expect(berhasil.tersimpanDiServer, isTrue);
+      expect(berhasil.id, equals('tck-srv-999'));
     });
 
     test('sendUserMessage pada thread tiket mengirim pesan ke REST backend', () async {
