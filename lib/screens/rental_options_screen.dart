@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
+import '../data/remote/document_api_service.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -24,6 +25,8 @@ class RentalOptionsScreen extends StatefulWidget {
 }
 
 class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
+  final DocumentApiService _documentApiService = DocumentApiService();
+
   // Preset lokasi khusus Lepas Kunci (fokus titik serah terima resmi)
   final List<Map<String, dynamic>> _selfDriveLocations = [
     {
@@ -796,32 +799,75 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.borderSubtle),
                 ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Poin-poin pernyataan yang wajib disetujui:',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryNavy,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '1. Bebas Narkoba & Minuman Keras: Penyewa menyatakan sehat dan tidak akan mengemudikan unit dalam pengaruh alkohol, narkotika, atau zat adiktif.\n\n'
-                      '2. Integritas Pengemudi: Armada hanya dikemudikan oleh nama penyewa sah ber-SIM A aktif, serta dilarang digadaikan atau dipindahtangankan ke pihak ketiga.\n\n'
-                      '3. Wilayah Operasional: Armada digunakan di wilayah Merauke dan sekitarnya sesuai rute yang disepakati.\n\n'
-                      '4. Tanggung Jawab Kerusakan: Penyewa bertanggung jawab penuh secara hukum dan biaya perbaikan bila terjadi kelalaian selama masa sewa.',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        height: 1.4,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
+                child: FutureBuilder<Map<String, dynamic>>(
+                  /*
+                   * Isi pratinjau diambil dari template yang sedang aktif di
+                   * server, bukan ditulis ulang di sini. Sebelumnya layar ini
+                   * menampilkan empat klausul ringkas yang berbeda dari surat
+                   * resmi sepuluh butir, sehingga pelanggan menyetujui hal yang
+                   * tidak sama dengan berkas yang ditandatanganinya.
+                   */
+                  future: _documentApiService.fetchStatementTemplateText(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final data = snapshot.data;
+                    final clauses = (data?['clauses'] as List?) ?? const [];
+
+                    if (snapshot.hasError || clauses.isEmpty) {
+                      return Text(
+                        'Pratinjau tidak dapat dimuat saat ini. Ketentuan lengkap tetap tercantum pada Form Kesanggupan yang Anda unduh dan tandatangani.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          height: 1.4,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data?['title']?.toString() ?? 'Form Kesanggupan',
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryNavy,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...clauses.map((item) {
+                          final map = item as Map;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              '${map['number']}. ${map['text']}',
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeCaption,
+                                height: 1.4,
+                                color: AppColors.textSecondary,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 14),

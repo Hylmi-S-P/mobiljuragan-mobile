@@ -12,6 +12,7 @@ import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
 import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
+import '../core/util/berkas_unduhan.dart';
 import '../data/remote/document_api_service.dart';
 import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
@@ -3194,41 +3195,53 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
   /*
-   * Mengunduh formulir kosong untuk dicetak, ditandatangani basah, lalu difoto
-   * dan diunggah kembali. Versi PDF yang terisi otomatis sudah dihapus karena
-   * yang diminta memang berkas fisik bertanda tangan, bukan PDF kiriman.
+   * Mengunduh formulir kosong, MENYIMPANNYA, lalu membuka lembar bagikan.
+   *
+   * Versi sebelumnya hanya menampilkan notifikasi "berhasil diunduh" padahal
+   * isi berkasnya dibuang. Pelanggan tidak pernah memegang file, sehingga tidak
+   * ada yang bisa dicetak dan alur tanda tangan basah tidak mungkin berjalan.
    */
   Future<void> _downloadStatementTemplate() async {
     try {
       final bytes = await _documentApiService.downloadStatementTemplatePdf();
-      if (mounted) {
-        final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.primaryNavy,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            content: Text(
-              'Formulir surat pernyataan berhasil diunduh ($kbSize KB). Cetak A4, tanda tangani, lalu foto dan unggah kembali.',
-              style: const TextStyle(fontFamily: 'Inter'),
-            ),
+      final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+
+      final path = await BerkasUnduhan.simpanDanBagikan(
+        isi: bytes,
+        namaBerkas: 'Form_Kesanggupan_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        judul: 'Form Kesanggupan Penyewa',
+        teks:
+            'Cetak formulir ini di kertas A4, tanda tangani dengan meterai, lalu foto dan unggah kembali di aplikasi.',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primaryNavy,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 6),
+          content: Text(
+            'Formulir tersimpan ($kbSize KB). Cetak A4, tanda tangani, lalu foto dan unggah kembali.\n$path',
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
           ),
-        );
-      }
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFFB91C1C),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            content: Text(
-              'Gagal mengunduh PDF: ${e.toString().replaceAll('ApiException: ', '')}',
-              style: const TextStyle(fontFamily: 'Inter'),
-            ),
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFB91C1C),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            'Gagal mengunduh formulir: ${e.toString().replaceAll('ApiException: ', '')}',
+            style: const TextStyle(fontFamily: 'Inter'),
           ),
-        );
-      }
+        ),
+      );
     }
   }
 
