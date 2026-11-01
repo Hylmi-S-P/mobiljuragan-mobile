@@ -65,6 +65,15 @@ class SupportTicketModel {
 
   bool get isFinished => isResolved || isClosed;
 
+  /// Label status untuk pelanggan.
+  ///
+  /// Server membedakan `RESOLVED` (dijawab, menunggu konfirmasi, ditutup otomatis
+  /// setelah 24 jam) dan `CLOSED` (final). Bagi pelanggan keduanya sama: percakapan
+  /// berhenti, tidak ada yang bisa dikirim, dan tidak ada tindakan berbeda.
+  /// Menampilkan dua label untuk satu keadaan akhir hanya memancing pertanyaan
+  /// "apa bedanya?" — jadi keduanya tampil sebagai satu status.
+  String get statusPelanggan => isFinished ? 'Selesai' : status;
+
   SupportTicketModel copyWith({
     String? id,
     String? ticketNumber,

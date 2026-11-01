@@ -139,7 +139,10 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
   Widget _buildHistoryCard(BuildContext context, SupportTicketModel ticket) {
     final formattedDate =
         '${ticket.createdAt.day.toString().padLeft(2, '0')}/${ticket.createdAt.month.toString().padLeft(2, '0')}/${ticket.createdAt.year}';
-    final isClosed = ticket.isClosed;
+    /* Riwayat hanya berisi tiket yang sudah berakhir, jadi lambangnya satu:
+       centang. Dulu tiket berstatus `RESOLVED` diberi label "Selesai" dan
+       `CLOSED` diberi "Ditutup", padahal bagi pelanggan keduanya berarti sama —
+       percakapan berhenti dan tidak ada yang bisa dikirim. */
 
     return InkWell(
       onTap: () {
@@ -180,27 +183,25 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isClosed ? const Color(0xFFF1F5F9) : const Color(0xFFDCFCE7),
+                    color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isClosed ? const Color(0xFFCBD5E1) : const Color(0xFFBBF7D0),
-                    ),
+                    border: Border.all(color: AppColors.borderSubtle),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        isClosed ? Icons.lock_outline_rounded : Icons.check_circle_rounded,
+                      const Icon(
+                        Icons.check_circle_outline_rounded,
                         size: 12,
-                        color: isClosed ? const Color(0xFF475569) : const Color(0xFF15803D),
+                        color: AppColors.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isClosed ? 'Ditutup' : 'Selesai',
-                        style: TextStyle(
+                        ticket.statusPelanggan,
+                        style: const TextStyle(
                           fontSize: AppTypography.sizeTiny,
                           fontWeight: FontWeight.w700,
-                          color: isClosed ? const Color(0xFF475569) : const Color(0xFF15803D),
+                          color: AppColors.textSecondary,
                           fontFamily: 'Inter',
                         ),
                       ),

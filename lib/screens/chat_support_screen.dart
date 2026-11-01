@@ -264,9 +264,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     } else if (activeTicket != null) {
       screenTitle = (liveTicket ?? activeTicket).title;
       if (isTicketFinal) {
-        screenSubtitle = (liveTicket ?? activeTicket).isClosed
-            ? 'Tiket ditutup · riwayat tersimpan'
-            : 'Tiket selesai · riwayat tersimpan';
+        /* Satu kata untuk satu keadaan. Server punya dua status akhir
+           (RESOLVED lalu CLOSED), tetapi bagi pelanggan keduanya sama. */
+        screenSubtitle = 'Tiket selesai · riwayat tersimpan';
       } else {
         screenSubtitle = isHandedOff
             ? 'Staf Operasional Merauke · online'
@@ -364,50 +364,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             ),
           ],
         ),
-        /* Eskalasi ke staf dipindah ke menu, bukan kartu permanen di atas kolom
-         ketik. Penawaran "mau dipanggilkan staf?" akan datang dari AI saat
-         percakapan tidak berprogress; menu ini hanya memastikan pelanggan masih
-         punya jalan keluar bila ia ingin memintanya lebih dulu. */
-        actions: [
-          if (!isTicketFinal)
-            PopupMenuButton<String>(
-              tooltip: 'Opsi lain',
-              icon: const Icon(Icons.more_vert, color: AppColors.textWhite),
-              color: AppColors.cardWhite,
-              onSelected: (nilai) async {
-                if (nilai != 'staf') return;
-                await support.handoffToAdmin(conversationKey: conversationKey);
-                if (!mounted) return;
-                _scrollToBottom();
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem<String>(
-                  value: 'staf',
-                  enabled: !isHandedOff,
-                  child: ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      Icons.support_agent_rounded,
-                      size: 18,
-                      color: isHandedOff ? AppColors.textMuted : AppColors.primaryNavy,
-                    ),
-                    title: Text(
-                      isHandedOff ? 'Sudah ditangani staf' : 'Hubungi staf operasional',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBody,
-                        fontWeight: FontWeight.w500,
-                        color: isHandedOff ? AppColors.textMuted : AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          else
-            const SizedBox(width: 8),
-        ],
       ),
       resizeToAvoidBottomInset: true,
       body: Column(
@@ -1050,7 +1006,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    ticket.isClosed ? 'Tiket sudah ditutup' : 'Tiket sudah selesai',
+                    'Tiket sudah selesai',
                     style: const TextStyle(
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w700,

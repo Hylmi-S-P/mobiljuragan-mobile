@@ -322,7 +322,15 @@ void main() {
          diganti jalan keluar yang benar: membuat tiket baru. */
       expect(find.byType(TextField), findsNothing);
       expect(find.text('Buat Tiket Baru'), findsOneWidget);
-      expect(find.text('Tiket sudah ditutup'), findsOneWidget);
+      /* Satu label untuk satu keadaan: pelanggan tidak perlu tahu bahwa server
+         menyimpan dua status akhir (RESOLVED lalu CLOSED). */
+      expect(find.text('Tiket sudah selesai'), findsOneWidget);
+      expect(find.text('Tiket sudah ditutup'), findsNothing);
+
+      /* Titik tiga beserta menu "Hubungi staf operasional" dihapus: eskalasi
+         ditentukan sistem (kata kunci/retensi), bukan tombol manual. */
+      expect(find.byIcon(Icons.more_vert), findsNothing);
+      expect(find.text('Hubungi staf operasional'), findsNothing);
 
       // Saran cepat dan prompt retensi AI tidak relevan lagi.
       expect(find.text('Apakah solusi AI membantu kendala Anda?'), findsNothing);

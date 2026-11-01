@@ -475,6 +475,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   Widget _buildUserTicketsSection(SupportController support) {
+    /* Hanya tiket yang masih menerima pesan. Sejak wave 09 server menolak pesan
+       pada tiket RESOLVED maupun CLOSED, jadi keduanya tidak boleh muncul di sini:
+       menampilkannya sebagai "aktif" hanya menjanjikan percakapan yang sudah
+       mati. Keduanya pindah ke Riwayat Tiket. */
     final activeTickets = support.tickets.where((t) => !t.isFinished).toList();
 
     return Column(
@@ -625,7 +629,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              'Aktif • ${ticket.status}',
+                              'Aktif • ${ticket.statusPelanggan}',
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeTiny,
                                 fontWeight: FontWeight.w700,
