@@ -3203,12 +3203,18 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
    */
   Future<void> _downloadStatementTemplate() async {
     try {
-      final bytes = await _documentApiService.downloadStatementTemplatePdf();
-      final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+      final berkas = await _documentApiService.downloadStatementTemplatePdf();
+      final kbSize = (berkas.isi.lengthInBytes / 1024).toStringAsFixed(1);
 
+      /*
+       * Nama dan tipe berkas mengikuti apa yang dikirim server, karena dokumen
+       * resmi bisa berupa PDF atau Word tergantung unggahan admin. Memaksakan
+       * akhiran .pdf pada berkas Word membuat penerima gagal membukanya.
+       */
       final path = await BerkasUnduhan.simpanDanBagikan(
-        isi: bytes,
-        namaBerkas: 'Form_Kesanggupan_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        isi: berkas.isi,
+        namaBerkas: berkas.namaBerkas,
+        mime: berkas.mime,
         judul: 'Form Kesanggupan Penyewa',
         teks:
             'Cetak formulir ini di kertas A4, tanda tangani dengan meterai, lalu foto dan unggah kembali di aplikasi.',

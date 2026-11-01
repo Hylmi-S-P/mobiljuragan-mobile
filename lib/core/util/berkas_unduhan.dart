@@ -20,11 +20,17 @@ class BerkasUnduhan {
 
   /// Menyimpan [isi] sebagai [namaBerkas] lalu membuka lembar bagikan.
   ///
+  /// [mime] harus sesuai jenis berkas sebenarnya. Dokumen resmi bisa berupa PDF
+  /// atau Word tergantung apa yang diunggah admin, dan aplikasi penerima memilih
+  /// cara membukanya dari tipe ini. Menuliskan `application/pdf` untuk berkas
+  /// Word membuat penerima gagal membukanya.
+  ///
   /// Mengembalikan path berkas yang tertulis. Melempar galat bila penulisan
   /// gagal, supaya pemanggil bisa menampilkan pesan yang jujur kepada pengguna.
   static Future<String> simpanDanBagikan({
     required Uint8List isi,
     required String namaBerkas,
+    String mime = 'application/pdf',
     String? judul,
     String? teks,
   }) async {
@@ -35,7 +41,7 @@ class BerkasUnduhan {
 
     await SharePlus.instance.share(
       ShareParams(
-        files: [XFile(berkas.path, mimeType: 'application/pdf')],
+        files: [XFile(berkas.path, mimeType: mime)],
         subject: judul,
         text: teks,
       ),
