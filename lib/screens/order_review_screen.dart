@@ -419,7 +419,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 Text(
                   isDriver
                       ? 'Armada dikemudikan staf profesional MobilJuragan. Bebas repot berkendara dan tanpa syarat SIM A pemesan.'
-                      : 'Surat pernyataan bebas narkoba dan anti penggelapan dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
+                      : 'Form Kesanggupan penyewa dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w400,
