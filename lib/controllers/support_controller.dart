@@ -27,6 +27,12 @@ class SupportController extends ChangeNotifier {
   /// Peta status eskalasi percakapan ke admin manusia per sesi
   final Map<String, bool> _handoffStatus = {};
 
+  /// Penanda sesi tiket yang sudah ditutup, per conversationKey.
+  ///
+  /// Dipisah dari [_tickets] supaya penguncian input tetap berlaku walau daftar
+  /// tiket belum sempat dimuat ulang dari server.
+  final Map<String, bool> _tiketTertutup = {};
+
   /// Daftar FAQ aktif dengan fallback awal untuk ketahanan saat offline
   /* Mulai dari daftar kosong. Sebelumnya diisi FAQ karangan yang ditulis tangan
      dan tampil seolah-olah resmi saat server tidak terjangkau. Kalau data belum
@@ -410,6 +416,11 @@ class SupportController extends ChangeNotifier {
       _tickets[idx] = _tickets[idx].copyWith(status: 'Ditutup');
     }
 
+    /* Penanda ditutup dipasang lebih dulu, sebelum permintaan jaringan, supaya
+       kotak isian langsung terkunci dan pengguna tidak bisa mengirim pesan
+       susulan ke tiket yang sedang ia tutup sendiri. */
+    _tiketTertutup[ticketKey] = true;
+
     // Tambahkan pesan konfirmasi penutupan sistem di percakapan
     final currentList = _conversations.putIfAbsent(ticketKey, () => []);
     currentList.add(
@@ -559,6 +570,12 @@ class SupportController extends ChangeNotifier {
       final handledBy = (detail['handledBy'] as String?)?.toUpperCase();
       _handoffStatus[conversationKey] = handledBy == 'HUMAN';
 
+      /* Status tutup ikut disinkronkan dari server: tiket bisa saja sudah
+         ditutup admin atau tertutup otomatis saat layar ini dibuka. */
+      if (SupportTicketModel.isStatusClosed(detail['status']?.toString())) {
+        _tiketTertutup[conversationKey] = true;
+      }
+
       notifyListeners();
     } catch (_) {
       // Gagal memuat tidak boleh menghapus percakapan yang sudah tampil.
@@ -595,12 +612,53 @@ class SupportController extends ChangeNotifier {
     }
   }
 
+  /// Menandai satu sesi tiket sebagai tertutup.
+  ///
+  /// Dipakai layar saat status tiket berubah menjadi ditutup (lewat tombol
+  /// "Teratasi", event SSE, atau muat ulang riwayat) supaya penguncian input di
+  /// UI punya satu sumber kebenaran di controller, bukan disimpulkan ulang di
+  /// setiap widget.
+  void tandaiTiketTertutup(String conversationKey) {
+    _tiketTertutup[conversationKey] = true;
+    notifyListeners();
+  }
+
+  /// Benar kalau sesi percakapan ini milik tiket yang sudah ditutup.
+  ///
+  /// Diperiksa dari dua sumber: penanda yang dipasang layar, dan daftar tiket
+  /// yang dimuat dari server. Cara kedua menutup celah saat pengguna membuka
+  /// layar chat sebelum daftar tiket selesai dimuat.
+  bool isTiketTertutup(String conversationKey) {
+    if (_tiketTertutup[conversationKey] == true) return true;
+    if (!conversationKey.startsWith('ticket_')) return false;
+
+    final ticketId = conversationKey.replaceFirst('ticket_', '');
+    final idx = _tickets.indexWhere((t) => t.id == ticketId);
+    if (idx == -1) return false;
+
+    return _tickets[idx].isClosed;
+  }
+
   /// Mengirim pesan dari pengguna ke sesi obrolan yang sedang aktif
   void sendUserMessage({
     required String text,
     String conversationKey = 'general',
   }) {
     if (text.trim().isEmpty) return;
+
+    /* Tiket yang sudah ditutup tidak boleh menerima pesan dari sisi mana pun.
+     *
+     * Penjagaan ini ada di controller, bukan hanya di layar, karena tombol saran
+     * cepat memanggil fungsi ini langsung tanpa melewati kolom ketik. Tanpa
+     * penjagaan di sini, pesan tetap tampil di layar lalu ditolak server, dan
+     * pelanggan melihat pesannya "terkirim" padahal tidak. */
+    if (isTiketTertutup(conversationKey)) {
+      _tambahPesanSistem(
+        conversationKey: conversationKey,
+        pesan: 'Tiket ini sudah ditutup. Silakan buat tiket baru untuk melanjutkan.',
+      );
+      return;
+    }
 
     final list = _conversations.putIfAbsent(conversationKey, () => []);
 

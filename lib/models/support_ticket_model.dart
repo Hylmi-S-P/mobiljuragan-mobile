@@ -57,6 +57,14 @@ class SupportTicketModel {
 
   bool get isClosed => status == 'Ditutup';
 
+  /// Apakah status mentah dari server berarti tiket sudah ditutup.
+  ///
+  /// Dipakai saat hanya status yang tersedia (mis. dari respons detail tiket),
+  /// supaya aturan "apa itu ditutup" tetap tinggal di satu tempat bersama
+  /// [isClosed] dan tidak disalin ulang di controller.
+  static bool isStatusClosed(String? rawStatus) =>
+      parseStatus(rawStatus) == 'Ditutup';
+
   bool get isFinished => isResolved || isClosed;
 
   SupportTicketModel copyWith({

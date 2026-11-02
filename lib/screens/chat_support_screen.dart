@@ -96,6 +96,16 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             support.muatRiwayatTiket(ticketId: widget.ticket!.id);
             _scrollToBottom();
           },
+          /* Tiket bisa ditutup dari sisi lain (admin atau penutupan otomatis)
+             saat layar ini sedang terbuka. Tanpa penanganan di sini, kotak
+             isian tetap terbuka sampai layar dimuat ulang manual. */
+          onStatusBerubah: (status) {
+            if (!mounted) return;
+            if (SupportTicketModel.isStatusClosed(status)) {
+              support.tandaiTiketTertutup(conversationKey);
+            }
+            support.muatRiwayatTiket(ticketId: widget.ticket!.id);
+          },
         );
       }
 
@@ -1027,6 +1037,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     final isHandedOff = controller.isAiHandoffToAdminFor(conversationKey) ||
         (widget.ticket?.isHandledByHuman ?? false);
 
+    /* Tiket tertutup mengunci seluruh kotak isian. Statusnya diambil dari
+       controller supaya penanda yang dipasang saat menutup tiket, hasil muat
+       ulang riwayat, dan event SSE semuanya bermuara ke satu tempat. */
+    final isTertutup = controller.isTiketTertutup(conversationKey);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
@@ -1044,19 +1059,22 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   child: TextField(
                     controller: _messageController,
                     focusNode: _focusNode,
+                    enabled: !isTertutup,
                     minLines: 1,
                     maxLines: 4,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _handleSendMessage(controller),
-                    decoration: const InputDecoration(
-                      hintText: 'Ketik pesan bantuan atau konfirmasi...',
-                      hintStyle: TextStyle(
+                    decoration: InputDecoration(
+                      hintText: isTertutup
+                          ? 'Tiket sudah ditutup. Buat tiket baru untuk melanjutkan.'
+                          : 'Ketik pesan bantuan atau konfirmasi...',
+                      hintStyle: const TextStyle(
                         fontSize: AppTypography.sizeBodyLarge,
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
                       ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
                   ),
                 ),
@@ -1065,27 +1083,31 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryTeal,
+                decoration: BoxDecoration(
+                  color: isTertutup ? AppColors.textSecondary : AppColors.primaryTeal,
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.send, color: AppColors.textWhite, size: 18),
-                  onPressed: () => _handleSendMessage(controller),
+                  onPressed:
+                      isTertutup ? null : () => _handleSendMessage(controller),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            isHandedOff
-                ? 'Pesan terhubung langsung dengan staf operasional MobilJuragan Merauke.'
-                : 'Dijawab otomatis oleh asisten virtual. Dialihkan ke staf jika kendala berlanjut.',
+            isTertutup
+                ? 'Tiket ini sudah ditutup. Silakan buat tiket baru kalau masih perlu bantuan.'
+                : isHandedOff
+                    ? 'Pesan terhubung langsung dengan staf operasional MobilJuragan Merauke.'
+                    : 'Dijawab otomatis oleh asisten virtual. Dialihkan ke staf jika kendala berlanjut.',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: AppTypography.sizeTiny,
               color: AppColors.textSecondary,
               fontFamily: 'Inter',
+              fontWeight: isTertutup ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
         ],
