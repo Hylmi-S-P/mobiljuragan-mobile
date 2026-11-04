@@ -16,6 +16,7 @@ class PaymentApiService {
   }) async {
     final response = await _client.post(
       ApiConstants.paymentsEndpoint,
+      requiresAuth: true,
       body: {
         'bookingId': bookingId,
         'method': method.toBackendString(),
@@ -34,6 +35,7 @@ class PaymentApiService {
     try {
       final response = await _client.get(
         '${ApiConstants.paymentsBookingEndpoint}/$bookingId',
+        requiresAuth: true,
       );
 
       if (response is Map) {
@@ -53,6 +55,7 @@ class PaymentApiService {
     try {
       final response = await _client.get(
         '${ApiConstants.paymentsEndpoint}/$paymentId',
+        requiresAuth: true,
       );
 
       if (response is Map) {
@@ -84,6 +87,7 @@ class PaymentApiService {
 
     final response = await _client.post(
       '${ApiConstants.paymentsEndpoint}/$paymentId/proof',
+      requiresAuth: true,
       body: payload,
     );
 

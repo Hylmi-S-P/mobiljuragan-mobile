@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../core/network/api_client.dart';
 import '../../models/booking_model.dart';
 import '../../models/vehicle_model.dart';
 import '../local/database/app_database.dart';
 import '../local/database/daos/booking_dao.dart';
+import '../local/database/daos/vehicle_dao.dart';
 import '../local/secure/secure_storage_service.dart';
 import '../remote/booking_api_service.dart';
 
@@ -15,6 +18,8 @@ class BookingRepository {
   final BookingApiService _apiService;
   final SecureStorageService? _secureStorage;
 
+  final VehicleDao? _vehicleDao;
+
   /// Pemilik cache yang sedang aktif.
   ///
   /// Null berarti belum ada sesi (mode tamu). Nilai ini di-refresh dari secure
@@ -22,10 +27,13 @@ class BookingRepository {
   /// menampilkan riwayat pesanan akun lain.
   String? _userId;
 
+  /// [vehicleDao] dipakai untuk membaca nama/plat unit dari tabel `vehicles`,
+  /// [secureStorage] dipakai untuk mengetahui pemilik cache yang aktif.
   BookingRepository(
     this._bookingDao, [
     BookingApiService? apiService,
     SecureStorageService? secureStorage,
+    this._vehicleDao,
   ])  : _apiService = apiService ?? BookingApiService(),
         _secureStorage = secureStorage;
 
@@ -61,12 +69,33 @@ class BookingRepository {
     return companion.copyWith(userId: Value(owner));
   }
 
-  Map<String, VehicleModel> get _defaultVehicleMap => {
-        for (final v in VehicleModel.sampleVehicles) v.id: v,
-      };
+  /*
+   * Peta armada yang tersimpan di basis data lokal.
+   *
+   * Tabel `bookings` hanya menyimpan `vehicleId`. Nama dan plat unitnya harus
+   * diambil dari tabel `vehicles` supaya riwayat pesanan bisa ditampilkan.
+   * Peta ini diisi dari hasil sinkronisasi backend, bukan dari daftar contoh
+   * yang menempel di kode.
+   */
+  Map<String, VehicleModel> _petaKendaraan = {};
 
-  /// Resolusi armada kendaraan secara akurat dari ID, externalId, atau payload JSON relasi
-  VehicleModel _resolveVehicle({
+  Future<void> _muatPetaKendaraan() async {
+    final dao = _vehicleDao;
+    if (dao == null) return;
+    final rows = await dao.getAllVehicles();
+    _petaKendaraan = {
+      for (final row in rows) row.id: VehicleModel.fromDrift(row),
+    };
+  }
+
+  Map<String, VehicleModel> get _defaultVehicleMap => _petaKendaraan;
+
+  /// Resolusi armada kendaraan secara akurat dari ID, externalId, atau payload JSON relasi.
+  ///
+  /// Mengembalikan null kalau unitnya tidak ditemukan di basis data. Pemanggil
+  /// yang membaca dari basis data lokal melewati baris tersebut: menampilkan
+  /// pesanan dengan unit karangan lebih buruk daripada tidak menampilkannya.
+  VehicleModel? _resolveVehicle({
     String? vehicleId,
     Map<String, dynamic>? vehicleJson,
     Map<String, VehicleModel>? customMap,
@@ -88,96 +117,95 @@ class BookingRepository {
       return map[jsonId]!;
     }
 
-    // 3. Cocokkan dengan sampleVehicles berdasarkan kecocokan ID, externalId, atau nama
-    final searchKey = (extId ?? vehicleId ?? jsonId ?? '').toLowerCase();
-    final nameKey = vehicleJson?['name']?.toString().toUpperCase();
-
-    for (final v in VehicleModel.sampleVehicles) {
-      final vIdLower = v.id.toLowerCase();
-      if (searchKey.isNotEmpty) {
-        if (vIdLower == searchKey ||
-            vIdLower.contains(searchKey) ||
-            searchKey.contains(vIdLower)) {
-          return v;
-        }
-        final searchPrefix = searchKey.split('-').first;
-        if (searchPrefix.length >= 4 && vIdLower.startsWith(searchPrefix)) {
-          return v;
-        }
-      }
-      if (nameKey != null) {
-        final vNameUpper = v.name.toUpperCase();
-        if (nameKey.contains(vNameUpper) || vNameUpper.contains(nameKey)) {
-          return v;
-        }
-        final namePrefix = nameKey.split(' ').first;
-        if (namePrefix.length >= 4 && vNameUpper.startsWith(namePrefix)) {
-          return v;
-        }
-      }
-    }
-
-    // 4. Jika backend mengirimkan relasi vehicle lengkap, bangun VehicleModel dari JSON
+    // 3. Jika backend mengirimkan relasi vehicle lengkap, bangun dari JSON.
     if (vehicleJson != null && vehicleJson.isNotEmpty) {
       return VehicleModel.fromJson(vehicleJson);
     }
 
-    // 5. Fallback terakhir jika benar-benar tidak ditemukan
-    return VehicleModel.sampleVehicles.first;
+    // 4. Unit tidak dikenal.
+    //
+    // Bisa terjadi kalau unitnya sudah dihapus dari katalog tetapi pesanan
+    // lamanya masih tersimpan di perangkat. Riwayat tetap ditampilkan dengan
+    // keterangan apa adanya, bukan dengan data mobil karangan.
+    return _kendaraanTidakDikenal(vehicleId ?? jsonId ?? extId ?? '-');
   }
 
-
-  /// Inisialisasi data pemesanan awal jika database masih kosong
-  Future<void> ensureSeeded([List<VehicleModel>? availableVehicles]) async {
-    final count = await _bookingDao.countBookings();
-    if (count == 0) {
-      final samples = BookingModel.initialSampleBookings;
-      if (samples.isNotEmpty) {
-        final companions = samples.map((b) => b.toCompanion()).toList();
-        await _bookingDao.upsertBookingsBatch(companions);
-      }
-    }
+  VehicleModel _kendaraanTidakDikenal(String id) {
+    return VehicleModel(
+      id: id,
+      name: 'Unit tidak dikenal',
+      plateNumber: '-',
+      category: '-',
+      seatCapacity: '-',
+      transmission: '-',
+      bodyType: '-',
+      condition: '-',
+      availabilityTag: 'Tidak tersedia',
+      pricePerDay: 0,
+      imageUrl: '',
+    );
   }
 
   /// Mengambil seluruh riwayat pemesanan secara sinkron dari SQLite lokal
-  Future<List<BookingModel>> getAllBookings([Map<String, VehicleModel>? vehicleMap]) async {
+  Future<List<BookingModel>> getAllBookings([
+    Map<String, VehicleModel>? vehicleMap,
+  ]) async {
+    if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
     final driftList = _ownedRows(await _bookingDao.getAllBookings());
-    return driftList.map((entry) {
-      final vehicle = _resolveVehicle(
-        vehicleId: entry.vehicleId,
-        customMap: map,
-      );
-      return BookingModel.fromDrift(entry, vehicle);
-    }).toList();
+    return driftList
+        .map((entry) {
+          final vehicle = _resolveVehicle(
+            vehicleId: entry.vehicleId,
+            customMap: map,
+          );
+          if (vehicle == null) return null;
+          return BookingModel.fromDrift(entry, vehicle);
+        })
+        .whereType<BookingModel>()
+        .toList();
   }
 
   /// Stream reaktif seluruh pesanan pelanggan
-  Stream<List<BookingModel>> watchAllBookings([Map<String, VehicleModel>? vehicleMap]) {
+  Stream<List<BookingModel>> watchAllBookings([
+    Map<String, VehicleModel>? vehicleMap,
+  ]) async* {
+    if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
-    return _bookingDao.watchAllBookings().map((driftList) {
-      return _ownedRows(driftList).map((entry) {
-        final vehicle = _resolveVehicle(
-          vehicleId: entry.vehicleId,
-          customMap: map,
-        );
-        return BookingModel.fromDrift(entry, vehicle);
-      }).toList();
-    });
+    await for (final driftList in _bookingDao.watchAllBookings()) {
+      yield _ownedRows(driftList)
+          .map((entry) {
+            final vehicle = _resolveVehicle(
+              vehicleId: entry.vehicleId,
+              customMap: map,
+            );
+            if (vehicle == null) return null;
+            return BookingModel.fromDrift(entry, vehicle);
+          })
+          .whereType<BookingModel>()
+          .toList();
+    }
   }
 
   /// Stream reaktif pesanan yang sedang aktif
-  Stream<List<BookingModel>> watchActiveBookings([Map<String, VehicleModel>? vehicleMap]) {
+  Stream<List<BookingModel>> watchActiveBookings([
+    Map<String, VehicleModel>? vehicleMap,
+  ]) async* {
+    if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
-    return _bookingDao.watchActiveBookings().map((driftList) {
-      return _ownedRows(driftList).map((entry) {
-        final vehicle = _resolveVehicle(
-          vehicleId: entry.vehicleId,
-          customMap: map,
-        );
-        return BookingModel.fromDrift(entry, vehicle);
-      }).toList();
-    });
+    await for (final driftList in _bookingDao.watchActiveBookings()) {
+      yield _ownedRows(driftList)
+          .map((entry) {
+            final vehicle = _resolveVehicle(
+              vehicleId: entry.vehicleId,
+              customMap: map,
+            );
+            if (vehicle == null) return null;
+            return BookingModel.fromDrift(entry, vehicle);
+          })
+          .whereType<BookingModel>()
+          .toList();
+    }
   }
 
   /// Mengirim pesanan baru ke backend REST API dan menyimpannya secara atomik ke Drift SQLite
@@ -192,7 +220,9 @@ class BookingRepository {
     double? pickupLongitude,
     String? note,
   }) async {
-    final end = startDate.add(Duration(days: durationDays > 0 ? durationDays : 1));
+    final end = startDate.add(
+      Duration(days: durationDays > 0 ? durationDays : 1),
+    );
 
     try {
       final res = await _apiService.createBooking(
@@ -209,14 +239,19 @@ class BookingRepository {
             ? Map<String, dynamic>.from(res['vehicle'] as Map)
             : null;
         final resolvedVehicle = vehicleJson != null
-            ? _resolveVehicle(vehicleJson: vehicleJson, vehicleId: vehicle.id)
+            ? (_resolveVehicle(
+                    vehicleJson: vehicleJson,
+                    vehicleId: vehicle.id,
+                  ) ??
+                  vehicle)
             : vehicle;
 
-        final remoteModel = BookingModel.fromJson(res, resolvedVehicle).copyWith(
-          startTime: startTime,
-          pickupLatitude: pickupLatitude,
-          pickupLongitude: pickupLongitude,
-        );
+        final remoteModel = BookingModel.fromJson(res, resolvedVehicle)
+            .copyWith(
+              startTime: startTime,
+              pickupLatitude: pickupLatitude,
+              pickupLongitude: pickupLongitude,
+            );
         await _bookingDao.insertOrUpdateBooking(_owned(remoteModel.toCompanion()));
         return remoteModel;
       }
@@ -265,7 +300,8 @@ class BookingRepository {
         final vehicleJson = res['vehicle'] is Map
             ? Map<String, dynamic>.from(res['vehicle'] as Map)
             : null;
-        final rawVehicleId = res['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
+        final rawVehicleId =
+            res['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
 
         final vehicle = _resolveVehicle(
           vehicleId: rawVehicleId,
@@ -273,6 +309,7 @@ class BookingRepository {
           customMap: map,
         );
 
+        if (vehicle == null) return null;
         final updatedModel = BookingModel.fromJson(res, vehicle);
         await _bookingDao.insertOrUpdateBooking(_owned(updatedModel.toCompanion()));
         return updatedModel;
@@ -282,7 +319,9 @@ class BookingRepository {
   }
 
   /// Sinkronisasi seluruh daftar pesanan pelanggan dari backend REST API ke SQLite lokal
-  Future<List<BookingModel>> syncAllBookingsFromRemote([Map<String, VehicleModel>? vehicleMap]) async {
+  Future<List<BookingModel>> syncAllBookingsFromRemote([
+    Map<String, VehicleModel>? vehicleMap,
+  ]) async {
     final map = vehicleMap ?? _defaultVehicleMap;
     try {
       await refreshSession();
@@ -296,12 +335,14 @@ class BookingRepository {
             final vehicleJson = json['vehicle'] is Map
                 ? Map<String, dynamic>.from(json['vehicle'] as Map)
                 : null;
-            final rawVehicleId = json['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
+            final rawVehicleId =
+                json['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
             final vehicle = _resolveVehicle(
               vehicleId: rawVehicleId,
               vehicleJson: vehicleJson,
               customMap: map,
             );
+            if (vehicle == null) continue;
             final model = BookingModel.fromJson(json, vehicle);
             await _bookingDao.insertOrUpdateBooking(_owned(model.toCompanion()));
             synced.add(model);
@@ -339,7 +380,9 @@ class BookingRepository {
     if (existing == null) {
       try {
         final start = booking.startDate;
-        final end = start.add(Duration(days: booking.durationDays > 0 ? booking.durationDays : 1));
+        final end = start.add(
+          Duration(days: booking.durationDays > 0 ? booking.durationDays : 1),
+        );
         await _apiService.createBooking(
           vehicleId: booking.vehicle.id,
           startDateTime: start,

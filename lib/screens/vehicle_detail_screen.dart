@@ -9,6 +9,7 @@ import '../widgets/custom_app_bar.dart';
 import '../widgets/spec_card_item.dart';
 import 'rental_options_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Layar detail spesifikasi armada kendaraan
 class VehicleDetailScreen extends StatelessWidget {
@@ -161,18 +162,16 @@ class VehicleDetailScreen extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Image.asset(
-          currentVehicle.detailImageUrl ?? currentVehicle.imageUrl,
+        child: GambarKendaraan(
+          sumber: currentVehicle.detailImageUrl ?? currentVehicle.imageUrl,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const Center(
-              child: Icon(
-                Icons.directions_car,
-                color: AppColors.textSecondary,
-                size: 64,
-              ),
-            );
-          },
+          cadangan: const Center(
+            child: Icon(
+              Icons.directions_car,
+              color: AppColors.textSecondary,
+              size: 64,
+            ),
+          ),
         ),
       ),
     );

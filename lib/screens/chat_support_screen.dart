@@ -95,6 +95,16 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             support.muatRiwayatTiket(ticketId: widget.ticket!.id);
             _scrollToBottom();
           },
+          /* Tiket bisa ditutup dari sisi lain (admin atau penutupan otomatis)
+             saat layar ini sedang terbuka. Tanpa penanganan di sini, kotak
+             isian tetap terbuka sampai layar dimuat ulang manual. */
+          onStatusBerubah: (status) {
+            if (!mounted) return;
+            if (SupportTicketModel.isStatusClosed(status)) {
+              support.tandaiTiketTertutup(conversationKey);
+            }
+            support.muatRiwayatTiket(ticketId: widget.ticket!.id);
+          },
         );
       }
 

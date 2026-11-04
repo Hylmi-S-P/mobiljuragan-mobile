@@ -3,8 +3,18 @@ import 'package:flutter/foundation.dart';
 /// Konfigurasi endpoint REST API backend MobilJuragan
 class ApiConstants {
   /// Base URL API backend.
-  /// Mendukung `--dart-define=API_BASE_URL=...`, port forwarding `adb reverse tcp:4000 tcp:4000` (127.0.0.1),
-  /// atau IP LAN/Emulator.
+  ///
+  /// Urutan yang dipakai:
+  /// 1. `--dart-define=API_BASE_URL=...` kalau diisi saat build.
+  /// 2. `127.0.0.1` untuk Android, yang hanya bisa tembus lewat
+  ///    `adb reverse tcp:4000 tcp:4000`.
+  /// 3. `127.0.0.1` juga untuk desktop dan iOS simulator.
+  ///
+  /// Kenapa Android memakai `127.0.0.1`, bukan `10.0.2.2`:
+  /// `10.0.2.2` adalah alamat khusus Emulator yang menunjuk ke laptop. Di HP
+  /// asli alamat itu tidak ada, sehingga seluruh permintaan gagal walaupun
+  /// kabelnya tersambung. `127.0.0.1` ditambah `adb reverse` bekerja di
+  /// keduanya, jadi satu pengaturan berlaku untuk emulator maupun HP asli.
   static String get baseUrl {
     const customUrl = String.fromEnvironment('API_BASE_URL');
     if (customUrl.isNotEmpty) {
@@ -13,17 +23,23 @@ class ApiConstants {
     if (kIsWeb) {
       return 'http://localhost:4000/api/v1';
     }
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        // Loopback resmi Android Emulator ke host laptop (Port 4000 PM2)
-        return 'http://10.0.2.2:4000/api/v1';
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-      case TargetPlatform.windows:
-      case TargetPlatform.linux:
-      default:
-        return 'http://127.0.0.1:4000/api/v1';
+    return 'http://127.0.0.1:4000/api/v1';
+  }
+
+  /// Mengubah path media dari backend menjadi alamat lengkap yang bisa dimuat.
+  ///
+  /// Backend mengirim `/api/v1/media/<uuid>` tanpa host, jadi nilainya perlu
+  /// digabung dengan origin (tanpa `/api/v1`) sebelum bisa dibuka Image.network.
+  /// URL penuh dan path aset dibiarkan apa adanya.
+  static String alamatMedia(String sumber) {
+    if (sumber.startsWith('http://') || sumber.startsWith('https://')) {
+      return sumber;
     }
+    if (sumber.startsWith('assets/')) return sumber;
+
+    final origin = baseUrl.replaceAll(RegExp(r'/api/v1/?$'), '');
+    final path = sumber.startsWith('/') ? sumber : '/$sumber';
+    return '$origin$path';
   }
 
   // Endpoints Katalog Armada

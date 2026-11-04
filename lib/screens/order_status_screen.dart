@@ -11,6 +11,7 @@ import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
 import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
+import '../core/util/berkas_unduhan.dart';
 import '../data/remote/document_api_service.dart';
 import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
@@ -22,6 +23,7 @@ import 'chat_support_screen.dart';
 import 'date_time_screen.dart';
 import 'main_navigation_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Layar pelacakan status pesanan (Frame 07)
 /// Mengikuti alur stepper Figma dengan penambahan tahap Menunggu Pembayaran
@@ -845,15 +847,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.asset(
-                    booking.vehicle.imageUrl,
+                  child: GambarKendaraan(
+                    sumber: booking.vehicle.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
+                    cadangan: const Icon(
                       Icons.directions_car_filled_outlined,
                       size: 20,
                       color: AppColors.textSecondary,
-                    ),
-                  ),
+                    )),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1301,15 +1302,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.asset(
-                    booking.vehicle.imageUrl,
+                  child: GambarKendaraan(
+                    sumber: booking.vehicle.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(
+                    cadangan: const Icon(
                       Icons.directions_car_filled_outlined,
                       size: 20,
                       color: AppColors.textSecondary,
-                    ),
-                  ),
+                    )),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1536,14 +1536,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      booking.vehicle.imageUrl,
+                    child: GambarKendaraan(
+                      sumber: booking.vehicle.imageUrl,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
+                      cadangan: const Icon(
                         Icons.directions_car,
                         color: AppColors.textSecondary,
-                      ),
-                    ),
+                      )),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -3206,31 +3205,56 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
+  /*
+   * Mengunduh formulir kosong, MENYIMPANNYA, lalu membuka lembar bagikan.
+   *
+   * Versi sebelumnya hanya menampilkan notifikasi "berhasil diunduh" padahal
+   * isi berkasnya dibuang. Pelanggan tidak pernah memegang file, sehingga tidak
+   * ada yang bisa dicetak dan alur tanda tangan basah tidak mungkin berjalan.
+   */
   Future<void> _downloadStatementTemplate() async {
     try {
-      final bytes = await _documentApiService.downloadStatementTemplatePdf();
+      final berkas = await _documentApiService.downloadStatementTemplatePdf();
+      final kbSize = (berkas.isi.lengthInBytes / 1024).toStringAsFixed(1);
+
+      /*
+       * Nama dan tipe berkas mengikuti apa yang dikirim server, karena dokumen
+       * resmi bisa berupa PDF atau Word tergantung unggahan admin. Memaksakan
+       * akhiran .pdf pada berkas Word membuat penerima gagal membukanya.
+       */
+      final path = await BerkasUnduhan.simpanDanBagikan(
+        isi: berkas.isi,
+        namaBerkas: berkas.namaBerkas,
+        mime: berkas.mime,
+        judul: 'Form Kesanggupan Penyewa',
+        teks:
+            'Cetak formulir ini di kertas A4, tanda tangani dengan meterai, lalu foto dan unggah kembali di aplikasi.',
+      );
+
       if (!mounted) return;
-      final kbSize = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.primaryNavy,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 6),
           content: Text(
-            'Template surat pernyataan terunduh ($kbSize KB). Cetak, isi, tanda tangan, lalu foto dan unggah.',
-            style: const TextStyle(fontFamily: 'Inter'),
+            'Formulir tersimpan ($kbSize KB). Cetak A4, tanda tangani, lalu foto dan unggah kembali.\n$path',
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFFB91C1C),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           content: Text(
-            'Gagal mengunduh template: ${e.toString().replaceAll('ApiException: ', '')}',
+            'Gagal mengunduh formulir: ${e.toString().replaceAll('ApiException: ', '')}',
             style: const TextStyle(fontFamily: 'Inter'),
           ),
         ),
@@ -7147,3 +7171,4 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   }
 
 }
+

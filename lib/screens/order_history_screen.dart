@@ -8,6 +8,7 @@ import '../widgets/order_empty_state.dart';
 import 'date_time_screen.dart';
 import 'order_status_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Layar Riwayat Pesanan (Frame 08)
 /// Menampilkan daftar pesanan berjalan dan riwayat selesai dengan segmented tab switcher
@@ -333,14 +334,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.asset(
-                          vehicle.imageUrl,
+                        child: GambarKendaraan(
+                          sumber: vehicle.imageUrl,
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
+                          cadangan: const Icon(
                             Icons.directions_car,
                             color: AppColors.textSecondary,
-                          ),
-                        ),
+                          )),
                       ),
                     ),
                     const SizedBox(width: 12),

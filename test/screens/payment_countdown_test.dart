@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/models/booking_model.dart';
-import 'package:mobiljuragan_mobile/models/vehicle_model.dart';
 import 'package:mobiljuragan_mobile/screens/order_status_screen.dart';
+
+import '../support/armada_uji.dart';
 
 /// Hitungan mundur pembayaran harus bersumber dari server.
 ///
@@ -15,7 +16,7 @@ import 'package:mobiljuragan_mobile/screens/order_status_screen.dart';
 void main() {
   final testBooking = BookingModel(
     id: 'MBJ-COUNTDOWN-2026',
-    vehicle: VehicleModel.sampleVehicles.first,
+    vehicle: armadaUji.first,
     startDate: DateTime(2026, 11, 2),
     startTime: '09.00 WIT',
     durationDays: 2,

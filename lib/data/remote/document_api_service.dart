@@ -5,6 +5,24 @@ import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../models/booking_document_model.dart';
 
+/// Berkas dokumen resmi hasil unduhan.
+///
+/// Isinya tidak selalu PDF: admin boleh mengunggah dokumen Word, dan aplikasi
+/// harus menyimpan berkas itu apa adanya dengan tipe yang benar. Nama berkas
+/// diambil dari server supaya pelanggan menerima nama yang dikenali, bukan nama
+/// karangan aplikasi.
+class BerkasDokumen {
+  const BerkasDokumen({
+    required this.isi,
+    required this.namaBerkas,
+    required this.mime,
+  });
+
+  final Uint8List isi;
+  final String namaBerkas;
+  final String mime;
+}
+
 /// Layanan API untuk pengelolaan berkas persyaratan sewa lepas kunci
 class DocumentApiService {
   final ApiClient _client;
@@ -14,7 +32,12 @@ class DocumentApiService {
       : _client = client ?? ApiClient(),
         _httpClient = httpClient ?? http.Client();
 
-  /// Mengambil teks klausul resmi surat pernyataan untuk pratinjau in-app
+  /// Mengambil keterangan dokumen resmi yang sedang aktif.
+  ///
+  /// Yang dikembalikan adalah keterangan berkasnya (nama, tipe, ukuran, versi),
+  /// bukan lagi daftar klausul. Dokumennya berupa berkas unggahan admin yang
+  /// bisa berbentuk PDF atau Word, sehingga isinya tidak bisa ditampilkan
+  /// sebagai teks. Pelanggan membaca dan menandatangani berkas hasil unduhan.
   Future<Map<String, dynamic>> fetchStatementTemplateText() async {
     final response = await _client.get(
       ApiConstants.documentTemplateTextEndpoint,
@@ -27,8 +50,11 @@ class DocumentApiService {
     return {};
   }
 
-  /// Mengunduh berkas biner PDF asli surat pernyataan resmi dari backend
-  Future<Uint8List> downloadStatementTemplatePdf() async {
+  /// Mengunduh berkas dokumen resmi yang sedang aktif.
+  ///
+  /// Nama berkas dan tipenya dibaca dari header balasan server, karena
+  /// dokumennya bisa PDF atau Word tergantung apa yang diunggah admin.
+  Future<BerkasDokumen> downloadStatementTemplatePdf() async {
     final uri = Uri.parse(
       '${ApiConstants.baseUrl}${ApiConstants.documentTemplatePdfEndpoint}',
     );
@@ -37,33 +63,55 @@ class DocumentApiService {
         .get(uri)
         .timeout(ApiConstants.timeoutDuration);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return response.bodyBytes;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        'Gagal mengunduh dokumen resmi (Status: ${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
     }
-    throw ApiException(
-      'Gagal mengunduh berkas template surat pernyataan resmi (Status: ${response.statusCode}).',
-      statusCode: response.statusCode,
+
+    final mime = response.headers['content-type']?.split(';').first.trim() ??
+        'application/pdf';
+
+    return BerkasDokumen(
+      isi: response.bodyBytes,
+      namaBerkas: _namaDariHeader(response.headers['content-disposition'], mime),
+      mime: mime,
     );
   }
 
-  /// Mengunduh berkas biner PDF surat pernyataan yang sudah terisi otomatis data reservasi
-  Future<Uint8List> downloadBookingStatementPdf(String bookingId) async {
-    try {
-      final uri = Uri.parse(
-        '${ApiConstants.baseUrl}${ApiConstants.bookingsEndpoint}/$bookingId/statement-pdf',
-      );
+  /// Membaca nama berkas dari `Content-Disposition`, dengan cadangan yang aman.
+  ///
+  /// Server mengirim dua bentuk: `filename=` biasa dan `filename*=UTF-8''...`
+  /// untuk nama berisi karakter non-ASCII. Bentuk kedua didahulukan karena
+  /// itulah yang benar untuk nama seperti "Form Kesanggupan.pdf".
+  String _namaDariHeader(String? header, String mime) {
+    final cadangan = mime.contains('wordprocessingml')
+        ? 'Form-Kesanggupan.docx'
+        : mime == 'application/msword'
+            ? 'Form-Kesanggupan.doc'
+            : 'Form-Kesanggupan.pdf';
 
-      final response = await _httpClient
-          .get(uri)
-          .timeout(ApiConstants.timeoutDuration);
+    if (header == null || header.isEmpty) return cadangan;
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return response.bodyBytes;
+    final utf8 = RegExp(r"filename\*=UTF-8''([^;]+)", caseSensitive: false)
+        .firstMatch(header);
+    if (utf8 != null) {
+      try {
+        return Uri.decodeComponent(utf8.group(1)!.trim());
+      } catch (_) {
+        // Nama tidak bisa didekode; pakai cadangan.
       }
-    } catch (_) {
-      // Fallback ke template standar bila jaringan bermasalah
     }
-    return downloadStatementTemplatePdf();
+
+    final biasa =
+        RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(header);
+    if (biasa != null) {
+      final nama = biasa.group(1)!.trim();
+      if (nama.isNotEmpty) return nama;
+    }
+
+    return cadangan;
   }
 
   /// Mengambil dokumen persyaratan yang terikat dengan pemesanan

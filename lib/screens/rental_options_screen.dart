@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../core/network/pickup_point_api_service.dart';
+import '../data/remote/document_api_service.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -25,6 +26,8 @@ class RentalOptionsScreen extends StatefulWidget {
 }
 
 class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
+  final DocumentApiService _documentApiService = DocumentApiService();
+
   /* Titik serah terima berasal dari backend (GET /pickup-points).
      Daftar lokal hanya cadangan saat server tidak dapat dihubungi, dan sengaja
      tanpa alamat karangan: yang ditampilkan cukup nama tempat resmi. */
@@ -796,32 +799,90 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.borderSubtle),
                 ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Poin-poin pernyataan yang wajib disetujui:',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryNavy,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '1. Bebas Narkoba & Minuman Keras: Penyewa menyatakan sehat dan tidak akan mengemudikan unit dalam pengaruh alkohol, narkotika, atau zat adiktif.\n\n'
-                      '2. Integritas Pengemudi: Armada hanya dikemudikan oleh nama penyewa sah ber-SIM A aktif, serta dilarang digadaikan atau dipindahtangankan ke pihak ketiga.\n\n'
-                      '3. Wilayah Operasional: Armada digunakan di wilayah Merauke dan sekitarnya sesuai rute yang disepakati.\n\n'
-                      '4. Tanggung Jawab Kerusakan: Penyewa bertanggung jawab penuh secara hukum dan biaya perbaikan bila terjadi kelalaian selama masa sewa.',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        height: 1.4,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
+                child: FutureBuilder<Map<String, dynamic>>(
+                  /*
+                   * Yang ditampilkan adalah keterangan dokumen resmi yang sedang
+                   * aktif di server: nama berkas, jenis, ukuran, dan versinya.
+                   *
+                   * Sebelumnya layar ini menampilkan empat klausul ringkas yang
+                   * ditulis ulang di aplikasi, berbeda dari surat resmi sepuluh
+                   * butir. Sekarang dokumennya berupa berkas unggahan admin yang
+                   * bisa PDF atau Word, jadi isinya tidak mungkin dibaca sebagai
+                   * teks. Pelanggan membaca berkas hasil unduhan.
+                   */
+                  future: _documentApiService.fetchStatementTemplateText(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final data = snapshot.data;
+
+                    if (snapshot.hasError || data == null || data.isEmpty) {
+                      return Text(
+                        'Keterangan dokumen tidak dapat dimuat saat ini. Dokumen lengkap tetap bisa Anda unduh dan tandatangani lewat tombol di bawah.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          height: 1.4,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      );
+                    }
+
+                    final namaBerkas = data['namaBerkas']?.toString();
+                    final versi = data['versi']?.toString();
+                    final byte = data['byte'];
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data['judul']?.toString() ?? 'Form Kesanggupan',
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryNavy,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          [
+                            if (namaBerkas != null && namaBerkas.isNotEmpty) namaBerkas,
+                            if (byte is int)
+                              '${(byte / 1024).toStringAsFixed(0)} KB',
+                            if (versi != null) 'versi $versi',
+                          ].join(' · '),
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Dokumen ini yang akan Anda cetak, isi, dan tandatangani. Bacalah dengan saksama sebelum menyetujui.',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 14),

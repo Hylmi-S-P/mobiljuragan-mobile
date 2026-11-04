@@ -14,6 +14,7 @@ import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
 import '../theme/app_typography.dart';
+import '../widgets/gambar_kendaraan.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
 /// Menampilkan 3 kartu ringkasan pesanan dengan tombol Ubah dan rincian tarif resmi
@@ -163,34 +164,54 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            vehicle.name,
-            style: const TextStyle(
-              fontSize: AppTypography.sizeTitle,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Plat ${vehicle.plateNumber}',
-            style: const TextStyle(
-              fontSize: AppTypography.sizeBody,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              fontFamily: 'Inter',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.category}',
-            style: const TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
+          Row(
+            children: [
+              Container(
+                width: 64,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: GambarKendaraan(
+                    sumber: vehicle.imageUrl,
+                    fit: BoxFit.contain,
+                    cadangan: const Icon(
+                      Icons.directions_car,
+                      color: AppColors.textSecondary,
+                    )),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vehicle.name,
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTitle,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${vehicle.transmission} • ${vehicle.seatCapacity} • ${vehicle.bodyType}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -401,7 +422,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 Text(
                   isDriver
                       ? 'Armada dikemudikan staf profesional MobilJuragan. Bebas repot berkendara dan tanpa syarat SIM A pemesan.'
-                      : 'Surat pernyataan bebas narkoba dan anti penggelapan dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
+                      : 'Form Kesanggupan penyewa dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     fontWeight: FontWeight.w400,

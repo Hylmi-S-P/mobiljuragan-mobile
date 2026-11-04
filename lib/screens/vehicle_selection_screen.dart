@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
 import '../models/vehicle_model.dart';
@@ -20,7 +21,8 @@ class VehicleSelectionScreen extends StatefulWidget {
 }
 
 class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
-  String _selectedVehicleId = 'avanza-g-putih-ps1692b';
+  // Kosong sampai pelanggan memilih unit atau keranjang sudah berisi pilihan.
+  String? _selectedVehicleId;
 
   @override
   void initState() {
@@ -45,20 +47,14 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     final availableVehicles = filteredVehicles.where((v) => v.isAvailable).toList();
     final rentedVehicles = filteredVehicles.where((v) => !v.isAvailable).toList();
 
-    final selectedVehicle = filteredVehicles.firstWhere(
-      (v) => v.id == _selectedVehicleId,
-      orElse: () => filteredVehicles.isNotEmpty
-          ? filteredVehicles.first
-          : (vehicleController.vehicles.isNotEmpty
-              ? vehicleController.vehicles.first
-              : VehicleModel.sampleVehicles.first),
+    final VehicleModel? selectedVehicle = _pilihKendaraan(
+      filteredVehicles,
+      vehicleController.vehicles,
     );
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
-      appBar: const CustomAppBar(
-        title: 'Pilih Kendaraan',
-      ),
+      appBar: const CustomAppBar(title: 'Pilih Kendaraan'),
       body: Column(
         children: [
           Expanded(
@@ -67,7 +63,10 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               onRefresh: () => vehicleController.refreshCatalog(force: true),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -108,6 +107,11 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     const SizedBox(height: 16),
                     _buildCategoryFilterBar(vehicleController),
                     const SizedBox(height: 12),
+                    _buildNoticeCard(
+                      vehicleController,
+                      filteredVehicles.length,
+                    ),
+                    const SizedBox(height: 16),
                     if (filteredVehicles.isEmpty)
                       _buildEmptyState(vehicleController)
                     else ...[
@@ -124,7 +128,9 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                               setState(() {
                                 _selectedVehicleId = vehicle.id;
                               });
-                              context.read<BookingController>().selectVehicle(vehicle);
+                              context.read<BookingController>().selectVehicle(
+                                vehicle,
+                              );
                             },
                             onToggleFavorite: () {
                               vehicleController.toggleFavorite(vehicle.id);
@@ -164,6 +170,32 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
+  /*
+   * Menentukan unit yang sedang dipilih.
+   *
+   * Mengembalikan null kalau katalog benar-benar kosong. Dulu ada unit cadangan
+   * dari daftar contoh, sehingga tombol "Lanjutkan" bisa menunjuk mobil yang
+   * tidak ada di katalog.
+   */
+  VehicleModel? _pilihKendaraan(
+    List<VehicleModel> tersaring,
+    List<VehicleModel> semua,
+  ) {
+    final id = _selectedVehicleId;
+    if (id != null) {
+      for (final kendaraan in tersaring) {
+        if (kendaraan.id == id) return kendaraan;
+      }
+      for (final kendaraan in semua) {
+        if (kendaraan.id == id) return kendaraan;
+      }
+    }
+
+    if (tersaring.isNotEmpty) return tersaring.first;
+    if (semua.isNotEmpty) return semua.first;
+    return null;
+  }
+
   Widget _buildCategoryFilterBar(VehicleController controller) {
     const categories = VehicleController.availableCategories;
 
@@ -189,7 +221,9 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                 color: isSelected ? AppColors.primaryTeal : AppColors.cardWhite,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isSelected ? AppColors.primaryTeal : AppColors.borderSubtle,
+                  color: isSelected
+                      ? AppColors.primaryTeal
+                      : AppColors.borderSubtle,
                   width: 1,
                 ),
               ),
@@ -198,9 +232,13 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                 children: [
                   if (isFav) ...[
                     Icon(
-                      isSelected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                      isSelected
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_outline_rounded,
                       size: 16,
-                      color: isSelected ? AppColors.textWhite : const Color(0xFFD97706),
+                      color: isSelected
+                          ? AppColors.textWhite
+                          : const Color(0xFFD97706),
                     ),
                     const SizedBox(width: 4),
                   ],
@@ -208,17 +246,26 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     category,
                     style: TextStyle(
                       fontSize: AppTypography.sizeBody,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? AppColors.textWhite
+                          : AppColors.textPrimary,
                       fontFamily: 'Inter',
                     ),
                   ),
                   if (isFav && controller.favoriteCount > 0) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFFEF3C7),
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -226,7 +273,9 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                         style: TextStyle(
                           fontSize: AppTypography.sizeMicro,
                           fontWeight: FontWeight.w700,
-                          color: isSelected ? Colors.white : const Color(0xFFB45309),
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFFB45309),
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -243,6 +292,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
 
   Widget _buildEmptyState(VehicleController controller) {
     final isFavoriteFilter = controller.selectedCategory == 'Favorit';
+    final katalogKosong = controller.vehicles.isEmpty;
 
     return Container(
       width: double.infinity,
@@ -257,13 +307,17 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           Icon(
             isFavoriteFilter ? Icons.bookmark_border_rounded : Icons.car_rental,
             size: 48,
-            color: isFavoriteFilter ? const Color(0xFFD97706) : AppColors.textSecondary,
+            color: isFavoriteFilter
+                ? const Color(0xFFD97706)
+                : AppColors.textSecondary,
           ),
           const SizedBox(height: 12),
           Text(
-            isFavoriteFilter
-                ? 'Belum Ada Armada Favorit'
-                : 'Tidak ada armada kategori "${controller.selectedCategory}"',
+            katalogKosong
+                ? 'Belum Ada Armada'
+                : (isFavoriteFilter
+                      ? 'Belum Ada Armada Favorit'
+                      : 'Tidak ada armada kategori "${controller.selectedCategory}"'),
             style: const TextStyle(
               fontSize: AppTypography.sizeBodyLarge,
               fontWeight: FontWeight.w600,
@@ -273,9 +327,11 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            isFavoriteFilter
-                ? 'Ketuk ikon bookmark pada armada di katalog untuk menyimpannya sebagai kendaraan favorit Anda.'
-                : 'Silakan pilih kategori lain atau periksa kata kunci pencarian Anda.',
+            katalogKosong
+                ? 'Admin belum menambahkan unit ke katalog. Coba muat ulang beberapa saat lagi.'
+                : (isFavoriteFilter
+                      ? 'Ketuk ikon bookmark pada armada di katalog untuk menyimpannya sebagai kendaraan favorit Anda.'
+                      : 'Silakan pilih kategori lain atau periksa kata kunci pencarian Anda.'),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: AppTypography.sizeCaption,
@@ -309,7 +365,48 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  Widget _buildStickyCTA(VehicleModel selectedVehicle) {
+  Widget _buildNoticeCard(VehicleController controller, int count) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.tealLight.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.primaryTeal.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$count armada siap jalan (${controller.totalFleetCount} unit terdaftar di Merauke)',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeBody,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryTeal,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Gunakan filter di atas untuk melihat pilihan kategori armada lainnya',
+            style: TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              fontWeight: FontWeight.w400,
+              color: AppColors.primaryTeal,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStickyCTA(VehicleModel? selectedVehicle) {
+    if (selectedVehicle == null) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
