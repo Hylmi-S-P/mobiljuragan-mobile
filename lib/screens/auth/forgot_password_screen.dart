@@ -95,21 +95,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _simpanKataSandi() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (!kataSandiValid(
-      _passwordController.text,
-      namaLengkap: context.read<AuthController>().currentUser?.name,
-      nomorTelepon: widget.phoneNumber,
-    )) {
+    if (!kataSandiValid(_passwordController.text)) {
       setState(() => _passwordTouched = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            pesanKataSandiTidakValid(
-              _passwordController.text,
-              namaLengkap: context.read<AuthController>().currentUser?.name,
-              nomorTelepon: widget.phoneNumber,
-            ),
-          ),
+          content: Text(pesanKataSandiTidakValid(_passwordController.text)),
           backgroundColor: AppColors.statusCancelled,
           behavior: SnackBarBehavior.floating,
         ),
@@ -467,11 +457,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Widget _checklist() {
-    final gagal = periksaKataSandi(
-      _passwordController.text,
-      namaLengkap: context.read<AuthController>().currentUser?.name,
-      nomorTelepon: widget.phoneNumber,
-    );
+    final gagal = periksaKataSandi(_passwordController.text);
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),

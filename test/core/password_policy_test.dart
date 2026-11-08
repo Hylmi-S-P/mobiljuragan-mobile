@@ -7,6 +7,10 @@ import 'package:mobiljuragan_mobile/core/validators/password_policy.dart';
 /// `mobiljuragan-backend/src/lib/passwordPolicy.ts`. Kalau salah satu berubah,
 /// ubah keduanya — kalau tidak, pengguna akan melihat checklist "semua hijau"
 /// tetapi ditolak server.
+///
+/// Kebijakan sengaja dibatasi pada **bentuk** kata sandi: panjang dan komposisi
+/// karakter. Penilaian seperti "terlalu umum" atau "memuat nama sendiri" tidak
+/// dipakai, dan test di bawah menjaga agar tidak diam-diam kembali masuk.
 void main() {
   group('Aturan dasar', () {
     test('kata sandi lemah gagal pada beberapa aturan sekaligus', () {
@@ -33,9 +37,14 @@ void main() {
     test('spasi dihitung sebagai simbol', () {
       expect(kataSandiValid('Rahasia 1'), isTrue);
     });
+
+    test('tepat 8 karakter dengan semua unsur diterima', () {
+      expect(kataSandiValid('Rahasia1'), isFalse, reason: 'tanpa simbol');
+      expect(kataSandiValid('Rahas1!a'), isTrue);
+    });
   });
 
-  group('Batas panjang', () {
+  group('Batas teknis panjang', () {
     test('lebih dari 72 byte ditolak karena bcrypt memotong di situ', () {
       final panjang = '${'A' * 60}a1!${'b' * 20}';
       expect(panjang.length, greaterThan(72));
@@ -43,66 +52,45 @@ void main() {
     });
 
     test('panjang dihitung dalam byte, bukan karakter', () {
-      // 70 emoji = 280 byte walau hanya 70 karakter.
+      // 30 emoji = 120 byte walau hanya ~34 karakter.
       final emoji = 'A1!${'😀' * 30}';
       expect(emoji.length, lessThan(72));
       expect(periksaKataSandi(emoji), contains(AturanKataSandi.batasByte));
     });
   });
 
-  group('Kata sandi yang menyalin identitas', () {
-    test('memuat nama depan ditolak', () {
-      expect(
-        periksaKataSandi('Yahya123!', namaLengkap: 'Yahya Pratama'),
-        contains(AturanKataSandi.mengandungIdentitas),
-      );
+  group('Aturan yang sengaja TIDAK dipakai', () {
+    test('kata sandi yang menyalin nama pemilik tetap diterima', () {
+      // Sebelumnya ditolak oleh aturan "mengandung identitas".
+      expect(kataSandiValid('Yahya123!'), isTrue);
+      expect(kataSandiValid('YahyaPratama1!'), isTrue);
     });
 
-    test('memuat nomor telepon ditolak', () {
-      expect(
-        periksaKataSandi('Harun081248002910!', nomorTelepon: '081248002910'),
-        contains(AturanKataSandi.mengandungIdentitas),
-      );
+    test('kata sandi yang memuat nomor telepon tetap diterima', () {
+      expect(kataSandiValid('Harun081248002910!'), isTrue);
     });
 
-    test('nomor tanpa awalan 0 atau 62 tetap terdeteksi', () {
-      expect(
-        periksaKataSandi('Rahasia81248002910!', nomorTelepon: '+62 812-4800-2910'),
-        contains(AturanKataSandi.mengandungIdentitas),
-      );
+    test('kata sandi umum tetap diterima selama bentuknya memenuhi aturan', () {
+      // Sebelumnya ditolak oleh daftar kata sandi umum dan deret berurutan.
+      expect(kataSandiValid('Password123!'), isTrue);
+      expect(kataSandiValid('Rahasia1234!'), isTrue);
+      expect(kataSandiValid('Qwerty123!'), isTrue);
     });
 
-    test('nama pendek dua huruf tidak dijadikan larangan', () {
-      // "Al" ada di dalam "Rahasia" secara kebetulan; jangan menolak karena itu.
-      expect(
-        periksaKataSandi('Rahasia1!', namaLengkap: 'Al'),
-        isEmpty,
-      );
-    });
-  });
-
-  group('Kata sandi umum', () {
-    test('kata sandi bocoran populer ditolak', () {
-      expect(
-        periksaKataSandi('Password123!'),
-        contains(AturanKataSandi.terlaluUmum),
-      );
-    });
-
-    test('deret berurutan ditolak', () {
-      expect(
-        periksaKataSandi('Rahasia1234!'),
-        contains(AturanKataSandi.terlaluUmum),
-      );
-    });
-
-    test('kata sandi normal tidak dianggap umum', () {
-      expect(periksaKataSandi('KucingOren9#'), isEmpty);
+    test('aturan tersembunyi benar-benar tidak ada lagi', () {
+      expect(AturanKataSandi.values, [
+        AturanKataSandi.panjangMinimal,
+        AturanKataSandi.hurufBesar,
+        AturanKataSandi.hurufKecil,
+        AturanKataSandi.angka,
+        AturanKataSandi.simbol,
+        AturanKataSandi.batasByte,
+      ]);
     });
   });
 
   group('Checklist', () {
-    test('hanya aturan yang diminta produk yang ditampilkan', () {
+    test('lima aturan bentuk ditampilkan, batas byte tidak', () {
       expect(aturanTampil, [
         AturanKataSandi.panjangMinimal,
         AturanKataSandi.hurufBesar,
@@ -110,7 +98,6 @@ void main() {
         AturanKataSandi.angka,
         AturanKataSandi.simbol,
       ]);
-      expect(aturanTampil, isNot(contains(AturanKataSandi.terlaluUmum)));
       expect(aturanTampil, isNot(contains(AturanKataSandi.batasByte)));
     });
 
@@ -118,15 +105,23 @@ void main() {
       expect(labelAturan(AturanKataSandi.panjangMinimal), contains('8'));
       expect(labelAturan(AturanKataSandi.angka), 'Ada angka');
       expect(labelAturan(AturanKataSandi.simbol), 'Ada simbol');
+      expect(labelAturan(AturanKataSandi.hurufBesar), 'Ada huruf besar');
+      expect(labelAturan(AturanKataSandi.hurufKecil), 'Ada huruf kecil');
     });
 
-    test('pesan galat memilih aturan tersembunyi lebih dulu', () {
-      // Kata sandi ini lolos panjang/kompleksitas tetapi menyalin nomor sendiri.
-      final pesan = pesanKataSandiTidakValid(
-        'Rahasia081248002910!',
-        nomorTelepon: '081248002910',
+    test('pesan galat menyebut batas byte bila itu penyebabnya', () {
+      final panjang = '${'A' * 80}a1!';
+      expect(
+        pesanKataSandiTidakValid(panjang),
+        labelAturan(AturanKataSandi.batasByte),
       );
-      expect(pesan, labelAturan(AturanKataSandi.mengandungIdentitas));
+    });
+
+    test('pesan galat umum dipakai untuk kegagalan bentuk', () {
+      expect(
+        pesanKataSandiTidakValid('abcdefgh'),
+        'Kata sandi belum memenuhi semua syarat di atas.',
+      );
     });
   });
 }

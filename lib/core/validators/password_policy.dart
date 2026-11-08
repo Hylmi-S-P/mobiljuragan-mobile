@@ -4,6 +4,11 @@
 /// Kalau salah satu diubah, ubah keduanya. Rujukan: dokumen
 /// `docs/analisis-akun-tertimpa-otp.md` §6.5.
 ///
+/// Aturan dibatasi pada bentuk kata sandi saja: panjang minimum, huruf besar,
+/// huruf kecil, angka, dan simbol. Penilaian "kata sandi terlalu umum" atau
+/// "memuat nama sendiri" tidak dipakai karena menolak kata sandi yang sah tanpa
+/// alasan yang bisa diprediksi pengguna.
+///
 /// Fungsi di sini **hanya untuk umpan balik cepat** (checklist hidup). Server
 /// tetap memvalidasi ulang; keputusan akhir selalu milik server.
 library;
@@ -13,8 +18,9 @@ const int panjangMinimalKataSandi = 8;
 
 /// Batas atas dalam byte UTF-8.
 ///
-/// bcrypt hanya memakai 72 byte pertama, jadi kata sandi yang lebih panjang dari
-/// ini dipotong dan dua kata sandi berbeda bisa dianggap sama.
+/// Bukan aturan gaya, melainkan batas teknis: bcrypt hanya memakai 72 byte
+/// pertama, jadi kata sandi yang lebih panjang dipotong dan dua kata sandi
+/// berbeda bisa dianggap sama.
 const int batasByteKataSandi = 72;
 
 /// Urutan aturan mengikuti tampilan checklist.
@@ -25,8 +31,6 @@ enum AturanKataSandi {
   angka,
   simbol,
   batasByte,
-  mengandungIdentitas,
-  terlaluUmum,
 }
 
 /// Aturan yang ditampilkan sebagai checklist di layar.
@@ -38,7 +42,7 @@ const List<AturanKataSandi> aturanTampil = [
   AturanKataSandi.simbol,
 ];
 
-/// Label pendek tiap aturan; sama bunyinya dengan pesan server.
+/// Label pendek tiap aturan; sama buninya dengan pesan server.
 String labelAturan(AturanKataSandi aturan) {
   switch (aturan) {
     case AturanKataSandi.panjangMinimal:
@@ -53,67 +57,11 @@ String labelAturan(AturanKataSandi aturan) {
       return 'Ada simbol';
     case AturanKataSandi.batasByte:
       return 'Maksimal $batasByteKataSandi byte';
-    case AturanKataSandi.mengandungIdentitas:
-      return 'Jangan memakai nama atau nomor sendiri';
-    case AturanKataSandi.terlaluUmum:
-      return 'Kata sandi terlalu umum';
   }
 }
 
-/// Kata sandi yang paling sering muncul di daftar bocoran (sama dengan server).
-const Set<String> _kataSandiUmum = {
-  'password',
-  'password1',
-  'password123',
-  'password1234',
-  'passw0rd',
-  'p@ssw0rd',
-  'qwerty',
-  'qwerty123',
-  'qwertyuiop',
-  '12345678',
-  '123456789',
-  '1234567890',
-  'iloveyou',
-  'admin123',
-  'administrator',
-  'letmein123',
-  'welcome1',
-  'welcome123',
-  'abc12345',
-  'abcd1234',
-  'monkey123',
-  'dragon123',
-  'sunshine1',
-  'princess1',
-  'football1',
-  'baseball1',
-  'superman1',
-  'batman123',
-  'mobiljuragan',
-  'juragan123',
-  'merauke123',
-};
-
-const List<String> _deretMudah = [
-  '1234',
-  '2345',
-  '3456',
-  '4567',
-  '5678',
-  '6789',
-  'abcd',
-  'bcde',
-  'qwer',
-  'asdf',
-];
-
+/// Apa pun yang bukan huruf atau angka dihitung sebagai simbol.
 final RegExp _polaSimbol = RegExp(r'[^A-Za-z0-9]');
-
-String _digitSaja(String nilai) => nilai.replaceAll(RegExp(r'\D'), '');
-
-String _normalisasiTeks(String nilai) =>
-    nilai.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
 /// Panjang dalam byte UTF-8, karena emoji/aksara non-Latin lebih dari 1 byte.
 int panjangByte(String nilai) {
@@ -135,11 +83,7 @@ int panjangByte(String nilai) {
 /// Memeriksa kata sandi dan mengembalikan aturan yang **gagal**.
 ///
 /// Daftar kosong berarti lolos. Dipakai checklist dan tombol lanjut.
-Set<AturanKataSandi> periksaKataSandi(
-  String kataSandi, {
-  String? namaLengkap,
-  String? nomorTelepon,
-}) {
+Set<AturanKataSandi> periksaKataSandi(String kataSandi) {
   final gagal = <AturanKataSandi>{};
 
   if (kataSandi.length < panjangMinimalKataSandi) {
@@ -154,76 +98,21 @@ Set<AturanKataSandi> periksaKataSandi(
     gagal.add(AturanKataSandi.batasByte);
   }
 
-  final polos = _normalisasiTeks(kataSandi);
-  final kandidatIdentitas = <String>[];
-
-  if (namaLengkap != null) {
-    for (final bagian in namaLengkap.split(RegExp(r'\s+'))) {
-      final bersih = _normalisasiTeks(bagian);
-      if (bersih.length >= 3) kandidatIdentitas.add(bersih);
-    }
-  }
-
-  if (nomorTelepon != null) {
-    final digit = _digitSaja(nomorTelepon);
-    if (digit.length >= 6) {
-      kandidatIdentitas.add(digit);
-      kandidatIdentitas.add(digit.replaceFirst(RegExp(r'^62'), '').replaceFirst(RegExp(r'^0'), ''));
-      kandidatIdentitas.add(digit.replaceFirst(RegExp(r'^62'), ''));
-    }
-  }
-
-  final digitSandi = _digitSaja(kataSandi);
-  final mengandungIdentitas = kandidatIdentitas.any(
-    (kandidat) =>
-        kandidat.length >= 4 &&
-        (polos.contains(kandidat) || digitSandi.contains(kandidat)),
-  );
-  if (mengandungIdentitas) gagal.add(AturanKataSandi.mengandungIdentitas);
-
-  final kecil = kataSandi.toLowerCase();
-  final terlaluUmum = _kataSandiUmum.contains(kecil) ||
-      _kataSandiUmum.contains(polos) ||
-      _deretMudah.any(kecil.contains);
-  if (terlaluUmum) gagal.add(AturanKataSandi.terlaluUmum);
-
   return gagal;
 }
 
-/// True bila kata sandi lolos seluruh aturan (termasuk yang tidak tampil).
-bool kataSandiValid(
-  String kataSandi, {
-  String? namaLengkap,
-  String? nomorTelepon,
-}) {
-  return periksaKataSandi(
-    kataSandi,
-    namaLengkap: namaLengkap,
-    nomorTelepon: nomorTelepon,
-  ).isEmpty;
-}
+/// True bila kata sandi lolos seluruh aturan.
+bool kataSandiValid(String kataSandi) => periksaKataSandi(kataSandi).isEmpty;
 
 /// Pesan galat pertama yang layak ditampilkan setelah pengguna menekan tombol.
 ///
 /// Aturan yang tampil sebagai checklist tidak diulang di sini agar tidak
 /// berbunyi dua kali di layar.
-String pesanKataSandiTidakValid(
-  String kataSandi, {
-  String? namaLengkap,
-  String? nomorTelepon,
-}) {
-  final gagal = periksaKataSandi(
-    kataSandi,
-    namaLengkap: namaLengkap,
-    nomorTelepon: nomorTelepon,
-  );
+String pesanKataSandiTidakValid(String kataSandi) {
+  final gagal = periksaKataSandi(kataSandi);
 
-  for (final aturan in [
-    AturanKataSandi.mengandungIdentitas,
-    AturanKataSandi.terlaluUmum,
-    AturanKataSandi.batasByte,
-  ]) {
-    if (gagal.contains(aturan)) return labelAturan(aturan);
+  if (gagal.contains(AturanKataSandi.batasByte)) {
+    return labelAturan(AturanKataSandi.batasByte);
   }
 
   return 'Kata sandi belum memenuhi semua syarat di atas.';

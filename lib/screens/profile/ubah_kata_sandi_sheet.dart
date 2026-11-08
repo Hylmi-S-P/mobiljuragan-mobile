@@ -70,11 +70,7 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
   bool get _cocok =>
       _ulangiController.text.isNotEmpty && _baruController.text == _ulangiController.text;
 
-  Set<AturanKataSandi> get _gagal => periksaKataSandi(
-        _baruController.text,
-        namaLengkap: context.read<AuthController>().currentUser?.name,
-        nomorTelepon: context.read<AuthController>().currentUser?.phoneNumber,
-      );
+  Set<AturanKataSandi> get _gagal => periksaKataSandi(_baruController.text);
 
   Future<void> _simpan() async {
     if (!_formKey.currentState!.validate()) return;

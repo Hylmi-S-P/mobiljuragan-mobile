@@ -69,11 +69,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   /// Aturan kata sandi yang belum terpenuhi, memakai nama & nomor yang diketik
   /// supaya kata sandi yang menyalin identitas sendiri ikut tertolak.
-  Set<AturanKataSandi> get _pelanggaranKataSandi => periksaKataSandi(
-        _passwordController.text,
-        namaLengkap: _nameController.text,
-        nomorTelepon: _phoneController.text,
-      );
+  Set<AturanKataSandi> get _pelanggaranKataSandi =>
+      periksaKataSandi(_passwordController.text);
 
   bool get _konfirmasiCocok =>
       _passwordConfirmController.text.isNotEmpty &&
@@ -94,11 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
      * karena aturan "jangan memakai nama/nomor sendiri" butuh nilai dari kolom
      * lain. Server tetap memeriksa ulang; ini hanya agar pengguna tidak menunggu
      * satu perjalanan jaringan untuk tahu aturannya belum lengkap. */
-    if (periksaKataSandi(
-      _passwordController.text,
-      namaLengkap: _nameController.text,
-      nomorTelepon: _phoneController.text,
-    ).isNotEmpty) {
+    if (periksaKataSandi(_passwordController.text).isNotEmpty) {
       setState(() => _passwordTouched = true);
       _tampilkanPesan('Kata sandi belum memenuhi semua syarat.');
       return;
@@ -476,17 +469,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           validator: (val) {
             if (val == null || val.isEmpty) return 'Kata sandi wajib diisi.';
-            final gagal = periksaKataSandi(
-              val,
-              namaLengkap: _nameController.text,
-              nomorTelepon: _phoneController.text,
-            );
-            if (gagal.isEmpty) return null;
-            return pesanKataSandiTidakValid(
-              val,
-              namaLengkap: _nameController.text,
-              nomorTelepon: _phoneController.text,
-            );
+            if (periksaKataSandi(val).isEmpty) return null;
+            return pesanKataSandiTidakValid(val);
           },
         ),
         AnimatedSize(
