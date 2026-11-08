@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import '../core/network/api_client.dart';
 import '../data/local/secure/secure_storage_service.dart';
+import '../data/remote/auth_api_service.dart' show NiatOtp;
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/user_model.dart';
@@ -22,7 +24,12 @@ class AuthController extends ChangeNotifier {
   String? _errorMessage;
   bool _hasSecureToken = false;
 
-  // Data sementara pendaftaran sebelum verifikasi OTP selesai
+  /* Data sementara pendaftaran sebelum kode verifikasi selesai.
+   *
+   * Kata sandi ikut di sini hanya selama layar daftar -> OTP terbuka, di memori
+   * proses, dan dibuang begitu pendaftaran selesai atau dibatalkan. Tidak pernah
+   * ditulis ke secure storage maupun SharedPreferences.
+   */
   Map<String, String>? _pendingRegistration;
 
   AuthController({
@@ -121,11 +128,13 @@ class AuthController extends ChangeNotifier {
     required String name,
     required String phone,
     required String gender,
+    required String password,
   }) {
     _pendingRegistration = {
       'name': name,
       'phone': phone,
       'gender': gender,
+      'password': password,
     };
     _phoneNumber = phone;
     _hasLoginError = false;
@@ -133,113 +142,158 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mengirim permintaan kode OTP ke nomor WhatsApp via backend API
-  Future<void> sendOtp(String phone) async {
+  /// Meminta kode verifikasi ke nomor WhatsApp.
+  ///
+  /// Niat (`login`/`register`) menentukan apakah server boleh membuat kode untuk
+  /// nomor yang belum terdaftar. Kegagalan **tidak** disembunyikan: pengguna harus
+  /// tahu kalau permintaan belum terkirim. Dulu kegagalan ditelan diam-diam lalu
+  /// diganti akun karangan di perangkat.
+  Future<bool> sendOtp(String phone, {NiatOtp? niat}) async {
     _phoneNumber = phone;
     _hasLoginError = false;
     _errorMessage = null;
     notifyListeners();
 
+    final niatEfektif = niat ?? (_pendingRegistration != null ? NiatOtp.register : NiatOtp.login);
+
     final repo = repository;
-    if (repo != null) {
-      try {
-        await repo.requestOtp(
-          phoneNumber: phone,
-          fullName: _pendingRegistration?['name'],
-        );
-      } catch (_) {
-        // Fallback offline / demo mode
-      }
+    if (repo == null) {
+      _hasLoginError = true;
+      _errorMessage = 'Layanan autentikasi tidak tersedia di perangkat ini.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      await repo.requestOtp(phoneNumber: phone, niat: niatEfektif);
+      return true;
+    } catch (e) {
+      _hasLoginError = true;
+      _errorMessage = _pesanGalat(e);
+      notifyListeners();
+      return false;
     }
   }
 
-  /// Verifikasi kode OTP pendaftaran pelanggan baru
+  /// Menerjemahkan galat API menjadi kalimat yang bisa dibaca pengguna.
+  String _pesanGalat(Object error) {
+    final pesan = error is ApiException ? error.message : error.toString();
+    return pesan.replaceFirst('ApiException: ', '').trim();
+  }
+
+  /// Menyelesaikan pendaftaran: verifikasi kode, lalu akun dibuat server.
+  ///
+  /// Nama dan kata sandi dikirim di langkah ini — setelah kode diverifikasi —
+  /// sehingga tidak ada identitas yang tersimpan sebelum nomor terbukti.
   Future<bool> verifyRegisterOtp(String code) async {
     final repo = repository;
-    final phone = _pendingRegistration?['phone'] ?? _phoneNumber;
-    final fullName = _pendingRegistration?['name'] ?? 'Pelanggan MobilJuragan';
-    final gender = _pendingRegistration?['gender'] ?? 'Laki-laki';
+    final pending = _pendingRegistration;
+    final phone = pending?['phone'] ?? _phoneNumber;
+    final fullName = pending?['name'] ?? '';
+    final gender = pending?['gender'] ?? 'Laki-laki';
+    final password = pending?['password'] ?? '';
 
-    if (repo != null) {
-      try {
-        final verifiedUser = await repo.verifyOtpAndSave(
-          phoneNumber: phone,
-          otp: code,
-          fullName: fullName,
-          gender: gender,
-        );
-        if (verifiedUser != null) {
-          _currentUser = verifiedUser;
-          _isLoggedIn = true;
-          _hasLoginError = false;
-          _errorMessage = null;
-          _hasSecureToken = true;
-          _pendingRegistration = null;
-          await _onSessionStarted();
-          notifyListeners();
-          return true;
-        }
-      } catch (_) {
-        // Fallback offline jika backend tidak dapat dihubungi
-      }
+    if (repo == null) {
+      _hasLoginError = true;
+      _errorMessage = 'Layanan autentikasi tidak tersedia di perangkat ini.';
+      notifyListeners();
+      return false;
     }
 
-    /* Verifikasi hanya boleh diputuskan server.
-     *
-     * Sebelumnya kode demo (123456 / 888888 / 1234) diterima di sisi klien, lalu
-     * aplikasi membuat akun khayalan berid `USR-MKQ-<timestamp>` yang tidak pernah
-     * ada di database. Akibatnya pengguna tampak sudah masuk, punya riwayat, tetapi
-     * akun itu tidak dikenali backend maupun dashboard — dan nama yang diketik di
-     * form bisa "menimpa" tampilan akun lain karena identitasnya dikarang sendiri.
-     */
-    _hasLoginError = true;
-    _errorMessage =
-        'Verifikasi tidak dapat diproses karena server tidak menjawab. Periksa koneksi lalu coba lagi.';
-    notifyListeners();
-    return false;
+    if (password.isEmpty) {
+      _hasLoginError = true;
+      _errorMessage = 'Kata sandi belum diisi. Ulangi pendaftaran dari awal.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final user = await repo.daftarDanSimpan(
+        phoneNumber: phone,
+        otp: code,
+        fullName: fullName,
+        password: password,
+        gender: gender,
+      );
+
+      if (user != null) {
+        _currentUser = user;
+        _isLoggedIn = true;
+        _hasLoginError = false;
+        _errorMessage = null;
+        _hasSecureToken = true;
+        _pendingRegistration = null;
+        await _onSessionStarted();
+        notifyListeners();
+        return true;
+      }
+
+      _hasLoginError = true;
+      _errorMessage = 'Pendaftaran tidak dapat diselesaikan. Silakan coba lagi.';
+      notifyListeners();
+      return false;
+    } on ApiException catch (e) {
+      _hasLoginError = true;
+      _errorMessage = _pesanGalat(e);
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _hasLoginError = true;
+      _errorMessage = 'Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.';
+      notifyListeners();
+      return false;
+    }
   }
 
-  /// Verifikasi kode OTP untuk masuk akun (login)
+  /// Masuk memakai kode verifikasi.
+  ///
+  /// Keputusan sepenuhnya milik server. Tidak ada kode ajaib yang diterima di
+  /// perangkat: dulu jalur itu melahirkan akun yang tidak ada di database.
   Future<bool> verifyOtp(String code) async {
-    // Jika ada pending registration, teruskan ke verifyRegisterOtp
     if (_pendingRegistration != null) {
-      return await verifyRegisterOtp(code);
+      return verifyRegisterOtp(code);
     }
 
     final repo = repository;
-    if (repo != null) {
-      try {
-        final verifiedUser = await repo.verifyOtpAndSave(
-          phoneNumber: _phoneNumber,
-          otp: code,
-        );
-        if (verifiedUser != null) {
-          _currentUser = verifiedUser;
-          _isLoggedIn = true;
-          _hasLoginError = false;
-          _errorMessage = null;
-          _hasSecureToken = true;
-          await _onSessionStarted();
-          notifyListeners();
-          return true;
-        }
-      } catch (_) {
-        // Fallback offline
-      }
+    if (repo == null) {
+      _hasLoginError = true;
+      _errorMessage = 'Layanan autentikasi tidak tersedia di perangkat ini.';
+      notifyListeners();
+      return false;
     }
 
-    /* Login juga tidak boleh diputuskan klien.
-     *
-     * Dulu kode demo diterima tanpa server, lalu identitas dikarang di perangkat.
-     * Itulah asal akun "hantu": aplikasi menampilkan nama dan inisial yang tidak
-     * pernah ada di database, lengkap dengan riwayat yang tersimpan lokal saja.
-     */
-    _isLoggedIn = false;
-    _hasLoginError = true;
-    _errorMessage =
-        'Kode verifikasi tidak dapat diperiksa karena server tidak menjawab. Periksa koneksi lalu coba lagi.';
-    notifyListeners();
-    return false;
+    try {
+      final user = await repo.verifyLoginOtpAndSave(
+        phoneNumber: _phoneNumber,
+        otp: code,
+      );
+
+      if (user != null) {
+        _currentUser = user;
+        _isLoggedIn = true;
+        _hasLoginError = false;
+        _errorMessage = null;
+        _hasSecureToken = true;
+        await _onSessionStarted();
+        notifyListeners();
+        return true;
+      }
+
+      _hasLoginError = true;
+      _errorMessage = 'Kode verifikasi tidak sesuai. Periksa kembali kode terbaru.';
+      notifyListeners();
+      return false;
+    } on ApiException catch (e) {
+      _hasLoginError = true;
+      _errorMessage = _pesanGalat(e);
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _hasLoginError = true;
+      _errorMessage = 'Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.';
+      notifyListeners();
+      return false;
+    }
   }
 
   /// Keluar dari sesi akun (menghapus token di Hardware Keystore)

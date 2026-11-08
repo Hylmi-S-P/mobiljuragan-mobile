@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
+import '../../core/validators/password_policy.dart';
+import '../../data/remote/auth_api_service.dart' show NiatOtp;
 import '../../theme/app_colors.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
@@ -23,69 +25,135 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Harun');
-  final _phoneController = TextEditingController(text: '812-4800-2910');
+
+  /* Tidak ada lagi isian yang diisi lebih dulu.
+   *
+   * Sebelumnya kolom nama berisi "Harun" dan nomor terisi sebagian. Nilai itu
+   * bukan sekadar contoh tampilan: kalau pengguna menekan lanjut tanpa mengubah,
+   * yang terkirim adalah identitas orang lain. */
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _passwordConfirmController = TextEditingController();
 
   String _selectedGender = 'Laki-laki';
-  bool _agreementChecked = true;
+  bool _agreementChecked = false;
   bool _isLoading = false;
+
+  /// Checklist baru muncul setelah kolom kata sandi disentuh.
+  bool _passwordTouched = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_refreshPasswordState);
+    _passwordConfirmController.addListener(_refreshPasswordState);
+  }
+
+  void _refreshPasswordState() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    _passwordController.removeListener(_refreshPasswordState);
+    _passwordConfirmController.removeListener(_refreshPasswordState);
     _nameController.dispose();
     _phoneController.dispose();
+    _passwordController.dispose();
+    _passwordConfirmController.dispose();
     super.dispose();
   }
 
-  void _handleContinueToOtp() {
+  /// Aturan kata sandi yang belum terpenuhi, memakai nama & nomor yang diketik
+  /// supaya kata sandi yang menyalin identitas sendiri ikut tertolak.
+  Set<AturanKataSandi> get _pelanggaranKataSandi => periksaKataSandi(
+        _passwordController.text,
+        namaLengkap: _nameController.text,
+        nomorTelepon: _phoneController.text,
+      );
+
+  bool get _konfirmasiCocok =>
+      _passwordConfirmController.text.isNotEmpty &&
+      _passwordController.text == _passwordConfirmController.text;
+
+
+  void _handleContinueToOtp() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (!_agreementChecked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap setujui pernyataan data sebelum melanjutkan.'),
-          backgroundColor: Color(0xFFDC2626),
-        ),
+      _tampilkanPesan('Harap setujui pernyataan data sebelum melanjutkan.');
+      return;
+    }
+
+    /* Kata sandi diperiksa lagi di sini — bukan hanya lewat validator form —
+     * karena aturan "jangan memakai nama/nomor sendiri" butuh nilai dari kolom
+     * lain. Server tetap memeriksa ulang; ini hanya agar pengguna tidak menunggu
+     * satu perjalanan jaringan untuk tahu aturannya belum lengkap. */
+    if (periksaKataSandi(
+      _passwordController.text,
+      namaLengkap: _nameController.text,
+      nomorTelepon: _phoneController.text,
+    ).isNotEmpty) {
+      setState(() => _passwordTouched = true);
+      _tampilkanPesan('Kata sandi belum memenuhi semua syarat.');
+      return;
+    }
+
+    if (!_konfirmasiCocok) {
+      _tampilkanPesan('Ulangi kata sandi dengan isian yang sama.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final auth = context.read<AuthController>();
+    final rawPhone = _phoneController.text.trim();
+    final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
+
+    // Simpan data pendaftaran sementara (termasuk kata sandi) di memori.
+    auth.setPendingRegistration(
+      name: _nameController.text.trim(),
+      phone: fullPhone,
+      gender: _selectedGender,
+      password: _passwordController.text,
+    );
+
+    // Minta kode verifikasi. Kegagalan tidak disembunyikan lagi.
+    final terkirim = await auth.sendOtp(fullPhone, niat: NiatOtp.register);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (!terkirim) {
+      _tampilkanPesan(
+        auth.errorMessage ?? 'Kode verifikasi belum terkirim. Periksa koneksi lalu coba lagi.',
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    Future.delayed(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      final auth = context.read<AuthController>();
-      final rawPhone = _phoneController.text.trim();
-      final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
-
-      // Simpan data pendaftaran sementara ke controller
-      auth.setPendingRegistration(
-        name: _nameController.text.trim(),
-        phone: fullPhone,
-        gender: _selectedGender,
-      );
-
-      // Minta kode OTP ke nomor WhatsApp
-      auth.sendOtp(fullPhone);
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      // Buka Layar Verifikasi OTP
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => OtpVerificationScreen(
-            phoneNumber: fullPhone,
-            onSuccess: widget.onSuccess,
-          ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OtpVerificationScreen(
+          phoneNumber: fullPhone,
+          onSuccess: widget.onSuccess,
         ),
-      );
-    });
+      ),
+    );
+  }
+
+  void _tampilkanPesan(String pesan) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(pesan),
+        backgroundColor: AppColors.statusCancelled,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -116,7 +184,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildPhoneField(),
                 const SizedBox(height: 16),
 
-                // 5. Form Input: Jenis Kelamin (Segmented Radio Pills)
+                // 5. Kata sandi + checklist hidup
+                _buildPasswordField(),
+                const SizedBox(height: 16),
+
+                // 6. Ulangi kata sandi
+                _buildPasswordConfirmField(),
+                const SizedBox(height: 16),
+
+                // 7. Form Input: Jenis Kelamin (Segmented Radio Pills)
                 _buildGenderSelector(),
                 const SizedBox(height: 16),
 
@@ -355,6 +431,227 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Kolom kata sandi dengan checklist hidup.
+  ///
+  /// Checklist muncul setelah kolom disentuh, dan tingginya dipesan lewat
+  /// `AnimatedSize` supaya tata letak tidak melompat saat status berubah.
+  /// Status dibedakan ikon + teks, bukan warna saja.
+  Widget _buildPasswordField() {
+    final pelanggaran = _pelanggaranKataSandi;
+    final adaIsi = _passwordController.text.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFieldLabel('Kata Sandi', isRequired: true),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          autocorrect: false,
+          enableSuggestions: false,
+          textInputAction: TextInputAction.next,
+          autofillHints: const [AutofillHints.newPassword],
+          onTap: () {
+            if (!_passwordTouched) setState(() => _passwordTouched = true);
+          },
+          onChanged: (nilai) {
+            if (!_passwordTouched && nilai.isNotEmpty) {
+              setState(() => _passwordTouched = true);
+            }
+          },
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
+          decoration: _dekorasiKataSandi(
+            hint: 'Buat kata sandi yang kuat',
+            obscure: _obscurePassword,
+            onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+          ),
+          validator: (val) {
+            if (val == null || val.isEmpty) return 'Kata sandi wajib diisi.';
+            final gagal = periksaKataSandi(
+              val,
+              namaLengkap: _nameController.text,
+              nomorTelepon: _phoneController.text,
+            );
+            if (gagal.isEmpty) return null;
+            return pesanKataSandiTidakValid(
+              val,
+              namaLengkap: _nameController.text,
+              nomorTelepon: _phoneController.text,
+            );
+          },
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: (_passwordTouched || adaIsi)
+              ? _buildChecklistKataSandi(pelanggaran)
+              : const SizedBox(height: 8, width: double.infinity),
+        ),
+      ],
+    );
+  }
+
+  /// Kolom ulangi kata sandi dengan indikator kecocokan.
+  Widget _buildPasswordConfirmField() {
+    final terisi = _passwordConfirmController.text.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFieldLabel('Ulangi Kata Sandi', isRequired: true),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _passwordConfirmController,
+          obscureText: _obscureConfirm,
+          autocorrect: false,
+          enableSuggestions: false,
+          textInputAction: TextInputAction.done,
+          autofillHints: const [AutofillHints.newPassword],
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
+          decoration: _dekorasiKataSandi(
+            hint: 'Ketik ulang kata sandi',
+            obscure: _obscureConfirm,
+            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+          ),
+          validator: (val) {
+            if (val == null || val.isEmpty) return 'Ulangi kata sandi wajib diisi.';
+            if (val != _passwordController.text) return 'Kata sandi belum sama.';
+            return null;
+          },
+        ),
+        if (terisi) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                _konfirmasiCocok ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                size: 14,
+                color: _konfirmasiCocok ? AppColors.tealDark : AppColors.statusCancelled,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _konfirmasiCocok ? 'Kata sandi cocok' : 'Belum cocok',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeTiny,
+                  fontWeight: FontWeight.w600,
+                  color: _konfirmasiCocok ? AppColors.tealDark : AppColors.statusCancelled,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Checklist aturan kata sandi.
+  ///
+  /// Hanya aturan yang diminta produk yang ditampilkan. Aturan teknis (batas
+  /// byte, identitas, kata sandi umum) muncul lewat pesan galat supaya layar
+  /// tidak penuh.
+  Widget _buildChecklistKataSandi(Set<AturanKataSandi> pelanggaran) {
+    final layarSempit = MediaQuery.sizeOf(context).width < 360;
+
+    final item = aturanTampil.map((aturan) {
+      final lulus = !pelanggaran.contains(aturan);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            lulus ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 13,
+            color: lulus ? AppColors.tealDark : AppColors.textMuted,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              labelAturan(aturan),
+              style: TextStyle(
+                fontSize: AppTypography.sizeTiny,
+                height: 1.3,
+                fontWeight: lulus ? FontWeight.w600 : FontWeight.w400,
+                color: lulus ? AppColors.tealDark : AppColors.textMuted,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: layarSempit
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final baris in item)
+                  Padding(padding: const EdgeInsets.only(bottom: 4), child: baris),
+              ],
+            )
+          : Wrap(spacing: 14, runSpacing: 4, children: item),
+    );
+  }
+
+  /// Dekorasi kolom kata sandi, mengikuti gaya kolom lain di layar ini.
+  InputDecoration _dekorasiKataSandi({
+    required String hint,
+    required bool obscure,
+    required VoidCallback onToggle,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: AppTypography.sizeBodyLarge,
+        fontWeight: FontWeight.normal,
+        fontFamily: 'Inter',
+      ),
+      prefixIcon: const Icon(
+        Icons.lock_outline_rounded,
+        color: AppColors.primaryTeal,
+        size: 20,
+      ),
+      suffixIcon: IconButton(
+        tooltip: obscure ? 'Tampilkan kata sandi' : 'Sembunyikan kata sandi',
+        onPressed: onToggle,
+        icon: Icon(
+          obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          color: AppColors.textSecondary,
+          size: 20,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      filled: true,
+      fillColor: AppColors.surfaceLight,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.borderMedium),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.borderMedium),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.5),
+      ),
     );
   }
 

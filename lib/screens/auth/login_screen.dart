@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
+import '../../data/remote/auth_api_service.dart' show NiatOtp;
 import '../../theme/app_colors.dart';
 import 'otp_verification_screen.dart';
 import 'register_screen.dart';
@@ -33,37 +34,49 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleRequestOtp() {
+  Future<void> _handleRequestOtp() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final rawPhone = _phoneController.text.trim();
     final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
 
-    Future.delayed(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      final auth = context.read<AuthController>();
-      auth.sendOtp(fullPhone);
+    final auth = context.read<AuthController>();
+    final terkirim = await auth.sendOtp(fullPhone, niat: NiatOtp.login);
 
-      setState(() {
-        _isLoading = false;
-      });
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-      // Buka Layar Verifikasi OTP
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => OtpVerificationScreen(
-            phoneNumber: fullPhone,
-            onSuccess: widget.onSuccess,
+    /* Kegagalan permintaan ditampilkan apa adanya.
+     *
+     * Versi sebelumnya membuka layar OTP tanpa peduli hasilnya, lalu kegagalan
+     * ditutupi dengan membuat akun di perangkat. Sekarang pengguna tahu kode
+     * belum terkirim, dan tidak ada identitas yang dikarang. */
+    if (!terkirim) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            auth.errorMessage ??
+                'Kode verifikasi belum terkirim. Periksa koneksi lalu coba lagi.',
           ),
+          backgroundColor: AppColors.statusCancelled,
+          behavior: SnackBarBehavior.floating,
         ),
       );
-    });
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OtpVerificationScreen(
+          phoneNumber: fullPhone,
+          onSuccess: widget.onSuccess,
+        ),
+      ),
+    );
   }
 
   void _showSupportDialog() {

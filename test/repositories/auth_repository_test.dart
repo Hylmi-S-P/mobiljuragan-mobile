@@ -14,18 +14,23 @@ class FakeAuthApiService extends AuthApiService {
 
   FakeAuthApiService({this.mockVerifyResponse});
 
+  NiatOtp? lastNiat;
+  String? lastPassword;
+  String? lastFullName;
+
   @override
   Future<Map<String, dynamic>> requestOtp({
     required String phoneNumber,
-    String? fullName,
+    required NiatOtp niat,
   }) async {
     requestOtpCount++;
+    lastNiat = niat;
     lastRequestedPhone = AuthApiService.sanitizePhoneNumber(phoneNumber);
     return {'status': 'success', 'message': 'OTP sent'};
   }
 
   @override
-  Future<Map<String, dynamic>> verifyOtp({
+  Future<Map<String, dynamic>> verifyLoginOtp({
     required String phoneNumber,
     required String otp,
   }) async {
@@ -38,6 +43,30 @@ class FakeAuthApiService extends AuthApiService {
           'user': {
             'id': 'user-db-001',
             'fullName': 'Budi Santoso',
+            'phoneNumber': lastVerifiedPhone,
+            'role': 'CUSTOMER',
+          },
+        };
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyRegisterOtp({
+    required String phoneNumber,
+    required String otp,
+    required String fullName,
+    required String password,
+  }) async {
+    verifyOtpCount++;
+    lastVerifiedPhone = AuthApiService.sanitizePhoneNumber(phoneNumber);
+    lastVerifiedOtp = otp;
+    lastFullName = fullName;
+    lastPassword = password;
+    return mockVerifyResponse ??
+        {
+          'token': 'jwt_backend_token_sample_123',
+          'user': {
+            'id': 'user-db-001',
+            'fullName': fullName,
             'phoneNumber': lastVerifiedPhone,
             'role': 'CUSTOMER',
           },
@@ -109,22 +138,25 @@ void main() {
       final fakeStorage = FakeSecureStorageService();
       final repository = AuthRepository(apiService: fakeApi, secureStorage: fakeStorage);
 
-      final res = await repository.requestOtp(phoneNumber: '+62 812-4800-2910');
+      final res = await repository.requestOtp(
+        phoneNumber: '+62 812-4800-2910',
+        niat: NiatOtp.login,
+      );
 
       expect(res['status'], equals('success'));
       expect(fakeApi.requestOtpCount, equals(1));
       expect(fakeApi.lastRequestedPhone, equals('+6281248002910'));
+      expect(fakeApi.lastNiat, equals(NiatOtp.login));
     });
 
-    test('verifyOtpAndSave memvalidasi OTP dan menyimpan token JWT ke SecureStorage', () async {
+    test('verifyLoginOtpAndSave memvalidasi OTP dan menyimpan token JWT ke SecureStorage', () async {
       final fakeApi = FakeAuthApiService();
       final fakeStorage = FakeSecureStorageService();
       final repository = AuthRepository(apiService: fakeApi, secureStorage: fakeStorage);
 
-      final user = await repository.verifyOtpAndSave(
+      final user = await repository.verifyLoginOtpAndSave(
         phoneNumber: '081248002910',
         otp: '123456',
-        fullName: 'Budi Santoso',
       );
 
       expect(user, isNotNull);
@@ -146,7 +178,7 @@ void main() {
       final fakeStorage = FakeSecureStorageService();
       final repository = AuthRepository(apiService: fakeApi, secureStorage: fakeStorage);
 
-      await repository.verifyOtpAndSave(
+      await repository.verifyLoginOtpAndSave(
         phoneNumber: '081248002910',
         otp: '123456',
       );

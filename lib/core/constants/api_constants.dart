@@ -53,6 +53,12 @@ class ApiConstants {
   static const String requestOtpEndpoint = '/auth/otp/request';
   static const String verifyOtpEndpoint = '/auth/otp/verify';
 
+  /// Pendaftaran: kode verifikasi + nama + kata sandi dalam satu permintaan.
+  static const String registerVerifyEndpoint = '/auth/register/verify';
+
+  /// Profil pemilik sesi; dipakai memastikan token masih dikenali server.
+  static const String authMeEndpoint = '/auth/me';
+
   // Endpoints Pemesanan
   static const String bookingsEndpoint = '/bookings';
 
