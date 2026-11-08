@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
-import '../../data/remote/auth_api_service.dart' show NiatOtp;
 import '../../theme/app_colors.dart';
-import 'otp_verification_screen.dart';
+import 'login_method_screen.dart';
 import 'register_screen.dart';
 import '../../theme/app_typography.dart';
 
@@ -23,10 +22,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _phoneController =
-      TextEditingController(text: '812-4800-2910');
-
-  bool _isLoading = false;
+  final TextEditingController _phoneController = TextEditingController();
 
   @override
   void dispose() {
@@ -34,44 +30,20 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleRequestOtp() async {
+  void _handleRequestOtp() {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() => _isLoading = true);
-
     final rawPhone = _phoneController.text.trim();
     final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
 
-    final auth = context.read<AuthController>();
-    final terkirim = await auth.sendOtp(fullPhone, niat: NiatOtp.login);
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    /* Kegagalan permintaan ditampilkan apa adanya.
-     *
-     * Versi sebelumnya membuka layar OTP tanpa peduli hasilnya, lalu kegagalan
-     * ditutupi dengan membuat akun di perangkat. Sekarang pengguna tahu kode
-     * belum terkirim, dan tidak ada identitas yang dikarang. */
-    if (!terkirim) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            auth.errorMessage ??
-                'Kode verifikasi belum terkirim. Periksa koneksi lalu coba lagi.',
-          ),
-          backgroundColor: AppColors.statusCancelled,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
+    /* Nomor dulu, lalu pengguna memilih caranya. Kode verifikasi **tidak**
+       dikirim di sini: layar berikutnya menawarkan dua jalur (kode WhatsApp atau
+       kata sandi), dan permintaan kode baru terjadi setelah pengguna memilih. */
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => OtpVerificationScreen(
+        builder: (_) => LoginMethodScreen(
           phoneNumber: fullPhone,
           onSuccess: widget.onSuccess,
         ),
@@ -445,7 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
       width: double.infinity,
       height: 48,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleRequestOtp,
+        onPressed: _handleRequestOtp,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryNavy,
           foregroundColor: Colors.white,
@@ -455,20 +427,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           elevation: 0,
         ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : const Row(
+        child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Kirim Kode OTP',
+                    'Lanjutkan',
                     style: TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,

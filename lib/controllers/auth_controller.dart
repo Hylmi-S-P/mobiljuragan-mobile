@@ -24,6 +24,16 @@ class AuthController extends ChangeNotifier {
   String? _errorMessage;
   bool _hasSecureToken = false;
 
+  /// Sedang menyimpan perubahan profil (nama/kata sandi) ke server.
+  bool _isMenyimpanProfil = false;
+
+  /// Sedang meminta kode verifikasi ke server.
+  bool _isLoadingOtp = false;
+
+  /// `updatedAt` profil terakhir yang dibaca dari server, untuk konkurensi
+  /// optimistik saat `PATCH /me`.
+  String? _profilUpdatedAt;
+
   /* Data sementara pendaftaran sebelum kode verifikasi selesai.
    *
    * Kata sandi ikut di sini hanya selama layar daftar -> OTP terbuka, di memori
@@ -46,6 +56,8 @@ class AuthController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   Map<String, String>? get pendingRegistration => _pendingRegistration;
   bool get hasSecureToken => _hasSecureToken;
+  bool get isMenyimpanProfil => _isMenyimpanProfil;
+  bool get isLoadingOtp => _isLoadingOtp;
 
   /// Memulihkan sesi pengguna dari Secure Storage saat aplikasi pertama kali dibuka (Guest Mode jika belum login)
   Future<void> initSession() async {
@@ -88,28 +100,6 @@ class AuthController extends ChangeNotifier {
       _errorMessage = null;
     }
     notifyListeners();
-  }
-
-  /// Menyimpan identitas sesi yang sudah diterbitkan server.
-  ///
-  /// Token TIDAK pernah dibuat di sini. Versi sebelumnya menulis
-  /// `secure_session_<timestamp>` ketika alur demo/offline dipakai, sehingga
-  /// aplikasi menganggap dirinya punya sesi sah padahal server tidak pernah
-  /// menerbitkan apa pun. Sekarang: kalau server belum memberi token, sesi tetap
-  /// tamu dan `hasValidToken()` akan bernilai false.
-  Future<void> _saveSecureTokenAsync(UserModel user) async {
-    final storage = secureStorage;
-    if (storage != null) {
-      await storage.saveUserIdentity(
-        userId: user.id,
-        phoneNumber: user.phoneNumber,
-        fullName: user.name,
-        gender: user.gender,
-        nik: user.idCardNumber,
-      );
-      _hasSecureToken = await storage.hasValidToken();
-      notifyListeners();
-    }
   }
 
   /// Dipanggil setiap kali sesi baru dimulai.
@@ -164,14 +154,19 @@ class AuthController extends ChangeNotifier {
       return false;
     }
 
+    _isLoadingOtp = true;
+    notifyListeners();
+
     try {
       await repo.requestOtp(phoneNumber: phone, niat: niatEfektif);
       return true;
     } catch (e) {
       _hasLoginError = true;
       _errorMessage = _pesanGalat(e);
-      notifyListeners();
       return false;
+    } finally {
+      _isLoadingOtp = false;
+      notifyListeners();
     }
   }
 
@@ -322,58 +317,232 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Memperbarui data profil pengguna
+  /// Mengubah nama lewat server.
   ///
-  /// Profil hanya bisa diubah kalau ada sesi sah. `id` tidak pernah dikarang:
-  /// sebelumnya baris ini membuat `USR-MKQ-<timestamp>` ketika `currentUser`
-  /// null, sehingga perubahan profil pada mode tamu melahirkan identitas palsu.
-  void updateProfile({
-    required String name,
-    required String phone,
-    String? gender,
-    String? email,
-    String? idCard,
-  }) {
+  /// Nama adalah data milik server. Versi sebelumnya menyimpannya di perangkat
+  /// saja, sehingga server dan aplikasi menampilkan nama berbeda — dan itulah
+  /// pintu masuk insiden "nama pelanggan tertimpa".
+  ///
+  /// Mengembalikan pesan galat yang bisa ditampilkan, atau null bila berhasil.
+  Future<String?> ubahNama(String namaBaru) async {
     final current = _currentUser;
     if (current == null) {
-      /* Mode tamu: tidak ada akun untuk diperbarui. Profil hanya bermakna setelah
-         server menerbitkan identitas (id + token). */
-      _hasLoginError = true;
-      _errorMessage = 'Masuk akun terlebih dahulu untuk mengubah profil.';
-      notifyListeners();
-      return;
+      return 'Masuk akun terlebih dahulu untuk mengubah profil.';
     }
-    final cleanName = name.trim().isNotEmpty ? name.trim() : current.name;
-    _currentUser = UserModel(
-      id: current.id,
-      name: cleanName,
-      phoneNumber: phone,
-      gender: gender ?? current.gender,
-      email: email ?? '',
-      idCardNumber: idCard ?? current.idCardNumber,
-      city: current.city,
-      avatarInitials: UserModel.computeInitials(cleanName),
-      isVerified: true,
-    );
-    _saveSecureTokenAsync(_currentUser!);
+
+    final repo = repository;
+    if (repo == null) {
+      return 'Layanan autentikasi tidak tersedia di perangkat ini.';
+    }
+
+    final nama = namaBaru.trim();
+    if (nama.length < 3) {
+      return 'Nama lengkap minimal 3 karakter.';
+    }
+    if (nama == current.name) {
+      return null;
+    }
+
+    _isMenyimpanProfil = true;
+    notifyListeners();
+
+    try {
+      final diperbarui = await repo.ubahNama(
+        pengguna: current,
+        namaBaru: nama,
+        expectedUpdatedAt: _profilUpdatedAt,
+      );
+      _currentUser = diperbarui;
+      _hasLoginError = false;
+      _errorMessage = null;
+      return null;
+    } on ApiException catch (e) {
+      if (e.statusCode == 412) {
+        /* Data di server sudah berubah sejak dibaca. Muat ulang profil supaya
+           pengguna melihat nilai terbaru sebelum mencoba lagi. */
+        await segarkanProfil();
+        return 'Data profil sudah berubah di tempat lain. Nilai terbaru sudah dimuat, silakan periksa lalu simpan lagi.';
+      }
+      return _pesanGalat(e);
+    } catch (e) {
+      return _pesanGalat(e);
+    } finally {
+      _isMenyimpanProfil = false;
+      notifyListeners();
+    }
+  }
+
+  /// Membuat atau mengganti kata sandi.
+  ///
+  /// Mengembalikan pesan galat, atau null bila berhasil.
+  Future<String?> ubahKataSandi({
+    required String kataSandiBaru,
+    String? kataSandiSaatIni,
+  }) async {
+    if (_currentUser == null) {
+      return 'Masuk akun terlebih dahulu untuk mengubah kata sandi.';
+    }
+
+    final repo = repository;
+    if (repo == null) {
+      return 'Layanan autentikasi tidak tersedia di perangkat ini.';
+    }
+
+    _isMenyimpanProfil = true;
+    notifyListeners();
+
+    try {
+      await repo.ubahKataSandi(
+        kataSandiBaru: kataSandiBaru,
+        kataSandiSaatIni: kataSandiSaatIni,
+      );
+      await segarkanProfil();
+      _errorMessage = null;
+      _hasLoginError = false;
+      return null;
+    } on ApiException catch (e) {
+      return _pesanGalat(e);
+    } catch (e) {
+      return _pesanGalat(e);
+    } finally {
+      _isMenyimpanProfil = false;
+      notifyListeners();
+    }
+  }
+
+  /// Memuat ulang profil dari server (dipakai setelah perubahan data).
+  Future<void> segarkanProfil() async {
+    final repo = repository;
+    if (repo == null) return;
+    try {
+      final user = await repo.restoreSession();
+      if (user != null) {
+        _currentUser = user;
+        _isLoggedIn = true;
+        _hasSecureToken = true;
+      } else {
+        /* Token tidak lagi sah (mis. kata sandi diganti di perangkat lain).
+           Kembali ke mode tamu tanpa mempertahankan identitas lama. */
+        _currentUser = null;
+        _isLoggedIn = false;
+        _hasSecureToken = false;
+      }
+    } catch (_) {
+      // Gagal jaringan: pertahankan data yang sudah tampil.
+    }
     notifyListeners();
   }
 
-  /// Kompatibilitas pendaftaran profil lokal
-  void register({
-    required String name,
+  /// Masuk memakai kata sandi.
+  Future<bool> masukDenganKataSandi({
     required String phone,
-    String? gender,
-    String? email,
-    String? idCard,
-  }) {
-    updateProfile(
-      name: name,
-      phone: phone,
-      gender: gender,
-      email: email,
-      idCard: idCard,
-    );
+    required String password,
+  }) async {
+    _phoneNumber = phone;
+    _hasLoginError = false;
+    _errorMessage = null;
+    notifyListeners();
+
+    final repo = repository;
+    if (repo == null) {
+      _hasLoginError = true;
+      _errorMessage = 'Layanan autentikasi tidak tersedia di perangkat ini.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final user = await repo.loginKataSandi(phoneNumber: phone, password: password);
+      if (user == null) {
+        _hasLoginError = true;
+        _errorMessage = 'Nomor atau kata sandi tidak sesuai.';
+        notifyListeners();
+        return false;
+      }
+
+      _currentUser = user;
+      _isLoggedIn = true;
+      _hasSecureToken = true;
+      _hasLoginError = false;
+      _errorMessage = null;
+      await _onSessionStarted();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _hasLoginError = true;
+      _errorMessage = _pesanGalat(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _hasLoginError = true;
+      _errorMessage = _pesanGalat(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Meminta kode pemulihan kata sandi.
+  Future<void> mintaResetKataSandi(String phoneNumber) async {
+    final repo = repository;
+    if (repo == null) {
+      throw ApiException('Layanan autentikasi tidak tersedia di perangkat ini.');
+    }
+    try {
+      await repo.mintaResetKataSandi(phoneNumber);
+    } on ApiException catch (e) {
+      _errorMessage = _pesanGalat(e);
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Menetapkan kata sandi baru lewat kode pemulihan.
+  ///
+  /// Mengembalikan pesan galat, atau null bila berhasil (dan sesi langsung aktif).
+  Future<String?> resetKataSandi({
+    required String phoneNumber,
+    required String otp,
+    required String kataSandiBaru,
+  }) async {
+    final repo = repository;
+    if (repo == null) {
+      return 'Layanan autentikasi tidak tersedia di perangkat ini.';
+    }
+
+    try {
+      final user = await repo.resetKataSandi(
+        phoneNumber: phoneNumber,
+        otp: otp,
+        password: kataSandiBaru,
+      );
+      if (user == null) {
+        return 'Kata sandi belum dapat diperbarui. Coba lagi.';
+      }
+
+      _currentUser = user;
+      _isLoggedIn = true;
+      _hasSecureToken = true;
+      _hasLoginError = false;
+      _errorMessage = null;
+      await _onSessionStarted();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return _pesanGalat(e);
+    } catch (e) {
+      return _pesanGalat(e);
+    }
+  }
+
+  /// Mengeluarkan semua perangkat, termasuk perangkat ini.
+  Future<void> keluarkanSemuaPerangkat() async {
+    final repo = repository;
+    try {
+      await repo?.logoutSemuaPerangkat();
+    } catch (_) {
+      // Tetap bersihkan sesi lokal walaupun server tidak terjangkau.
+    }
+    await logout();
   }
 
   void triggerErrorState([String? message]) {

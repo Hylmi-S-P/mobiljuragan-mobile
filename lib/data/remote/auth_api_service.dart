@@ -77,6 +77,104 @@ class AuthApiService {
     return response is Map ? Map<String, dynamic>.from(response) : {};
   }
 
+  /// Masuk memakai kata sandi.
+  Future<Map<String, dynamic>> loginWithPassword({
+    required String phoneNumber,
+    required String password,
+  }) async {
+    final response = await _client.post(
+      ApiConstants.passwordLoginEndpoint,
+      body: {
+        'phoneNumber': sanitizePhoneNumber(phoneNumber),
+        'password': password,
+      },
+    );
+    return response is Map ? Map<String, dynamic>.from(response) : {};
+  }
+
+  /// Meminta kode pemulihan kata sandi.
+  Future<Map<String, dynamic>> requestPasswordReset({required String phoneNumber}) async {
+    final response = await _client.post(
+      ApiConstants.passwordResetRequestEndpoint,
+      body: {'phoneNumber': sanitizePhoneNumber(phoneNumber)},
+    );
+    return response is Map ? Map<String, dynamic>.from(response) : {};
+  }
+
+  /// Menetapkan kata sandi baru setelah kode pemulihan terbukti.
+  Future<Map<String, dynamic>> verifyPasswordReset({
+    required String phoneNumber,
+    required String otp,
+    required String password,
+  }) async {
+    final response = await _client.post(
+      ApiConstants.passwordResetVerifyEndpoint,
+      body: {
+        'phoneNumber': sanitizePhoneNumber(phoneNumber),
+        'otp': otp,
+        'password': password,
+      },
+    );
+    return response is Map ? Map<String, dynamic>.from(response) : {};
+  }
+
+  /// Mengubah nama profil lewat jalur resmi (`PATCH /me`).
+  ///
+  /// `expectedUpdatedAt` dikirim bila tersedia supaya server bisa menolak
+  /// penimpaan saat data sudah berubah di perangkat lain (HTTP 412).
+  Future<Map<String, dynamic>> ubahNama({
+    required String fullName,
+    String? expectedUpdatedAt,
+  }) async {
+    final response = await _client.patch(
+      ApiConstants.authMeEndpoint,
+      requiresAuth: true,
+      body: {
+        'fullName': fullName.trim(),
+        'expectedUpdatedAt': ?expectedUpdatedAt,
+      },
+    );
+    return response is Map ? Map<String, dynamic>.from(response) : {};
+  }
+
+  /// Membuat atau mengganti kata sandi. Balasan memuat token baru.
+  Future<Map<String, dynamic>> ubahKataSandi({
+    required String newPassword,
+    String? currentPassword,
+  }) async {
+    final response = await _client.patch(
+      ApiConstants.ubahKataSandiEndpoint,
+      requiresAuth: true,
+      body: {
+        'newPassword': newPassword,
+        if (currentPassword != null && currentPassword.isNotEmpty)
+          'currentPassword': currentPassword,
+      },
+    );
+    return response is Map ? Map<String, dynamic>.from(response) : {};
+  }
+
+  /// Mengeluarkan semua perangkat (token lama tidak berlaku).
+  Future<Map<String, dynamic>> logoutSemuaPerangkat() async {
+    final response = await _client.post(
+      ApiConstants.logoutAllEndpoint,
+      requiresAuth: true,
+    );
+    return response is Map ? Map<String, dynamic>.from(response) : {};
+  }
+
+  /// Jejak perubahan identitas milik sendiri.
+  Future<List<dynamic>> riwayatIdentitas() async {
+    final response = await _client.get(
+      ApiConstants.riwayatIdentitasEndpoint,
+      requiresAuth: true,
+    );
+    if (response is Map && response['items'] is List) {
+      return response['items'] as List<dynamic>;
+    }
+    return const [];
+  }
+
   /// Profil pemilik sesi; dipakai memastikan token tersimpan masih sah.
   Future<Map<String, dynamic>?> ambilProfilSaya() async {
     try {

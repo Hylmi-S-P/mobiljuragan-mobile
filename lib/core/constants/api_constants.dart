@@ -57,7 +57,23 @@ class ApiConstants {
   static const String registerVerifyEndpoint = '/auth/register/verify';
 
   /// Profil pemilik sesi; dipakai memastikan token masih dikenali server.
-  static const String authMeEndpoint = '/auth/me';
+  static const String authMeEndpoint = '/me';
+
+  /// Masuk memakai kata sandi (alternatif dari kode verifikasi).
+  static const String passwordLoginEndpoint = '/auth/login/password';
+
+  /// Pemulihan kata sandi lewat kode verifikasi.
+  static const String passwordResetRequestEndpoint = '/auth/password/reset/request';
+  static const String passwordResetVerifyEndpoint = '/auth/password/reset/verify';
+
+  /// Membuat atau mengganti kata sandi dari halaman profil.
+  static const String ubahKataSandiEndpoint = '/me/password';
+
+  /// Mengeluarkan semua perangkat.
+  static const String logoutAllEndpoint = '/me/logout-all';
+
+  /// Jejak perubahan identitas milik sendiri.
+  static const String riwayatIdentitasEndpoint = '/me/identity-history';
 
   // Endpoints Pemesanan
   static const String bookingsEndpoint = '/bookings';

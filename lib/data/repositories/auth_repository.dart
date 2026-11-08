@@ -106,8 +106,115 @@ class AuthRepository {
       city: 'Merauke, Papua Selatan',
       avatarInitials: UserModel.computeInitials(name),
       isVerified: true,
+      phoneVerifiedAt: _tanggal(userData?['phoneVerifiedAt']),
+      passwordUpdatedAt: _tanggal(userData?['passwordUpdatedAt']),
     );
   }
+
+  /// Masuk memakai kata sandi lalu menyimpan sesi.
+  Future<UserModel?> loginKataSandi({
+    required String phoneNumber,
+    required String password,
+    String? gender,
+    String? idCardNumber,
+  }) async {
+    final res = await _apiService.loginWithPassword(
+      phoneNumber: phoneNumber,
+      password: password,
+    );
+    return _simpanSesi(
+      res,
+      phoneNumber: phoneNumber,
+      gender: gender,
+      idCardNumber: idCardNumber,
+    );
+  }
+
+  /// Meminta kode pemulihan kata sandi.
+  Future<Map<String, dynamic>> mintaResetKataSandi(String phoneNumber) {
+    return _apiService.requestPasswordReset(phoneNumber: phoneNumber);
+  }
+
+  /// Menetapkan kata sandi baru lewat kode pemulihan, lalu menyimpan sesi baru.
+  Future<UserModel?> resetKataSandi({
+    required String phoneNumber,
+    required String otp,
+    required String password,
+  }) async {
+    final res = await _apiService.verifyPasswordReset(
+      phoneNumber: phoneNumber,
+      otp: otp,
+      password: password,
+    );
+    return _simpanSesi(res, phoneNumber: phoneNumber);
+  }
+
+  /// Mengubah nama lewat `PATCH /me`.
+  ///
+  /// Nama di perangkat **hanya** diperbarui setelah server menerima perubahan.
+  /// Sebelumnya nama disimpan lokal saja, sehingga server dan aplikasi bisa
+  /// menampilkan nama berbeda tanpa ada yang tahu mana yang benar.
+  Future<UserModel> ubahNama({
+    required UserModel pengguna,
+    required String namaBaru,
+    String? expectedUpdatedAt,
+  }) async {
+    final res = await _apiService.ubahNama(
+      fullName: namaBaru,
+      expectedUpdatedAt: expectedUpdatedAt,
+    );
+
+    final data = res['user'] as Map<String, dynamic>?;
+    final namaServer = data?['fullName']?.toString() ?? namaBaru.trim();
+
+    final diperbarui = UserModel(
+      id: pengguna.id,
+      name: namaServer,
+      phoneNumber: pengguna.phoneNumber,
+      gender: pengguna.gender,
+      email: pengguna.email,
+      idCardNumber: pengguna.idCardNumber,
+      city: pengguna.city,
+      avatarInitials: UserModel.computeInitials(namaServer),
+      isVerified: pengguna.isVerified,
+    );
+
+    await _secureStorage.saveUserIdentity(
+      userId: diperbarui.id,
+      nik: diperbarui.idCardNumber,
+      phoneNumber: diperbarui.phoneNumber,
+      fullName: diperbarui.name,
+      gender: diperbarui.gender,
+    );
+
+    return diperbarui;
+  }
+
+  /// Membuat atau mengganti kata sandi. Token baru dari server langsung disimpan,
+  /// karena mengganti kata sandi mencabut semua token lama termasuk milik sesi ini.
+  Future<void> ubahKataSandi({
+    required String kataSandiBaru,
+    String? kataSandiSaatIni,
+  }) async {
+    final res = await _apiService.ubahKataSandi(
+      newPassword: kataSandiBaru,
+      currentPassword: kataSandiSaatIni,
+    );
+
+    final token = res['token']?.toString();
+    if (token != null && token.isNotEmpty) {
+      await _secureStorage.saveAuthTokens(accessToken: token);
+    }
+  }
+
+  /// Mengeluarkan semua perangkat, lalu membersihkan sesi di perangkat ini.
+  Future<void> logoutSemuaPerangkat() async {
+    await _apiService.logoutSemuaPerangkat();
+    await _secureStorage.clearAuth();
+  }
+
+  /// Jejak perubahan identitas milik sendiri.
+  Future<List<dynamic>> riwayatIdentitas() => _apiService.riwayatIdentitas();
 
   /// Memeriksa apakah ada sesi aktif di SecureStorage.
   Future<bool> hasActiveSession() async {
@@ -166,6 +273,14 @@ class AuthRepository {
       city: 'Merauke, Papua Selatan',
       avatarInitials: UserModel.computeInitials(actualName),
       isVerified: true,
+      phoneVerifiedAt: _tanggal(profil['phoneVerifiedAt']),
+      passwordUpdatedAt: _tanggal(profil['passwordUpdatedAt']),
     );
+  }
+
+  /// Membaca tanggal ISO dari respons server; null bila kosong/tidak valid.
+  static DateTime? _tanggal(Object? nilai) {
+    if (nilai == null) return null;
+    return DateTime.tryParse(nilai.toString());
   }
 }

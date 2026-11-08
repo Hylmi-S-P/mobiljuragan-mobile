@@ -10,6 +10,18 @@ class UserModel {
   final String avatarInitials;
   final bool isVerified;
 
+  /// Kapan nomor telepon terbukti lewat kode verifikasi.
+  ///
+  /// Null berarti akun lama yang belum pernah masuk ulang setelah verifikasi
+  /// nomor diwajibkan.
+  final DateTime? phoneVerifiedAt;
+
+  /// Kapan kata sandi terakhir dibuat atau diganti.
+  ///
+  /// Null berarti akun ini belum punya kata sandi dan hanya bisa masuk lewat
+  /// kode OTP.
+  final DateTime? passwordUpdatedAt;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -20,7 +32,12 @@ class UserModel {
     this.city = 'Merauke, Papua Selatan',
     required this.avatarInitials,
     this.isVerified = true,
+    this.phoneVerifiedAt,
+    this.passwordUpdatedAt,
   });
+
+  /// Apakah akun ini sudah punya kata sandi.
+  bool get punyaKataSandi => passwordUpdatedAt != null;
 
   /// Alias getter untuk kemudahan akses
   String get phone => phoneNumber;

@@ -4,6 +4,7 @@ import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../models/user_model.dart';
 import '../theme/app_colors.dart';
+import 'profile/ubah_kata_sandi_sheet.dart';
 import '../widgets/custom_app_bar.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
@@ -38,7 +39,7 @@ class ProfileScreen extends StatelessWidget {
               _buildUserIdentityCard(
                 context,
                 name: user.name,
-                phone: user.phone,
+                phone: _formatNomor(user.phone),
                 city: user.city,
                 initials: user.avatarInitials,
               ),
@@ -375,6 +376,31 @@ class ProfileScreen extends StatelessWidget {
                 },
               ),
               const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
+              _buildMenuItem(
+                icon: Icons.password_rounded,
+                title: 'Kata Sandi Akun',
+                onTap: () async {
+                  /* Akun lama belum punya kata sandi; server yang menentukan
+                     apakah perlu kata sandi saat ini. Nilai di sini hanya untuk
+                     menentukan kolom yang ditampilkan. */
+                  final sudahPunya = user.punyaKataSandi;
+                  final berhasil = await UbahKataSandiSheet.tampilkan(
+                    context,
+                    sudahPunyaKataSandi: sudahPunya,
+                  );
+                  if (!context.mounted || !berhasil) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Kata sandi tersimpan. Perangkat lain sudah dikeluarkan.',
+                      ),
+                      backgroundColor: Color(0xFF16A34A),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
             ],
             _buildMenuItem(
               icon: Icons.shield_outlined,
@@ -568,14 +594,27 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
+                /* Nomor telepon hanya ditampilkan, tidak bisa diubah di sini.
+                 *
+                 * Mengganti nomor berarti mengganti identitas akun, dan itu harus
+                 * dibuktikan lewat kode verifikasi ke nomor baru — bukan sekadar
+                 * mengetik ulang di formulir. Sebelumnya kolom ini bisa diubah
+                 * bebas, yang bertentangan dengan aturan "nomor = identitas". */
                 TextField(
                   controller: phoneController,
-                  keyboardType: TextInputType.phone,
+                  readOnly: true,
+                  enabled: false,
                   decoration: InputDecoration(
-                    labelText: 'Nomor WhatsApp',
+                    labelText: 'Nomor WhatsApp (tidak dapat diubah di sini)',
                     prefixText: '+62 ',
                     filled: true,
                     fillColor: AppColors.surfaceLight,
+                    helperText: 'Hubungi admin bila nomor Anda berubah.',
+                    helperStyle: const TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
@@ -672,27 +711,31 @@ class ProfileScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 46,
                   child: ElevatedButton(
-                    onPressed: () {
-                      var cleanNumber = phoneController.text.trim().replaceAll(' ', '').replaceAll('-', '');
-                      if (cleanNumber.startsWith('+62')) {
-                        cleanNumber = cleanNumber.substring(3);
-                      } else if (cleanNumber.startsWith('62')) {
-                        cleanNumber = cleanNumber.substring(2);
-                      } else if (cleanNumber.startsWith('0')) {
-                        cleanNumber = cleanNumber.substring(1);
-                      }
-                      final formattedPhone = '+62 $cleanNumber';
+                    onPressed: () async {
+                      /* Nama disimpan ke server lebih dulu. Baru setelah server
+                         menerima, layar ditutup dan pengguna diberi tahu.
+                         Sebelumnya nilai ini hanya ditulis di perangkat, sehingga
+                         aplikasi dan database bisa menampilkan nama berbeda. */
+                      final galat = await auth.ubahNama(nameController.text);
+                      if (!context.mounted) return;
 
-                      auth.updateProfile(
-                        name: nameController.text.trim(),
-                        phone: formattedPhone,
-                        gender: selectedGender,
-                      );
+                      if (galat != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(galat),
+                            backgroundColor: AppColors.statusCancelled,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+
                       Navigator.pop(sheetCtx);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Profil berhasil diperbarui.'),
+                          content: Text('Nama berhasil diperbarui dan tersimpan di server.'),
                           backgroundColor: Color(0xFF16A34A),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     },
@@ -710,6 +753,16 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Menampilkan nomor dalam bentuk `+62 812...`.
+  ///
+  /// Server menyimpan bentuk lokal (`0812...`); tampilan memakai bentuk
+  /// internasional supaya konsisten dengan teks lain di aplikasi.
+  static String _formatNomor(String nomor) {
+    final digit = nomor.replaceAll(RegExp(r'\D'), '');
+    final tanpaNol = digit.startsWith('0') ? digit.substring(1) : digit;
+    return '+62 $tanpaNol';
   }
 
   void _showTermsModal(BuildContext context) {

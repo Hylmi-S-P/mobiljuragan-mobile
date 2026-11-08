@@ -408,7 +408,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     fontFamily: 'Inter',
                   ),
                   decoration: const InputDecoration(
-                    hintText: '812-4800-2910',
+                    hintText: '812-3456-7890',
                     hintStyle: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: AppTypography.sizeBodyLarge,
