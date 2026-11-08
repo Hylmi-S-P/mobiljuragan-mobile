@@ -41,10 +41,23 @@ class AuthRepository {
       final userData = res['user'] as Map<String, dynamic>?;
 
       if (token != null && token.isNotEmpty) {
+        /* Identitas hanya dipakai kalau server benar-benar mengirimnya.
+         *
+         * Sebelumnya `userId` jatuh ke nilai karangan `USR-MKQ-<timestamp>` ketika
+         * respons tidak membawa `id`. Akibatnya aplikasi menyimpan sesi dengan
+         * penanda akun yang tidak ada di database: riwayat tersimpan lokal, tidak
+         * pernah muncul di dashboard, dan menempati tempat akun lain.
+         */
+        final userId = userData?['id']?.toString();
+        if (userId == null || userId.isEmpty) {
+          return null;
+        }
+
         // SIMPAN TOKEN KE HARDWARE-BACKED SECURE STORAGE (BUKAN SharedPreferences!)
         await _secureStorage.saveAuthTokens(accessToken: token);
 
-        final userId = userData?['id']?.toString() ?? 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch}';
+        /* Nama diambil dari server lebih dulu. Nama yang diketik di form hanya
+           dipakai saat registrasi, ketika server memang belum punya barisnya. */
         final name = userData?['fullName']?.toString() ?? fullName ?? 'Pelanggan MobilJuragan';
         final userGender = gender ?? 'Laki-laki';
 

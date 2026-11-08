@@ -83,12 +83,16 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Menyimpan identitas sesi yang sudah diterbitkan server.
+  ///
+  /// Token TIDAK pernah dibuat di sini. Versi sebelumnya menulis
+  /// `secure_session_<timestamp>` ketika alur demo/offline dipakai, sehingga
+  /// aplikasi menganggap dirinya punya sesi sah padahal server tidak pernah
+  /// menerbitkan apa pun. Sekarang: kalau server belum memberi token, sesi tetap
+  /// tamu dan `hasValidToken()` akan bernilai false.
   Future<void> _saveSecureTokenAsync(UserModel user) async {
     final storage = secureStorage;
     if (storage != null) {
-      await storage.saveAuthTokens(
-        accessToken: 'secure_session_${DateTime.now().millisecondsSinceEpoch}',
-      );
       await storage.saveUserIdentity(
         userId: user.id,
         phoneNumber: user.phoneNumber,
@@ -96,7 +100,7 @@ class AuthController extends ChangeNotifier {
         gender: user.gender,
         nik: user.idCardNumber,
       );
-      _hasSecureToken = true;
+      _hasSecureToken = await storage.hasValidToken();
       notifyListeners();
     }
   }
@@ -180,34 +184,19 @@ class AuthController extends ChangeNotifier {
       }
     }
 
-    // Fallback simulasi kode demo
-    if (code == '123456' || code == '888888' || code == '1234') {
-      final actualName = fullName.trim().isNotEmpty ? fullName.trim() : 'Pelanggan MobilJuragan';
-      final newUser = UserModel(
-        id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        name: actualName,
-        phoneNumber: phone,
-        gender: gender ?? 'Laki-laki',
-        city: 'Merauke, Papua Selatan',
-        avatarInitials: UserModel.computeInitials(actualName),
-        isVerified: true,
-      );
-
-      _currentUser = newUser;
-      _isLoggedIn = true;
-      _hasLoginError = false;
-      _errorMessage = null;
-      _pendingRegistration = null;
-      await _saveSecureTokenAsync(newUser);
-      await _onSessionStarted();
-      notifyListeners();
-      return true;
-    } else {
-      _hasLoginError = true;
-      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk pengujian.';
-      notifyListeners();
-      return false;
-    }
+    /* Verifikasi hanya boleh diputuskan server.
+     *
+     * Sebelumnya kode demo (123456 / 888888 / 1234) diterima di sisi klien, lalu
+     * aplikasi membuat akun khayalan berid `USR-MKQ-<timestamp>` yang tidak pernah
+     * ada di database. Akibatnya pengguna tampak sudah masuk, punya riwayat, tetapi
+     * akun itu tidak dikenali backend maupun dashboard — dan nama yang diketik di
+     * form bisa "menimpa" tampilan akun lain karena identitasnya dikarang sendiri.
+     */
+    _hasLoginError = true;
+    _errorMessage =
+        'Verifikasi tidak dapat diproses karena server tidak menjawab. Periksa koneksi lalu coba lagi.';
+    notifyListeners();
+    return false;
   }
 
   /// Verifikasi kode OTP untuk masuk akun (login)
@@ -239,34 +228,18 @@ class AuthController extends ChangeNotifier {
       }
     }
 
-    // Fallback simulasi kode demo
-    if (code == '123456' || code == '888888' || code == '1234') {
-      _isLoggedIn = true;
-      _hasLoginError = false;
-      _errorMessage = null;
-      final savedName = _pendingRegistration?['name']?.toString() ?? 'Pelanggan MobilJuragan';
-      final savedGender = _pendingRegistration?['gender']?.toString() ?? 'Laki-laki';
-      final phone = _phoneNumber.isNotEmpty ? _phoneNumber : '+62 812-4800-2910';
-      _currentUser = UserModel(
-        id: 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        name: savedName,
-        phoneNumber: phone,
-        gender: savedGender,
-        city: 'Merauke, Papua Selatan',
-        avatarInitials: UserModel.computeInitials(savedName),
-        isVerified: true,
-      );
-      await _saveSecureTokenAsync(_currentUser!);
-      await _onSessionStarted();
-      _pendingRegistration = null;
-      notifyListeners();
-      return true;
-    } else {
-      _hasLoginError = true;
-      _errorMessage = 'Kode OTP tidak cocok. Masukkan 123456 untuk pengujian.';
-      notifyListeners();
-      return false;
-    }
+    /* Login juga tidak boleh diputuskan klien.
+     *
+     * Dulu kode demo diterima tanpa server, lalu identitas dikarang di perangkat.
+     * Itulah asal akun "hantu": aplikasi menampilkan nama dan inisial yang tidak
+     * pernah ada di database, lengkap dengan riwayat yang tersimpan lokal saja.
+     */
+    _isLoggedIn = false;
+    _hasLoginError = true;
+    _errorMessage =
+        'Kode verifikasi tidak dapat diperiksa karena server tidak menjawab. Periksa koneksi lalu coba lagi.';
+    notifyListeners();
+    return false;
   }
 
   /// Keluar dari sesi akun (menghapus token di Hardware Keystore)
@@ -295,24 +268,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Masuk dengan akun default untuk mode demo
-  void loginAsDefault() {
-    _currentUser = const UserModel(
-      id: 'USR-MKQ-001',
-      name: 'Pelanggan MobilJuragan',
-      phoneNumber: '+62 812-4800-2910',
-      gender: 'Laki-laki',
-      city: 'Merauke, Papua Selatan',
-      avatarInitials: 'MJ',
-      isVerified: true,
-    );
-    _isLoggedIn = true;
-    _hasLoginError = false;
-    _saveSecureTokenAsync(_currentUser!).then((_) => _onSessionStarted());
-    notifyListeners();
-  }
-
   /// Memperbarui data profil pengguna
+  ///
+  /// Profil hanya bisa diubah kalau ada sesi sah. `id` tidak pernah dikarang:
+  /// sebelumnya baris ini membuat `USR-MKQ-<timestamp>` ketika `currentUser`
+  /// null, sehingga perubahan profil pada mode tamu melahirkan identitas palsu.
   void updateProfile({
     required String name,
     required String phone,
@@ -321,15 +281,23 @@ class AuthController extends ChangeNotifier {
     String? idCard,
   }) {
     final current = _currentUser;
-    final cleanName = name.trim().isNotEmpty ? name.trim() : (current?.name ?? 'Pelanggan MobilJuragan');
+    if (current == null) {
+      /* Mode tamu: tidak ada akun untuk diperbarui. Profil hanya bermakna setelah
+         server menerbitkan identitas (id + token). */
+      _hasLoginError = true;
+      _errorMessage = 'Masuk akun terlebih dahulu untuk mengubah profil.';
+      notifyListeners();
+      return;
+    }
+    final cleanName = name.trim().isNotEmpty ? name.trim() : current.name;
     _currentUser = UserModel(
-      id: current?.id ?? 'USR-MKQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      id: current.id,
       name: cleanName,
       phoneNumber: phone,
-      gender: gender ?? current?.gender ?? 'Laki-laki',
+      gender: gender ?? current.gender,
       email: email ?? '',
-      idCardNumber: idCard ?? current?.idCardNumber ?? '',
-      city: current?.city ?? 'Merauke, Papua Selatan',
+      idCardNumber: idCard ?? current.idCardNumber,
+      city: current.city,
       avatarInitials: UserModel.computeInitials(cleanName),
       isVerified: true,
     );
