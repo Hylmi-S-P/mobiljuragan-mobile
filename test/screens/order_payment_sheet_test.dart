@@ -51,13 +51,14 @@ void main() {
       expect(find.byIcon(Icons.schedule), findsOneWidget);
     });
 
-    testWidgets('Merender tab switcher: QRIS, Transfer Bank, dan Bayar di Tempat', (tester) async {
+    testWidgets('Merender tab switcher: hanya QRIS dan Transfer Bank', (tester) async {
       await tester.pumpWidget(createTestWidget(booking: testBooking));
       await tester.pump();
 
       expect(find.text('QRIS'), findsOneWidget);
       expect(find.text('Transfer Bank'), findsOneWidget);
-      expect(find.text('Bayar di Tempat'), findsOneWidget);
+      // Tunai tidak lagi boleh dipilih pelanggan; hanya dicatat admin di kantor.
+      expect(find.text('Bayar di Tempat'), findsNothing);
     });
 
     testWidgets('Merender kode QR pada tab QRIS tanpa jargon teknis', (tester) async {
@@ -118,17 +119,16 @@ void main() {
       expect(find.textContaining('Nomor rekening'), findsOneWidget);
     });
 
-    testWidgets('Beralih ke tab Bayar di Tempat menampilkan panduan serah terima COD', (tester) async {
+    testWidgets('Tab Bayar di Tempat tidak lagi tersedia bagi pelanggan', (tester) async {
       await tester.pumpWidget(createTestWidget(booking: testBooking));
       await tester.pump();
 
-      // Pindah ke tab Bayar di Tempat
-      await tester.tap(find.text('Bayar di Tempat'));
-      await tester.pump();
-
-      expect(find.text('Bayar Tunai di Tempat (COD)'), findsOneWidget);
-      expect(find.text('Nominal Pelunasan Tunai'), findsOneWidget);
-      expect(find.text('Pilih Bayar di Tempat (COD)'), findsOneWidget);
+      // Tidak ada jalan bagi pelanggan untuk memilih COD: tabnya hilang,
+      // begitu pula panduan dan tombol konfirmasinya.
+      expect(find.text('Bayar di Tempat'), findsNothing);
+      expect(find.text('Bayar Tunai di Tempat (COD)'), findsNothing);
+      expect(find.text('Nominal Pelunasan Tunai'), findsNothing);
+      expect(find.text('Pilih Bayar di Tempat (COD)'), findsNothing);
     });
 
     testWidgets('Tidak ada tombol cek status otomatis maupun tombol simulasi', (tester) async {

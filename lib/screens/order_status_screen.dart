@@ -4028,198 +4028,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               _payment = updatedPayment;
             });
           },
-          onCodConfirmationRequested: () {
-            Navigator.pop(sheetContext);
-            _showCodConfirmationSheet(context, booking);
-          },
         );
       },
-    );
-  }
-
-  void _showCodConfirmationSheet(BuildContext context, BookingModel booking) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderSubtle,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.handshake_outlined,
-                      color: Color(0xFF047857),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Konfirmasi Bayar di Tempat',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeHeading,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Pelunasan tunai saat serah terima unit di lokasi jemput.',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Divider(height: 1, color: AppColors.borderSubtle),
-              const SizedBox(height: 14),
-
-              // Rincian Pembayaran Tunai
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.borderSubtle),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Total Pelunasan Tunai', style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter')),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Rp ${_formatRupiah(booking.totalCost)}',
-                      style: const TextStyle(fontSize: AppTypography.sizeMetric, fontWeight: FontWeight.w800, color: AppColors.primaryNavy, fontFamily: 'Inter'),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Titik Serah Terima: ${booking.pickupLocation}',
-                      style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontFamily: 'Inter'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              const Text(
-                'Ketentuan Serah Terima COD:',
-                style: AppTypography.bodyBold,
-              ),
-              const SizedBox(height: 8),
-              _buildCodRuleItem(Icons.badge_outlined, 'Wajib menunjukkan fisik KTP elektronik asli sesuai nama pemesan.'),
-              const SizedBox(height: 6),
-              _buildCodRuleItem(Icons.card_membership_outlined, 'Wajib menunjukkan SIM A aktif untuk sewa lepas kunci.'),
-              const SizedBox(height: 6),
-              _buildCodRuleItem(Icons.payments_outlined, 'Menyiapkan uang tunai pas saat pemeriksaan fisik kendaraan bersama staf.'),
-              const SizedBox(height: 20),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(sheetContext),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: AppColors.borderSubtle),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Batal / Ubah', style: AppTypography.bodyStrong),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(sheetContext);
-                        final controller = context.read<BookingController>();
-                        controller.confirmCodPayment(booking.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: const Color(0xFF16A34A),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            content: Text(
-                              'Pesanan #${booking.id} dikonfirmasi COD. E-Ticket resmi telah terbit!',
-                              style: AppTypography.bodyStrong,
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryNavy,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 0,
-                      ),
-                      child: const Text('Konfirmasi COD', style: AppTypography.bodyBold),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCodRuleItem(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 15, color: AppColors.primaryTeal),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter', height: 1.3),
-          ),
-        ),
-      ],
     );
   }
 
@@ -5510,13 +5320,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 /// dan ketahanan offline saat server backend tidak dapat dijangkau.
 class OnlinePaymentSheetModal extends StatefulWidget {
   final BookingModel booking;
-  final VoidCallback? onCodConfirmationRequested;
   final ValueChanged<PaymentModel>? onPaymentUpdated;
 
   const OnlinePaymentSheetModal({
     super.key,
     required this.booking,
-    this.onCodConfirmationRequested,
     this.onPaymentUpdated,
   });
 
@@ -5526,7 +5334,7 @@ class OnlinePaymentSheetModal extends StatefulWidget {
 
 class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     with WidgetsBindingObserver {
-  int _selectedTab = 0; // 0: QRIS Dinamis, 1: Transfer Bank, 2: Bayar Tunai (COD)
+  int _selectedTab = 0; // 0: QRIS Dinamis, 1: Transfer Bank
   String _selectedBank = 'Bank BRI';
   bool _isCheckingStatus = false;
   // ignore: unused_field
@@ -6261,18 +6069,16 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                 children: [
                   _buildTabItem(0, 'QRIS'),
                   _buildTabItem(1, 'Transfer Bank'),
-                  _buildTabItem(2, 'Bayar di Tempat'),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
+            // Hanya dua metode yang bisa dipilih pelanggan; tunai dicatat admin.
             if (_selectedTab == 0) ...[
               _buildQrisContent(isExpired: isExpired),
-            ] else if (_selectedTab == 1) ...[
-              _buildBankTransferContent(isExpired: isExpired),
             ] else ...[
-              _buildCodContent(isExpired: isExpired),
+              _buildBankTransferContent(isExpired: isExpired),
             ],
           ],
         ),
@@ -7027,148 +6833,4 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     );
   }
 
-  Widget _buildCodContent({bool isExpired = false}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.handshake_outlined, size: 24, color: Color(0xFF047857)),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bayar Tunai di Tempat (COD)',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBodyLarge,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Pelunasan saat serah terima unit di Merauke',
-                      style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                const Text('Nominal Pelunasan Tunai', style: TextStyle(fontSize: AppTypography.sizeBody, color: AppColors.textSecondary, fontFamily: 'Inter')),
-                Text(
-                  'Rp ${_formatRupiah(_baseAmount)}',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeMetric,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryNavy,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildCodStepItem(Icons.payments_outlined, 'Siapkan uang tunai pas saat pemeriksaan fisik armada bersama staf.'),
-          const SizedBox(height: 6),
-          _buildCodStepItem(Icons.assignment_turned_in_outlined, 'Staf menyerahkan kunci dan tanda terima resmi pembayaran.'),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-            child: ElevatedButton.icon(
-              onPressed: isExpired
-                  ? null
-                  : () {
-                final bookingId = widget.booking.id;
-                Navigator.pop(context);
-                final controller = context.read<BookingController>();
-                controller.confirmCodPayment(bookingId);
-                _apiService.createPayment(
-                  bookingId: bookingId,
-                  method: PaymentMethod.cash,
-                  notes: 'Pelunasan tunai saat serah terima unit di Merauke',
-                ).ignore();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF16A34A),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    content: const Text(
-                      'Metode pembayaran Tunai di Tempat (COD) telah dipilih.',
-                      style: AppTypography.bodyStrong,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.check_circle_outline, size: 18),
-              label: const Text('Pilih Bayar di Tempat (COD)', style: AppTypography.cardTitle),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF047857),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCodStepItem(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: const Color(0xFF047857)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
 }
-

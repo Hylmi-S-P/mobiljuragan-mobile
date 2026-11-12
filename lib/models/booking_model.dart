@@ -484,7 +484,7 @@ class BookingModel {
     }
   }
 
-  /// Apakah pesanan menggunakan skema bayar di tempat (COD)
+  /// Apakah pesanan memakai skema pelunasan tunai saat serah terima (COD)
   bool get isCodPayment => paymentMethodType == PaymentMethodType.tunaiDiTempat;
 
   /// Apakah pesanan sudah lunas terverifikasi secara online atau otomatis

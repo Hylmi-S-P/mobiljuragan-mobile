@@ -387,24 +387,6 @@ class BookingController extends ChangeNotifier {
     return false;
   }
 
-  /// Memproses pemilihan metode pembayaran Tunai di Tempat (COD)
-  /// Status langsung beralih ke mobilSiapDigunakan dan E-Ticket terbit dengan tanda COD
-  void confirmCodPayment(String bookingId) {
-    final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
-    if (index != -1) {
-      final updated = _bookingHistory[index].copyWith(
-        paymentMethodType: PaymentMethodType.tunaiDiTempat,
-        status: BookingStatus.mobilSiapDigunakan,
-      );
-      _bookingHistory[index] = updated;
-      if (_activeBooking?.id == bookingId) {
-        _activeBooking = updated;
-      }
-      repository?.saveBooking(updated);
-      notifyListeners();
-    }
-  }
-
   /// Memproses pelunasan pembayaran online (QRIS / Virtual Account simulasi otomatis)
   /// Status beralih ke mobilSiapDigunakan dengan bukti referensi transaksi dan E-Ticket resmi
   void completeOnlinePayment({
