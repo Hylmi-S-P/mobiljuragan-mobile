@@ -15,6 +15,8 @@ import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
 import '../theme/app_typography.dart';
 import '../widgets/gambar_kendaraan.dart';
+import '../data/remote/document_api_service.dart';
+import '../core/util/berkas_unduhan.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
 /// Menampilkan 3 kartu ringkasan pesanan dengan tombol Ubah dan rincian tarif resmi
@@ -66,6 +68,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     _buildRentalOptionsSummaryCard(context, booking),
                     const SizedBox(height: 14),
                     _buildCostBreakdownCard(booking),
+                    const SizedBox(height: 14),
+                    _buildDocumentPreparationCard(context, booking),
                     const SizedBox(height: 16),
                     _buildAgreementCheckbox(booking),
                     const SizedBox(height: 24),
@@ -594,6 +598,166 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     );
   }
 
+  /* Kartu persiapan dokumen.
+
+     Dulu pelanggan baru tahu ada surat pernyataan setelah pesanan dikirim, di
+     layar status, saat jamnya sudah berjalan. Kartu ini memindahkan
+     informasinya ke depan: apa yang perlu disiapkan, dan template suratnya bisa
+     diunduh sebelum mengirim pengajuan. */
+  Widget _buildDocumentPreparationCard(BuildContext context, BookingController booking) {
+    final butuhDokumen = !booking.withDriver;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.description_outlined, size: 18, color: AppColors.primaryTeal),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Dokumen yang Perlu Disiapkan',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            butuhDokumen
+                ? 'Setelah pengajuan dikirim, Anda punya 2 jam untuk mengunggah ketiga berkas ini. '
+                    'Lewat dari itu pesanan dibatalkan otomatis.'
+                : 'Setelah pengajuan dikirim, Anda punya 2 jam untuk melengkapi berkas yang diminta. '
+                    'Lewat dari itu pesanan dibatalkan otomatis.',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildDocumentRequirementRow('Foto e-KTP asli', wajib: true),
+          _buildDocumentRequirementRow(
+            'Foto SIM A aktif',
+            wajib: butuhDokumen,
+            catatan: butuhDokumen ? null : 'Hanya untuk sewa lepas kunci',
+          ),
+          _buildDocumentRequirementRow(
+            'Surat pernyataan bertanda tangan',
+            wajib: butuhDokumen,
+            catatan: butuhDokumen ? null : 'Hanya untuk sewa lepas kunci',
+          ),
+          if (butuhDokumen) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => _unduhTemplateSurat(context),
+              icon: const Icon(Icons.download_outlined, size: 16),
+              label: const Text('Unduh Template Surat'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primaryNavy,
+                side: const BorderSide(color: AppColors.borderMedium),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Cetak di kertas A4, isi, tanda tangani dengan meterai, lalu foto dan unggah di aplikasi.',
+              style: TextStyle(
+                fontSize: AppTypography.sizeTiny,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentRequirementRow(String label, {required bool wajib, String? catatan}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            wajib ? Icons.check_circle_outline : Icons.remove_circle_outline,
+            size: 14,
+            color: wajib ? AppColors.primaryTeal : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              catatan == null ? label : '$label — $catatan',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                color: wajib ? AppColors.textPrimary : AppColors.textSecondary,
+                fontFamily: 'Inter',
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _unduhTemplateSurat(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final berkas = await DocumentApiService().downloadStatementTemplatePdf();
+      final path = await BerkasUnduhan.simpanDanBagikan(
+        isi: berkas.isi,
+        namaBerkas: berkas.namaBerkas,
+        mime: berkas.mime,
+        judul: 'Form Kesanggupan Penyewa',
+        teks:
+            'Cetak formulir ini di kertas A4, tanda tangani dengan meterai, lalu foto dan unggah kembali di aplikasi.',
+      );
+
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.primaryNavy,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 6),
+          content: Text(
+            'Formulir tersimpan. Cetak A4, tanda tangani, lalu foto dan unggah kembali.\n$path',
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFB91C1C),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            'Gagal mengunduh formulir: ${e.toString().replaceAll('ApiException: ', '')}',
+            style: const TextStyle(fontFamily: 'Inter'),
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildStickyCTA(
     BuildContext context,
     BookingController booking,
@@ -608,36 +772,60 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         color: AppColors.cardWhite,
         border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        // Tinggi ikut skala teks sistem agar label tidak terpotong.
-        height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
-        child: ElevatedButton(
-          onPressed: isEnabled
-              ? () {
-                  if (!auth.isLoggedIn) {
-                    _showLoginRequiredSheet(context, auth, booking, vehicle);
-                    return;
-                  }
-                  _processOrderSubmission(context, booking, vehicle);
-                }
-              : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryNavy,
-            foregroundColor: AppColors.textWhite,
-            disabledBackgroundColor: AppColors.borderSubtle,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _labelTenggatKirim(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: AppTypography.sizeTiny,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
             ),
-            elevation: 0,
           ),
-          child: const Text(
-            'Kirim Pengajuan Sewa',
-            style: AppTypography.sectionTitle,
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            // Tinggi ikut skala teks sistem agar label tidak terpotong.
+            height: (48 * MediaQuery.textScalerOf(context).scale(1)).clamp(48, 96),
+            child: ElevatedButton(
+              onPressed: isEnabled
+                  ? () {
+                      if (!auth.isLoggedIn) {
+                        _showLoginRequiredSheet(context, auth, booking, vehicle);
+                        return;
+                      }
+                      _processOrderSubmission(context, booking, vehicle);
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryNavy,
+                foregroundColor: AppColors.textWhite,
+                disabledBackgroundColor: AppColors.borderSubtle,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Kirim Pengajuan Sewa',
+                style: AppTypography.sectionTitle,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
+  }
+
+  /* Tombol kirim menyebut jam pasti, bukan "2 jam" yang harus dihitung sendiri
+     oleh pelanggan. Jam batal mengikuti tenggat yang nanti dipakai server. */
+  String _labelTenggatKirim() {
+    final batas = DateTime.now().add(const Duration(hours: 2));
+    final jam = batas.hour.toString().padLeft(2, '0');
+    final menit = batas.minute.toString().padLeft(2, '0');
+    return 'Dokumen dikunci 2 jam setelah pengajuan (sekitar pukul $jam.$menit WIT)';
   }
 
   void _processOrderSubmission(
