@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 import 'package:latlong2/latlong.dart';
 
@@ -292,18 +290,12 @@ class MeraukeGeocodingService {
       return resultName;
     }
 
-    // 2. Coba Reverse Geocoding online via OpenStreetMap Nominatim
-    try {
-      final onlineName = await _fetchNominatimReverseGeocode(coords);
-      if (onlineName != null && onlineName.isNotEmpty) {
-        _cache[cacheKey] = onlineName;
-        return onlineName;
-      }
-    } catch (_) {
-      // Abaikan jika offline / timeout, lanjutkan ke fallback lokal
-    }
+    /* Tidak ada lagi panggilan reverse geocoding ke layanan luar saat aplikasi
+       dipakai: nama titik hanya diambil dari data POI dan jalan Merauke yang
+       ikut terpasang. Hasilnya sama di dalam dan luar jaringan, dan tidak ada
+       permintaan yang bergantung pada layanan pihak ketiga. */
 
-    // 3. Fallback cerdas berbasis jarak POI terdekat (< 650m) atau koridor jalan Merauke
+    // 2. Fallback cerdas berbasis jarak POI terdekat (< 650m) atau koridor jalan Merauke
     if (nearestPoi != null && nearestPoi.distanceMeters <= 650) {
       final poi = nearestPoi.poi;
       final resultName = 'Dekat ${poi.name} (${poi.road})';
@@ -351,67 +343,6 @@ class MeraukeGeocodingService {
     });
 
     return completer.future;
-  }
-
-  /// Panggilan HTTP ke OpenStreetMap Nominatim dengan batas waktu 2.5 detik
-  static Future<String?> _fetchNominatimReverseGeocode(LatLng coords) async {
-    final client = HttpClient();
-    client.connectionTimeout = const Duration(seconds: 2);
-
-    try {
-      final uri = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1',
-      );
-
-      final request = await client.getUrl(uri).timeout(const Duration(seconds: 2));
-      request.headers.set('User-Agent', 'MobilJuragan-Mobile/1.0 (contact@mobiljuragan.com)');
-      request.headers.set('Accept-Language', 'id');
-
-      final response = await request.close().timeout(const Duration(seconds: 2));
-      if (response.statusCode == 200) {
-        final body = await response.transform(utf8.decoder).join();
-        final data = json.decode(body) as Map<String, dynamic>;
-
-        final address = data['address'] as Map<String, dynamic>?;
-        if (address != null) {
-          // Cari nama tempat / gedung khusus (sekolah, toko, hotel, fasilitas)
-          final buildingOrAmenity = address['amenity'] ??
-              address['shop'] ??
-              address['building'] ??
-              address['school'] ??
-              address['hotel'] ??
-              address['tourism'] ??
-              address['hospital'];
-
-          final road = address['road'] ?? address['residential'] ?? address['pedestrian'];
-          final suburb = address['suburb'] ?? address['neighbourhood'] ?? address['village'] ?? address['city'];
-
-          if (buildingOrAmenity != null && road != null) {
-            return '$buildingOrAmenity, $road';
-          } else if (buildingOrAmenity != null) {
-            return '$buildingOrAmenity, Merauke';
-          } else if (road != null && suburb != null) {
-            return '$road, $suburb';
-          } else if (road != null) {
-            return '$road, Merauke';
-          }
-        }
-
-        final displayName = data['display_name'] as String?;
-        if (displayName != null && displayName.isNotEmpty) {
-          // Ambil 2 bagian pertama dari display_name agar ringkas
-          final parts = displayName.split(',').map((p) => p.trim()).toList();
-          if (parts.length >= 2) {
-            return '${parts[0]}, ${parts[1]}';
-          }
-          return parts[0];
-        }
-      }
-    } finally {
-      client.close();
-    }
-
-    return null;
   }
 
   /// Menghitung jarak perkiraan (Haversine formula dalam meter)
