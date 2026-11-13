@@ -28,9 +28,11 @@ class MeraukeLocationPreset {
 
   static const List<MeraukeLocationPreset> standardPresets = [
     MeraukeLocationPreset(
-      id: 'pool',
-      name: 'Pool Kantor MobilJuragan (Gratis)',
-      address: 'Jl. Brawijaya No. 88, Merauke Kota',
+      id: 'kantor',
+      name: 'Kantor MobilJuragan',
+      // Alamat resmi kantor. Koordinat masih perkiraan pusat kota sampai
+      // titik pasti dari pemilik usaha diberikan.
+      address: 'Jl. Pendidikan, Mandala, Kec. Merauke, Kabupaten Merauke, Papua Selatan 99614',
       coordinates: LatLng(-8.4905, 140.3995),
       isPool: true,
     ),

@@ -122,9 +122,9 @@ class MeraukeGeocodingService {
       coords: LatLng(-8.4950, 140.4020),
     ),
     MeraukePoi(
-      name: 'Pool Kantor MobilJuragan',
-      road: 'Jl. Brawijaya No. 88',
-      category: 'Pool Garasi',
+      name: 'Kantor MobilJuragan',
+      road: 'Jl. Pendidikan, Mandala',
+      category: 'Kantor',
       coords: LatLng(-8.4905, 140.3995),
     ),
     MeraukePoi(

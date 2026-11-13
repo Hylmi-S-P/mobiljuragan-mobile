@@ -426,9 +426,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
+                            /* Satu bentuk teks saja: catatan staf apa adanya.
+                               Kalimat karangan seperti "silakan unggah dokumen
+                               perbaikan" dulu muncul berdampingan dengan catatan
+                               asli, sehingga terbaca seperti dua penolakan. */
                             booking.documentRejectionReason != null && booking.documentRejectionReason!.isNotEmpty
-                                ? 'Dokumen ditolak: ${booking.documentRejectionReason}'
-                                : 'Dokumen wajib lepas kunci ditolak admin. Silakan unggah dokumen perbaikan.',
+                                ? 'Catatan Staf: "${booking.documentRejectionReason}"'
+                                : 'Catatan Staf: "Dokumen belum memenuhi syarat. Hubungi kantor untuk detailnya."',
                             style: const TextStyle(
                               fontSize: AppTypography.sizeCaption,
                               fontWeight: FontWeight.w600,
