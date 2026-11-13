@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
 import '../core/network/api_client.dart';
@@ -4667,9 +4668,31 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
     String selectedReason = 'Perubahan rencana atau jadwal perjalanan';
     final customReasonController = TextEditingController();
-    final bankController = TextEditingController();
     final accNumberController = TextEditingController();
     final accNameController = TextEditingController();
+
+    /* Rekening tujuan diisi di sini karena hanya pelanggan yang tahu ke mana
+       uangnya harus dikembalikan. Nama pemilik diisi awal dengan nama akun
+       supaya pelanggan tidak perlu mengetik ulang, tetapi tetap bisa diubah
+       bila rekeningnya milik orang lain. */
+    const daftarBank = [
+      'Bank BRI',
+      'Bank BCA',
+      'Bank BNI',
+      'Bank Mandiri',
+      'Bank Papua',
+      'Bank BTN',
+      'Bank Syariah Indonesia',
+      'CIMB Niaga',
+      'Bank Permata',
+      'Bank Danamon',
+    ];
+    String? bankTerpilih;
+    final bankLainController = TextEditingController();
+    bool atasNamaSendiri = true;
+    String hubunganRekening = 'Keluarga';
+    final namaAkun = context.read<AuthController>().currentUser?.name.trim() ?? '';
+    if (namaAkun.isNotEmpty) accNameController.text = namaAkun;
 
     final List<String> reasonOptions = [
       'Perubahan rencana atau jadwal perjalanan',
@@ -4891,22 +4914,47 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextFormField(
-                        controller: bankController,
+                      DropdownButtonFormField<String>(
+                        initialValue: bankTerpilih,
+                        isExpanded: true,
                         decoration: InputDecoration(
-                          labelText: 'Nama Bank / E-Wallet',
-                          hintText: 'Contoh: Bank BRI / BCA / Bank Papua',
+                          labelText: 'Nama Bank',
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
+                        items: [
+                          ...daftarBank.map(
+                            (bank) => DropdownMenuItem(value: bank, child: Text(bank)),
+                          ),
+                          const DropdownMenuItem(value: 'Bank lain', child: Text('Bank lain')),
+                        ],
+                        onChanged: (value) {
+                          setModalState(() => bankTerpilih = value);
+                        },
                       ),
+                      if (bankTerpilih == 'Bank lain') ...[
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: bankLainController,
+                          maxLength: 60,
+                          decoration: InputDecoration(
+                            labelText: 'Nama bank / e-wallet',
+                            hintText: 'Contoh: Bank Sulselbar',
+                            counterText: '',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: accNumberController,
                         keyboardType: TextInputType.number,
+                        maxLength: 30,
                         decoration: InputDecoration(
                           labelText: 'Nomor Rekening',
-                          hintText: 'Masukkan nomor rekening tujuan',
+                          hintText: '6–30 angka, tanpa spasi atau tanda hubung',
+                          counterText: '',
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -4914,13 +4962,54 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: accNameController,
+                        maxLength: 120,
                         decoration: InputDecoration(
                           labelText: 'Nama Pemilik Rekening',
                           hintText: 'Sesuai buku tabungan / identitas',
+                          counterText: '',
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      CheckboxListTile(
+                        value: atasNamaSendiri,
+                        onChanged: (value) {
+                          setModalState(() => atasNamaSendiri = value ?? true);
+                        },
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        dense: true,
+                        title: const Text(
+                          'Rekening atas nama saya sendiri',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBody,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      if (!atasNamaSendiri) ...[
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          initialValue: hubunganRekening,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Hubungan dengan pemilik rekening',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'Keluarga', child: Text('Keluarga')),
+                            DropdownMenuItem(value: 'Rekan kerja', child: Text('Rekan kerja')),
+                            DropdownMenuItem(value: 'Pihak lain', child: Text('Pihak lain')),
+                          ],
+                          onChanged: (value) {
+                            setModalState(() => hubunganRekening = value ?? 'Keluarga');
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 16),
                     ],
 
@@ -5032,13 +5121,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                   : selectedReason;
 
                               if (isPaid) {
-                                if (bankController.text.trim().isEmpty ||
-                                    accNumberController.text.trim().isEmpty ||
-                                    accNameController.text.trim().isEmpty) {
+                                final bankFinal = bankTerpilih == 'Bank lain'
+                                    ? bankLainController.text.trim()
+                                    : (bankTerpilih ?? '');
+                                final nomorRekening = accNumberController.text.trim();
+                                final namaPemilik = accNameController.text.trim();
+                                String? galat;
+                                if (bankFinal.isEmpty) {
+                                  galat = 'Pilih bank tujuan pengembalian dana.';
+                                } else if (!RegExp(r'^\d{6,30}$').hasMatch(nomorRekening)) {
+                                  galat = 'Nomor rekening harus 6–30 angka tanpa spasi.';
+                                } else if (namaPemilik.length < 2) {
+                                  galat = 'Nama pemilik rekening wajib diisi.';
+                                }
+                                if (galat != null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Lengkapi informasi rekening pengembalian dana terlebih dahulu.'),
-                                      backgroundColor: Color(0xFFDC2626),
+                                    SnackBar(
+                                      content: Text(galat),
+                                      backgroundColor: const Color(0xFFDC2626),
                                     ),
                                   );
                                   return;
@@ -5047,11 +5147,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
                               Navigator.pop(sheetContext);
 
+                              final bankFinal = bankTerpilih == 'Bank lain'
+                                  ? bankLainController.text.trim()
+                                  : (bankTerpilih ?? '');
                               final controller = context.read<BookingController>();
                               controller.cancelBooking(
                                 bookingId: booking.id,
                                 reason: finalReason,
-                                bankName: isPaid ? bankController.text.trim() : null,
+                                bankName: isPaid ? bankFinal : null,
                                 accountNumber: isPaid ? accNumberController.text.trim() : null,
                                 accountHolderName: isPaid ? accNameController.text.trim() : null,
                               );
