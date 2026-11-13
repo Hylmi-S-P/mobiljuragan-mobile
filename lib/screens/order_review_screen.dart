@@ -366,19 +366,37 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           const SizedBox(height: 6),
           _buildInfoRow(
             booking.withDriver ? 'Titik Penjemputan' : 'Titik Serah Terima',
-            booking.pickupLocation,
+            booking.withDriver
+                ? booking.pickupLocation
+                : 'Kantor MobilJuragan',
           ),
+          if (!booking.withDriver) ...[
+            const SizedBox(height: 2),
+            const Text(
+              'Jl. Pendidikan, Mandala, Kec. Merauke, Kabupaten Merauke, Papua Selatan 99614',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w400,
+                height: 1.4,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
-          // Cuplikan Mini Map Preview tanpa overlay banner duplikat
-          MeraukeLocationMapPicker(
-            selectedLocationName: booking.pickupLocation,
-            selectedCoordinates: (booking.pickupLatitude != null && booking.pickupLongitude != null)
-                ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
-                : null,
-            isMiniPreview: true,
-            showOverlayBanner: false,
-            isWithDriver: booking.withDriver,
-          ),
+          /* Lepas kunci selalu diambil di kantor, jadi peta tidak perlu
+             ditampilkan — yang dibutuhkan pelanggan hanya alamatnya. Peta tetap
+             muncul untuk mode dengan sopir karena titik jemputnya bisa berubah. */
+          if (booking.withDriver)
+            MeraukeLocationMapPicker(
+              selectedLocationName: booking.pickupLocation,
+              selectedCoordinates: (booking.pickupLatitude != null && booking.pickupLongitude != null)
+                  ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
+                  : null,
+              isMiniPreview: true,
+              showOverlayBanner: false,
+              isWithDriver: booking.withDriver,
+            ),
           const SizedBox(height: 12),
           // Inline Notice Box Netral
           _buildInlineServiceNotice(booking),
@@ -471,30 +489,16 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildInfoRow(
-            'Sewa Unit (${booking.durationDays} Hari)',
-            'Rp ${_formatRupiah(booking.vehicleSubtotal)}',
-          ),
-          const SizedBox(height: 6),
-          _buildInfoRow(
-            'Layanan Sopir (${booking.durationDays} Hari)',
-            booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
-          ),
-          if (booking.serviceFee > 0) ...[
-            const SizedBox(height: 6),
-            _buildInfoRow(
-              'Biaya Layanan',
-              'Rp ${_formatRupiah(booking.serviceFee)}',
-            ),
-          ],
-          const Divider(height: 20, color: AppColors.borderSubtle),
+          /* Satu angka saja. Rincian per komponen (sewa, sopir, penyesuaian)
+             baru punya arti setelah admin menetapkan tarif; menampilkannya di
+             tahap pengajuan membuat pelanggan mengira itu tagihan final. */
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
               const Text(
-                'Estimasi Total',
+                'Total perkiraan',
                 style: TextStyle(
                   fontSize: AppTypography.sizeTitle,
                   fontWeight: FontWeight.w700,
