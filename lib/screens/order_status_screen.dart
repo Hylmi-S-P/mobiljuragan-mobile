@@ -226,6 +226,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         } else if (updatedBooking.status == BookingStatus.dibatalkan) {
           _pollingTimer?.cancel();
           _pollingFinished = true;
+          _onStatusUpdatedToRejected(updatedBooking);
         }
       }
       _loadPayment();
@@ -296,8 +297,45 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
-  void _onStatusUpdatedToConfirmed(BookingModel booking) {
+  /// Pesanan ditolak atau dibatalkan kantor: beri tahu lewat notifikasi sistem
+  /// supaya pelanggan tidak perlu menebak dari layar yang sudah tidak aktif.
+  void _onStatusUpdatedToRejected(BookingModel booking) {
     if (!mounted) return;
+
+    NotificationService().showBookingRejectedNotification(
+      bookingId: booking.id,
+      vehicleName: booking.vehicle.name,
+      reason: booking.cancellationReason,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFFB91C1C),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Row(
+          children: [
+            const Icon(Icons.cancel_outlined, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Pesanan ${booking.vehicle.name} (${booking.id}) tidak dapat diproses.',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onStatusUpdatedToConfirmed(BookingModel booking) {    if (!mounted) return;
 
     NotificationService().showTariffReadyNotification(
       bookingId: booking.id,
@@ -362,6 +400,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         _onStatusUpdatedToCompleted(updatedBooking);
       } else if (updatedBooking.status == BookingStatus.mobilSiapDigunakan) {
         _onStatusUpdatedToInProgress(updatedBooking);
+      } else if (updatedBooking.status == BookingStatus.dibatalkan) {
+        _onStatusUpdatedToRejected(updatedBooking);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

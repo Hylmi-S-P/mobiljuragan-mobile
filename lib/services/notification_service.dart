@@ -111,4 +111,45 @@ class NotificationService {
       notificationDetails: notificationDetails,
     );
   }
+
+  /// Menampilkan notifikasi native saat pesanan ditolak atau dibatalkan.
+  ///
+  /// Alasan ikut ditampilkan karena pelanggan perlu tahu apa yang harus
+  /// diperbaiki (mis. dokumen kurang jelas) tanpa membuka aplikasi lebih dulu.
+  Future<void> showBookingRejectedNotification({
+    required String bookingId,
+    required String vehicleName,
+    String? reason,
+  }) async {
+    await init();
+
+    const androidDetails = AndroidNotificationDetails(
+      'mobiljuragan_order_status',
+      'Status Pesanan MobilJuragan',
+      channelDescription: 'Notifikasi perubahan status pesanan dan penolakan permintaan sewa.',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    final alasan = (reason ?? '').trim();
+    await _notificationsPlugin.show(
+      id: bookingId.hashCode + 2,
+      title: 'Pesanan Tidak Dapat Diproses',
+      body: alasan.isEmpty
+          ? 'Permintaan sewa $vehicleName ($bookingId) ditolak. Buka aplikasi untuk melihat detailnya.'
+          : 'Permintaan sewa $vehicleName ($bookingId) ditolak: $alasan',
+      notificationDetails: notificationDetails,
+    );
+  }
 }
