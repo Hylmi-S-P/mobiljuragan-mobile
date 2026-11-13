@@ -647,6 +647,21 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                                 fontFamily: 'Inter',
                               ),
                             ),
+                            if (ticket.bookingCode != null) ...[
+                              const SizedBox(height: 2),
+                              /* Tiket yang lahir dari tombol "Chat dengan CS" pada
+                                 satu pesanan: kode pesanan ditampilkan supaya
+                                 pelanggan tahu ini soal sewa yang mana. */
+                              Text(
+                                'Pesanan ${ticket.bookingCode}',
+                                style: const TextStyle(
+                                  fontSize: AppTypography.sizeTiny,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryTeal,
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

@@ -39,6 +39,10 @@ class SupportTicketModel {
   /// "Chat dengan CS" pada satu pesanan. Null untuk tiket bantuan umum.
   final String? bookingId;
 
+  /// Kode pesanan yang bisa dibaca manusia (mis. MJ-20261114-AAAA). Dipakai
+  /// supaya pelanggan mengenali tiket ini milik sewa yang mana.
+  final String? bookingCode;
+
   /// Nomor tiket sementara yang dibuat aplikasi saat server belum/tidak menjawab.
   ///
   /// Tiket seperti ini tidak ada di database: tidak muncul di dashboard dan tidak
@@ -56,6 +60,7 @@ class SupportTicketModel {
     this.handledBy,
     this.handoverAt,
     this.bookingId,
+    this.bookingCode,
     required this.createdAt,
     this.tersimpanDiServer = true,
   });
@@ -97,6 +102,7 @@ class SupportTicketModel {
     String? handledBy,
     DateTime? handoverAt,
     String? bookingId,
+    String? bookingCode,
     DateTime? createdAt,
     bool? tersimpanDiServer,
   }) {
@@ -110,6 +116,7 @@ class SupportTicketModel {
       handledBy: handledBy ?? this.handledBy,
       handoverAt: handoverAt ?? this.handoverAt,
       bookingId: bookingId ?? this.bookingId,
+      bookingCode: bookingCode ?? this.bookingCode,
       createdAt: createdAt ?? this.createdAt,
       tersimpanDiServer: tersimpanDiServer ?? this.tersimpanDiServer,
     );
@@ -173,6 +180,7 @@ class SupportTicketModel {
           ? DateTime.tryParse(json['handoverAt'].toString())
           : null,
       bookingId: json['bookingId']?.toString(),
+      bookingCode: (json['booking'] as Map<String, dynamic>?)?['bookingCode']?.toString(),
       createdAt: json['createdAt'] != null
           ? (DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
