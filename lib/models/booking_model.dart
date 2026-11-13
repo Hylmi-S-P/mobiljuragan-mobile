@@ -124,6 +124,10 @@ class BookingModel {
   final String? cancellationBank;
   final String? cancellationAccountNumber;
   final String? cancellationAccountName;
+
+  /* Status pengembalian dana dari server: MENUNGGU / DIPROSES / SELESAI.
+     Null berarti pembatalan ini tidak memunculkan baris pengembalian dana. */
+  final String? refundStatus;
   final PaymentMethodType? _paymentMethodType;
   final DateTime? paidAt;
   final String? paymentReference;
@@ -166,6 +170,7 @@ class BookingModel {
     this.cancellationBank,
     this.cancellationAccountNumber,
     this.cancellationAccountName,
+    this.refundStatus,
     PaymentMethodType? paymentMethodType = PaymentMethodType.belumDipilih,
     this.paidAt,
     this.paymentReference,
@@ -239,6 +244,37 @@ class BookingModel {
       adjustments = [];
     }
 
+    String? cancelReason;
+    DateTime? cancelledAt;
+    int? refundNominal;
+    double? refundRate;
+    String? refundBank;
+    String? refundAccountNumber;
+    String? refundAccountName;
+    String? refundState;
+
+    if (entry.cancellationJson != null &&
+        entry.cancellationJson!.isNotEmpty) {
+      try {
+        final decoded =
+            jsonDecode(entry.cancellationJson!) as Map<String, dynamic>;
+        cancelReason = decoded['reason']?.toString();
+        cancelledAt = DateTime.tryParse(
+          decoded['cancelledAt']?.toString() ?? '',
+        )?.toLocal();
+        refundNominal = decoded['refundNominal'] is num
+            ? (decoded['refundNominal'] as num).toInt()
+            : int.tryParse('${decoded['refundNominal'] ?? ''}');
+        refundRate = decoded['refundRate'] is num
+            ? (decoded['refundRate'] as num).toDouble()
+            : double.tryParse('${decoded['refundRate'] ?? ''}');
+        refundBank = decoded['bank']?.toString();
+        refundAccountNumber = decoded['accountNumber']?.toString();
+        refundAccountName = decoded['accountName']?.toString();
+        refundState = decoded['refundStatus']?.toString();
+      } catch (_) {}
+    }
+
     return BookingModel(
       id: entry.id,
       vehicle: vehicle,
@@ -260,6 +296,14 @@ class BookingModel {
       paymentAccountNumber: entry.paymentAccountNumber,
       adminAdjustments: adjustments,
       isFinalTariffConfirmed: entry.isFinalTariffConfirmed,
+      cancellationReason: cancelReason,
+      cancelledAt: cancelledAt,
+      cancellationRefundAmount: refundNominal,
+      cancellationRefundRate: refundRate,
+      cancellationBank: refundBank,
+      cancellationAccountNumber: refundAccountNumber,
+      cancellationAccountName: refundAccountName,
+      refundStatus: refundState,
     );
   }
 
@@ -273,6 +317,24 @@ class BookingModel {
     final driverDataJson = assignedDriver != null
         ? jsonEncode(assignedDriver!.toJson())
         : null;
+
+    final cancellationData = <String, dynamic>{
+      if (cancellationReason != null) 'reason': cancellationReason,
+      if (cancelledAt != null)
+        'cancelledAt': cancelledAt!.toUtc().toIso8601String(),
+      if (cancellationRefundAmount != null)
+        'refundNominal': cancellationRefundAmount,
+      if (cancellationRefundRate != null) 'refundRate': cancellationRefundRate,
+      if (cancellationBank != null) 'bank': cancellationBank,
+      if (cancellationAccountNumber != null)
+        'accountNumber': cancellationAccountNumber,
+      if (cancellationAccountName != null)
+        'accountName': cancellationAccountName,
+      if (refundStatus != null) 'refundStatus': refundStatus,
+    };
+    final cancellationDataJson = cancellationData.isEmpty
+        ? null
+        : jsonEncode(cancellationData);
 
     return BookingsCompanion(
       id: Value(id),
@@ -294,6 +356,7 @@ class BookingModel {
       isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
       adminAdjustmentsJson: Value(adjustmentsJson),
       driverJson: Value(driverDataJson),
+      cancellationJson: Value(cancellationDataJson),
       createdAt: Value(createdAt.millisecondsSinceEpoch),
       lastFetched: Value(nowMillis),
     );
@@ -389,6 +452,44 @@ class BookingModel {
         ? DocumentDeadline.fromJson(deadlineJson)
         : null;
 
+    /* Pengembalian dana dicatat server. Sebelumnya bagian ini tidak dibaca sama
+       sekali, sehingga setiap sinkronisasi ulang menghapus nominal refund dan
+       alasan pembatalan dari kartu riwayat. Nominalnya tetap milik server:
+       aplikasi tidak menghitung potongan sendiri. */
+    final refundJson = json['refund'];
+    final Map<String, dynamic>? refund = refundJson is Map
+        ? Map<String, dynamic>.from(refundJson)
+        : null;
+
+    int? angkaRefund(dynamic nilai) {
+      if (nilai == null) return null;
+      if (nilai is num) return nilai.toInt();
+      return int.tryParse(nilai.toString().replaceAll(RegExp(r'[^\d]'), ''));
+    }
+
+    String? bersihkanAlasan(String? teks) {
+      if (teks == null) return null;
+      var hasil = teks.replaceFirst(
+        RegExp(r'^Dibatalkan oleh pemesan:\s*'),
+        '',
+      );
+      hasil = hasil.split('Bukti transfer belum diverifikasi').first.trim();
+      return hasil.isEmpty ? null : hasil;
+    }
+
+    final refundNominal = angkaRefund(refund?['nominal']);
+    final refundTotalDibayar = angkaRefund(refund?['totalDibayar']);
+    final refundRate =
+        (refundNominal != null &&
+            refundTotalDibayar != null &&
+            refundTotalDibayar > 0)
+        ? refundNominal / refundTotalDibayar
+        : null;
+    final refundDicatat =
+        DateTime.tryParse(
+          refund?['dicatatPada']?.toString() ?? '',
+        )?.toLocal();
+
     return BookingModel(
       id: rawId,
       vehicle: vehicle,
@@ -412,6 +513,14 @@ class BookingModel {
       documentRejectionReason: docRejectionReason,
       documentDeadline: documentDeadline,
       paymentStatus: payStatus,
+      cancellationReason: bersihkanAlasan(refund?['alasan']?.toString()),
+      cancelledAt: refundDicatat,
+      cancellationRefundAmount: refundNominal,
+      cancellationRefundRate: refundRate,
+      cancellationBank: refund?['namaBank']?.toString(),
+      cancellationAccountNumber: refund?['nomorRekening']?.toString(),
+      cancellationAccountName: refund?['namaPemilik']?.toString(),
+      refundStatus: refund?['status']?.toString(),
     );
   }
 
@@ -560,6 +669,7 @@ class BookingModel {
     String? cancellationBank,
     String? cancellationAccountNumber,
     String? cancellationAccountName,
+    String? refundStatus,
     PaymentMethodType? paymentMethodType,
     DateTime? paidAt,
     String? paymentReference,
@@ -601,6 +711,7 @@ class BookingModel {
           cancellationAccountNumber ?? this.cancellationAccountNumber,
       cancellationAccountName:
           cancellationAccountName ?? this.cancellationAccountName,
+      refundStatus: refundStatus ?? this.refundStatus,
       paymentMethodType: paymentMethodType ?? this.paymentMethodType,
       paidAt: paidAt ?? this.paidAt,
       paymentReference: paymentReference ?? this.paymentReference,

@@ -19,10 +19,21 @@ class FakeApiRefund extends BookingApiService {
   Future<Map<String, dynamic>> cancelBooking({
     required String bookingId,
     String? reason,
+    String? bankName,
+    String? accountNumber,
+    String? accountHolderName,
   }) async {
+    rekeningTerkirim = {
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'accountHolderName': accountHolderName,
+    };
     if (galat != null) throw galat!;
     return balasan ?? <String, dynamic>{};
   }
+
+  /// Rekening yang benar-benar sampai ke lapisan API saat pembatalan dikirim.
+  Map<String, String?>? rekeningTerkirim;
 }
 
 void main() {
@@ -114,5 +125,95 @@ void main() {
     expect(hasil.cancellationRefundAmount, isNull);
 
     controller.dispose();
+  });
+
+  test('rekening tujuan refund ikut dikirim saat pelanggan membatalkan',
+      () async {
+    final api = FakeApiRefund(
+      balasan: {
+        'booking': {
+          'id': 'MJ-REFUND-1',
+          'status': 'CANCELLED',
+          'refund': {
+            'totalDibayar': 900000,
+            'potongan': 50000,
+            'nominal': 850000,
+            'dibatalkanOleh': 'PELANGGAN',
+          },
+        },
+      },
+    );
+    final repository = BookingRepository(database.bookingDao, api);
+    await repository.saveBooking(pesananTerbayar());
+
+    final controller = BookingController(repository: repository);
+    await tungguRiwayat(controller);
+
+    await controller.cancelBooking(
+      bookingId: 'MJ-REFUND-1',
+      reason: 'Rencana keluarga berubah',
+      bankName: 'Bank Papua',
+      accountNumber: '1234567890',
+      accountHolderName: 'Yahya Pratama',
+    );
+
+    // Sebelumnya isian ini berhenti di perangkat dan kantor harus menelepon
+    // pelanggan untuk menanyakan nomor rekening.
+    expect(api.rekeningTerkirim?['bankName'], equals('Bank Papua'));
+    expect(api.rekeningTerkirim?['accountNumber'], equals('1234567890'));
+    expect(api.rekeningTerkirim?['accountHolderName'], equals('Yahya Pratama'));
+
+    controller.dispose();
+  });
+
+  test('refund tetap tampil setelah kartu dibaca ulang dari penyimpanan lokal',
+      () async {
+    final api = FakeApiRefund(
+      balasan: {
+        'booking': {
+          'id': 'MJ-REFUND-1',
+          'status': 'CANCELLED',
+          'refund': {
+            'totalDibayar': 900000,
+            'potongan': 50000,
+            'nominal': 850000,
+            'dibatalkanOleh': 'PELANGGAN',
+            'namaBank': 'Bank Papua',
+            'nomorRekening': '1234567890',
+            'namaPemilik': 'Yahya Pratama',
+            'status': 'MENUNGGU',
+          },
+        },
+      },
+    );
+    final repository = BookingRepository(database.bookingDao, api);
+    await repository.saveBooking(pesananTerbayar());
+
+    final controller = BookingController(repository: repository);
+    await tungguRiwayat(controller);
+
+    await controller.cancelBooking(
+      bookingId: 'MJ-REFUND-1',
+      reason: 'Rencana keluarga berubah',
+      bankName: 'Bank Papua',
+      accountNumber: '1234567890',
+      accountHolderName: 'Yahya Pratama',
+    );
+    controller.dispose();
+
+    // Controller baru membaca ulang dari SQLite, seperti saat aplikasi dibuka.
+    final controllerBaru = BookingController(repository: repository);
+    await tungguRiwayat(controllerBaru);
+
+    final hasil = controllerBaru.bookingHistory
+        .firstWhere((b) => b.id == 'MJ-REFUND-1');
+    expect(hasil.cancellationRefundAmount, equals(850000));
+    expect(hasil.cancellationBank, equals('Bank Papua'));
+    expect(hasil.cancellationAccountNumber, equals('1234567890'));
+    expect(hasil.cancellationAccountName, equals('Yahya Pratama'));
+    expect(hasil.refundStatus, equals('MENUNGGU'));
+    expect(hasil.cancellationReason, contains('Rencana keluarga berubah'));
+
+    controllerBaru.dispose();
   });
 }

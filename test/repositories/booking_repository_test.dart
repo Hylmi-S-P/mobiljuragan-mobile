@@ -13,6 +13,7 @@ class FakeBookingApiService extends BookingApiService {
   int createCount = 0;
   int cancelCount = 0;
   String? lastCancelledBookingId;
+  Map<String, String?>? lastCancelAccount;
   String? lastVehicleId;
   DateTime? lastStart;
   DateTime? lastEnd;
@@ -26,9 +27,17 @@ class FakeBookingApiService extends BookingApiService {
   Future<Map<String, dynamic>> cancelBooking({
     required String bookingId,
     String? reason,
+    String? bankName,
+    String? accountNumber,
+    String? accountHolderName,
   }) async {
     cancelCount++;
     lastCancelledBookingId = bookingId;
+    lastCancelAccount = {
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'accountHolderName': accountHolderName,
+    };
     if (exceptionToThrow != null) throw exceptionToThrow!;
     return cancelResponseToReturn ??
         {'status': 'success', 'message': 'Booking cancelled'};

@@ -4695,12 +4695,18 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             booking.status == BookingStatus.verifikasiKantor ||
             booking.status == BookingStatus.mobilSiapDigunakan);
 
-    final refundAmount = isPaid ? (booking.totalCost * 0.85).round() : 0;
-    final penaltyAmount = isPaid ? (booking.totalCost - refundAmount) : 0;
+    /* Potongan pembatalan oleh pelanggan ditetapkan server sebesar Rp 50.000
+       tetap, bukan persentase. Angka di layar ini hanya pratinjau; nominal yang
+       benar-benar dicatat tetap berasal dari server setelah pembatalan diproses. */
+    const potonganBatal = 50000;
+    final refundAmount = isPaid
+        ? (booking.totalCost - potonganBatal).clamp(0, booking.totalCost)
+        : 0;
+    final penaltyAmount = isPaid ? booking.totalCost - refundAmount : 0;
 
     String selectedReason = 'Perubahan rencana atau jadwal perjalanan';
     final customReasonController = TextEditingController();
-    final bankController = TextEditingController(text: 'Bank BRI');
+    final bankController = TextEditingController();
     final accNumberController = TextEditingController();
     final accNameController = TextEditingController();
 
@@ -4866,7 +4872,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Pengembalian dana dipotong penalti kompensasi operasional sebesar 15% dari total pembayaran yang masuk.',
+                              'Pengembalian dana dipotong biaya pembatalan tetap sebesar Rp 50.000 dari total pembayaran yang masuk.',
                               style: TextStyle(
                                 fontSize: AppTypography.sizeCaption,
                                 color: AppColors.textSecondary,
@@ -4892,7 +4898,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                 spacing: 8,
                                 runSpacing: 6,
                               children: [
-                                const Text('Penalti Kompensasi (15%):', style: TextStyle(fontSize: AppTypography.sizeCaption, color: Color(0xFFDC2626), fontFamily: 'Inter')),
+                                const Text('Biaya Pembatalan:', style: TextStyle(fontSize: AppTypography.sizeCaption, color: Color(0xFFDC2626), fontFamily: 'Inter')),
                                 Text('-Rp ${_formatRupiah(penaltyAmount)}', style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, color: Color(0xFFDC2626), fontFamily: 'Inter')),
                               ],
                             ),
@@ -4905,7 +4911,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                 spacing: 8,
                                 runSpacing: 6,
                               children: [
-                                const Text('Estimasi Dana Dikembalikan:', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, color: Color(0xFF166534), fontFamily: 'Inter')),
+                                const Text('Dana Dikembalikan:', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, color: Color(0xFF166534), fontFamily: 'Inter')),
                                 Text('Rp ${_formatRupiah(refundAmount)}', style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontWeight: FontWeight.w800, color: Color(0xFF166534), fontFamily: 'Inter')),
                               ],
                             ),

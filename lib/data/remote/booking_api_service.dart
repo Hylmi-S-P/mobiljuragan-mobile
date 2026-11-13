@@ -67,16 +67,32 @@ class BookingApiService {
   }
 
   /// Membatalkan pemesanan sewa di backend (PATCH /api/v1/bookings/:id/cancel)
+  ///
+  /// Rekening tujuan pengembalian dana ikut dikirim supaya kantor tidak perlu
+  /// menghubungi pelanggan hanya untuk menanyakan nomor rekening.
   Future<Map<String, dynamic>> cancelBooking({
     required String bookingId,
     String? reason,
+    String? bankName,
+    String? accountNumber,
+    String? accountHolderName,
   }) async {
+    final adaRekening = (bankName?.trim().isNotEmpty ?? false) &&
+        (accountNumber?.trim().isNotEmpty ?? false) &&
+        (accountHolderName?.trim().isNotEmpty ?? false);
+
     final response = await _client.patch(
       '${ApiConstants.bookingsEndpoint}/$bookingId/cancel',
       requiresAuth: true,
       body: {
         if (reason != null && reason.trim().isNotEmpty)
           'reason': reason.trim(),
+        if (adaRekening)
+          'refundAccount': {
+            'bankName': bankName!.trim(),
+            'accountNumber': accountNumber!.trim(),
+            'accountHolderName': accountHolderName!.trim(),
+          },
       },
     );
 

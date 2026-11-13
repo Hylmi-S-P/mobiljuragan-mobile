@@ -65,6 +65,13 @@ class Bookings extends Table {
   /// Data staf pengemudi resmi yang ditugaskan (format JSON)
   TextColumn get driverJson => text().nullable()();
 
+  /// Alasan pembatalan, waktu batal, dan rincian pengembalian dana (format JSON).
+  ///
+  /// Tanpa kolom ini seluruh isian pembatalan hilang setiap kali kartu riwayat
+  /// dibaca ulang dari cache, sehingga nominal refund dan alasan asli yang
+  /// dikirim server tidak pernah tampil setelah aplikasi dibuka kembali.
+  TextColumn get cancellationJson => text().nullable()();
+
   /// Waktu pembuatan pesanan (UTC epoch milliseconds)
   IntColumn get createdAt => integer()();
 

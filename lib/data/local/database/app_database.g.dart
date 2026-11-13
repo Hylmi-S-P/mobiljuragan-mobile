@@ -1253,6 +1253,17 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _cancellationJsonMeta = const VerificationMeta(
+    'cancellationJson',
+  );
+  @override
+  late final GeneratedColumn<String> cancellationJson = GeneratedColumn<String>(
+    'cancellation_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1297,6 +1308,7 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
     isFinalTariffConfirmed,
     adminAdjustmentsJson,
     driverJson,
+    cancellationJson,
     createdAt,
     lastFetched,
   ];
@@ -1481,6 +1493,15 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         driverJson.isAcceptableOrUnknown(data['driver_json']!, _driverJsonMeta),
       );
     }
+    if (data.containsKey('cancellation_json')) {
+      context.handle(
+        _cancellationJsonMeta,
+        cancellationJson.isAcceptableOrUnknown(
+          data['cancellation_json']!,
+          _cancellationJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1589,6 +1610,10 @@ class $BookingsTable extends Bookings with TableInfo<$BookingsTable, Booking> {
         DriftSqlType.string,
         data['${effectivePrefix}driver_json'],
       ),
+      cancellationJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cancellation_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -1670,6 +1695,13 @@ class Booking extends DataClass implements Insertable<Booking> {
   /// Data staf pengemudi resmi yang ditugaskan (format JSON)
   final String? driverJson;
 
+  /// Alasan pembatalan, waktu batal, dan rincian pengembalian dana (format JSON).
+  ///
+  /// Tanpa kolom ini seluruh isian pembatalan hilang setiap kali kartu riwayat
+  /// dibaca ulang dari cache, sehingga nominal refund dan alasan asli yang
+  /// dikirim server tidak pernah tampil setelah aplikasi dibuka kembali.
+  final String? cancellationJson;
+
   /// Waktu pembuatan pesanan (UTC epoch milliseconds)
   final int createdAt;
 
@@ -1696,6 +1728,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     required this.isFinalTariffConfirmed,
     this.adminAdjustmentsJson,
     this.driverJson,
+    this.cancellationJson,
     required this.createdAt,
     required this.lastFetched,
   });
@@ -1735,6 +1768,9 @@ class Booking extends DataClass implements Insertable<Booking> {
     }
     if (!nullToAbsent || driverJson != null) {
       map['driver_json'] = Variable<String>(driverJson);
+    }
+    if (!nullToAbsent || cancellationJson != null) {
+      map['cancellation_json'] = Variable<String>(cancellationJson);
     }
     map['created_at'] = Variable<int>(createdAt);
     map['last_fetched'] = Variable<int>(lastFetched);
@@ -1777,6 +1813,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       driverJson: driverJson == null && nullToAbsent
           ? const Value.absent()
           : Value(driverJson),
+      cancellationJson: cancellationJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancellationJson),
       createdAt: Value(createdAt),
       lastFetched: Value(lastFetched),
     );
@@ -1814,6 +1853,7 @@ class Booking extends DataClass implements Insertable<Booking> {
         json['adminAdjustmentsJson'],
       ),
       driverJson: serializer.fromJson<String?>(json['driverJson']),
+      cancellationJson: serializer.fromJson<String?>(json['cancellationJson']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       lastFetched: serializer.fromJson<int>(json['lastFetched']),
     );
@@ -1842,6 +1882,7 @@ class Booking extends DataClass implements Insertable<Booking> {
       'isFinalTariffConfirmed': serializer.toJson<bool>(isFinalTariffConfirmed),
       'adminAdjustmentsJson': serializer.toJson<String?>(adminAdjustmentsJson),
       'driverJson': serializer.toJson<String?>(driverJson),
+      'cancellationJson': serializer.toJson<String?>(cancellationJson),
       'createdAt': serializer.toJson<int>(createdAt),
       'lastFetched': serializer.toJson<int>(lastFetched),
     };
@@ -1868,6 +1909,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     bool? isFinalTariffConfirmed,
     Value<String?> adminAdjustmentsJson = const Value.absent(),
     Value<String?> driverJson = const Value.absent(),
+    Value<String?> cancellationJson = const Value.absent(),
     int? createdAt,
     int? lastFetched,
   }) => Booking(
@@ -1898,6 +1940,9 @@ class Booking extends DataClass implements Insertable<Booking> {
         ? adminAdjustmentsJson.value
         : this.adminAdjustmentsJson,
     driverJson: driverJson.present ? driverJson.value : this.driverJson,
+    cancellationJson: cancellationJson.present
+        ? cancellationJson.value
+        : this.cancellationJson,
     createdAt: createdAt ?? this.createdAt,
     lastFetched: lastFetched ?? this.lastFetched,
   );
@@ -1949,6 +1994,9 @@ class Booking extends DataClass implements Insertable<Booking> {
       driverJson: data.driverJson.present
           ? data.driverJson.value
           : this.driverJson,
+      cancellationJson: data.cancellationJson.present
+          ? data.cancellationJson.value
+          : this.cancellationJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastFetched: data.lastFetched.present
           ? data.lastFetched.value
@@ -1979,6 +2027,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           ..write('isFinalTariffConfirmed: $isFinalTariffConfirmed, ')
           ..write('adminAdjustmentsJson: $adminAdjustmentsJson, ')
           ..write('driverJson: $driverJson, ')
+          ..write('cancellationJson: $cancellationJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastFetched: $lastFetched')
           ..write(')'))
@@ -2007,6 +2056,7 @@ class Booking extends DataClass implements Insertable<Booking> {
     isFinalTariffConfirmed,
     adminAdjustmentsJson,
     driverJson,
+    cancellationJson,
     createdAt,
     lastFetched,
   ]);
@@ -2034,6 +2084,7 @@ class Booking extends DataClass implements Insertable<Booking> {
           other.isFinalTariffConfirmed == this.isFinalTariffConfirmed &&
           other.adminAdjustmentsJson == this.adminAdjustmentsJson &&
           other.driverJson == this.driverJson &&
+          other.cancellationJson == this.cancellationJson &&
           other.createdAt == this.createdAt &&
           other.lastFetched == this.lastFetched);
 }
@@ -2059,6 +2110,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
   final Value<bool> isFinalTariffConfirmed;
   final Value<String?> adminAdjustmentsJson;
   final Value<String?> driverJson;
+  final Value<String?> cancellationJson;
   final Value<int> createdAt;
   final Value<int> lastFetched;
   final Value<int> rowid;
@@ -2083,6 +2135,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.isFinalTariffConfirmed = const Value.absent(),
     this.adminAdjustmentsJson = const Value.absent(),
     this.driverJson = const Value.absent(),
+    this.cancellationJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastFetched = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2108,6 +2161,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     this.isFinalTariffConfirmed = const Value.absent(),
     this.adminAdjustmentsJson = const Value.absent(),
     this.driverJson = const Value.absent(),
+    this.cancellationJson = const Value.absent(),
     required int createdAt,
     required int lastFetched,
     this.rowid = const Value.absent(),
@@ -2145,6 +2199,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Expression<bool>? isFinalTariffConfirmed,
     Expression<String>? adminAdjustmentsJson,
     Expression<String>? driverJson,
+    Expression<String>? cancellationJson,
     Expression<int>? createdAt,
     Expression<int>? lastFetched,
     Expression<int>? rowid,
@@ -2173,6 +2228,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
       if (adminAdjustmentsJson != null)
         'admin_adjustments_json': adminAdjustmentsJson,
       if (driverJson != null) 'driver_json': driverJson,
+      if (cancellationJson != null) 'cancellation_json': cancellationJson,
       if (createdAt != null) 'created_at': createdAt,
       if (lastFetched != null) 'last_fetched': lastFetched,
       if (rowid != null) 'rowid': rowid,
@@ -2200,6 +2256,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     Value<bool>? isFinalTariffConfirmed,
     Value<String?>? adminAdjustmentsJson,
     Value<String?>? driverJson,
+    Value<String?>? cancellationJson,
     Value<int>? createdAt,
     Value<int>? lastFetched,
     Value<int>? rowid,
@@ -2226,6 +2283,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
           isFinalTariffConfirmed ?? this.isFinalTariffConfirmed,
       adminAdjustmentsJson: adminAdjustmentsJson ?? this.adminAdjustmentsJson,
       driverJson: driverJson ?? this.driverJson,
+      cancellationJson: cancellationJson ?? this.cancellationJson,
       createdAt: createdAt ?? this.createdAt,
       lastFetched: lastFetched ?? this.lastFetched,
       rowid: rowid ?? this.rowid,
@@ -2301,6 +2359,9 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
     if (driverJson.present) {
       map['driver_json'] = Variable<String>(driverJson.value);
     }
+    if (cancellationJson.present) {
+      map['cancellation_json'] = Variable<String>(cancellationJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -2336,6 +2397,7 @@ class BookingsCompanion extends UpdateCompanion<Booking> {
           ..write('isFinalTariffConfirmed: $isFinalTariffConfirmed, ')
           ..write('adminAdjustmentsJson: $adminAdjustmentsJson, ')
           ..write('driverJson: $driverJson, ')
+          ..write('cancellationJson: $cancellationJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastFetched: $lastFetched, ')
           ..write('rowid: $rowid')
@@ -2826,6 +2888,7 @@ typedef $$BookingsTableCreateCompanionBuilder = BookingsCompanion Function({
   Value<bool> isFinalTariffConfirmed,
   Value<String?> adminAdjustmentsJson,
   Value<String?> driverJson,
+  Value<String?> cancellationJson,
   required int createdAt,
   required int lastFetched,
   Value<int> rowid,
@@ -2851,6 +2914,7 @@ typedef $$BookingsTableUpdateCompanionBuilder = BookingsCompanion Function({
   Value<bool> isFinalTariffConfirmed,
   Value<String?> adminAdjustmentsJson,
   Value<String?> driverJson,
+  Value<String?> cancellationJson,
   Value<int> createdAt,
   Value<int> lastFetched,
   Value<int> rowid,
@@ -2962,6 +3026,11 @@ class $$BookingsTableFilterComposer
 
   ColumnFilters<String> get driverJson => $composableBuilder(
     column: $table.driverJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cancellationJson => $composableBuilder(
+    column: $table.cancellationJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3085,6 +3154,11 @@ class $$BookingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cancellationJson => $composableBuilder(
+    column: $table.cancellationJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3191,6 +3265,11 @@ class $$BookingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get cancellationJson => $composableBuilder(
+    column: $table.cancellationJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -3248,6 +3327,7 @@ class $$BookingsTableTableManager
                 Value<bool> isFinalTariffConfirmed = const Value.absent(),
                 Value<String?> adminAdjustmentsJson = const Value.absent(),
                 Value<String?> driverJson = const Value.absent(),
+                Value<String?> cancellationJson = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> lastFetched = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3272,6 +3352,7 @@ class $$BookingsTableTableManager
                 isFinalTariffConfirmed: isFinalTariffConfirmed,
                 adminAdjustmentsJson: adminAdjustmentsJson,
                 driverJson: driverJson,
+                cancellationJson: cancellationJson,
                 createdAt: createdAt,
                 lastFetched: lastFetched,
                 rowid: rowid,
@@ -3298,6 +3379,7 @@ class $$BookingsTableTableManager
                 Value<bool> isFinalTariffConfirmed = const Value.absent(),
                 Value<String?> adminAdjustmentsJson = const Value.absent(),
                 Value<String?> driverJson = const Value.absent(),
+                Value<String?> cancellationJson = const Value.absent(),
                 required int createdAt,
                 required int lastFetched,
                 Value<int> rowid = const Value.absent(),
@@ -3322,6 +3404,7 @@ class $$BookingsTableTableManager
                 isFinalTariffConfirmed: isFinalTariffConfirmed,
                 adminAdjustmentsJson: adminAdjustmentsJson,
                 driverJson: driverJson,
+                cancellationJson: cancellationJson,
                 createdAt: createdAt,
                 lastFetched: lastFetched,
                 rowid: rowid,

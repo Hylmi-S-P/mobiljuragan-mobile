@@ -411,11 +411,17 @@ class BookingRepository {
   Future<Map<String, dynamic>?> cancelBookingRemote({
     required String bookingId,
     String? reason,
+    String? bankName,
+    String? accountNumber,
+    String? accountHolderName,
   }) async {
     try {
       final res = await _apiService.cancelBooking(
         bookingId: bookingId,
         reason: reason,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        accountHolderName: accountHolderName,
       );
       final booking = res['booking'];
       if (booking is Map) {

@@ -461,6 +461,9 @@ class BookingController extends ChangeNotifier {
     final hasilServer = await repository?.cancelBookingRemote(
       bookingId: bookingId,
       reason: reason,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      accountHolderName: accountHolderName,
     );
     final refund = hasilServer?['refund'];
     final int? refundNominal = refund is Map
@@ -472,6 +475,9 @@ class BookingController extends ChangeNotifier {
         ? (refund['totalDibayar'] is num
               ? (refund['totalDibayar'] as num).toInt()
               : int.tryParse('${refund['totalDibayar'] ?? ''}'))
+        : null;
+    final String? refundStatusServer = refund is Map
+        ? refund['status']?.toString()
         : null;
 
     // Rasio hanya dipakai untuk label ringkas; angkanya tetap dari server.
@@ -491,6 +497,7 @@ class BookingController extends ChangeNotifier {
       cancellationBank: refundNominal != null ? bankName : null,
       cancellationAccountNumber: refundNominal != null ? accountNumber : null,
       cancellationAccountName: refundNominal != null ? accountHolderName : null,
+      refundStatus: refundStatusServer,
     );
 
     _bookingHistory[index] = updated;
