@@ -28,30 +28,14 @@ class RentalOptionsScreen extends StatefulWidget {
 class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
   final DocumentApiService _documentApiService = DocumentApiService();
 
-  /* Titik serah terima berasal dari backend (GET /pickup-points).
-     Daftar lokal hanya cadangan saat server tidak dapat dihubungi, dan sengaja
-     tanpa alamat karangan: yang ditampilkan cukup nama tempat resmi. */
-  static const List<PickupPoint> _fallbackPickupPoints = [
-    PickupPoint(
-      id: 'kantor-mobiljuragan',
-      label: 'Kantor MobilJuragan',
-      address: null,
-      latitude: -8.4905,
-      longitude: 140.3995,
-      isFree: true,
-    ),
-    PickupPoint(
-      id: 'bandara-mopah',
-      label: 'Bandara Mopah Merauke',
-      address: 'Lobi Kedatangan & Parkir VIP Bandara Mopah',
-      latitude: -8.5202,
-      longitude: 140.4180,
-      isFree: true,
-    ),
-  ];
-
+  /* Titik serah terima sepenuhnya berasal dari backend (GET /pickup-points).
+     Tidak ada daftar cadangan berisi koordinat karangan: kalau server belum
+     menjawab, layar menampilkan keadaan memuat atau gagal, bukan titik palsu
+     yang bisa dipilih pelanggan lalu ditolak kantor. */
   final PickupPointApiService _pickupPointApiService = PickupPointApiService();
-  List<PickupPoint> _pickupPoints = _fallbackPickupPoints;
+  List<PickupPoint> _pickupPoints = const <PickupPoint>[];
+  bool _memuatTitik = true;
+  String? _galatTitik;
 
   @override
   void initState() {
@@ -76,17 +60,13 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
 
     final idBawaan = denganSopir ? 'bandara-mopah' : 'kantor-mobiljuragan';
     final cocok = _pickupPoints.where((p) => p.id == idBawaan).toList();
-    if (cocok.isNotEmpty) {
-      final titik = cocok.first;
-      booking.setPickupLocation(titik.label, titik.latitude, titik.longitude);
+    if (cocok.isEmpty) {
+      /* Titik bawaan belum termuat. Titik jemput dibiarkan apa adanya supaya
+         pelanggan tidak terkirim ke koordinat yang tidak pernah dipilihnya. */
       return;
     }
-
-    if (denganSopir) {
-      booking.setPickupLocation(bawaanDenganSopir, -8.5202, 140.4180);
-    } else {
-      booking.setPickupLocation(bawaanLepasKunci, -8.4905, 140.3995);
-    }
+    final titik = cocok.first;
+    booking.setPickupLocation(titik.label, titik.latitude, titik.longitude);
   }
 
   /// Membuka peta penuh supaya pelanggan mengetuk sendiri titik jemputnya.
@@ -189,12 +169,26 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
   }
 
   Future<void> _loadPickupPoints() async {
+    setState(() {
+      _memuatTitik = true;
+      _galatTitik = null;
+    });
     try {
       final points = await _pickupPointApiService.fetchPickupPoints();
-      if (!mounted || points.isEmpty) return;
-      setState(() => _pickupPoints = points);
+      if (!mounted) return;
+      setState(() {
+        _pickupPoints = points;
+        _memuatTitik = false;
+        _galatTitik = points.isEmpty
+            ? 'Kantor belum mendaftarkan titik serah terima.'
+            : null;
+      });
     } catch (_) {
-      // Offline: daftar cadangan sudah dipakai, tidak perlu mengganggu pengguna.
+      if (!mounted) return;
+      setState(() {
+        _memuatTitik = false;
+        _galatTitik = 'Titik serah terima gagal dimuat. Periksa koneksi lalu coba lagi.';
+      });
     }
   }
 
@@ -216,7 +210,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
           'name': 'Alamat / Titik Lain di Merauke',
           'shortName': 'Titik Lain',
           'desc': 'Tentukan titik jemput bebas pada peta di bawah',
-          'coords': const LatLng(-8.4991, 140.4011),
           'isCustom': true,
         },
       ];
@@ -531,7 +524,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         'name': booking.pickupLocation,
         'shortName': 'Titik Peta',
         'desc': 'Koordinat titik penjemputan terpilih di peta Merauke',
-        'coords': LatLng(booking.pickupLatitude ?? -8.4991, booking.pickupLongitude ?? 140.4011),
       };
     }
 
@@ -604,6 +596,57 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
           ),
           const SizedBox(height: 12),
 
+          if (_memuatTitik)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Memuat titik serah terima...',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_galatTitik != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 14,
+                    color: Color(0xFFB45309),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _galatTitik!,
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        color: Color(0xFFB45309),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _loadPickupPoints,
+                    child: const Text('Coba lagi'),
+                  ),
+                ],
+              ),
+            ),
+
           // Horizontal Chips Selector (terisolasi dan terpotong rapi dengan padding insets)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -614,7 +657,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 final name = (loc['name'] as String?) ?? 'Lokasi';
                 final shortName = (loc['shortName'] as String?) ??
                     (name.startsWith('Diantar ke ') ? name.replaceFirst('Diantar ke ', '') : name);
-                final coords = (loc['coords'] as LatLng?) ?? const LatLng(-8.4991, 140.4011);
+                final coords = loc['coords'] as LatLng?;
                 final isFree = loc['isFree'] == true;
                 final isCustom = loc['isCustom'] == true;
                 final pickup = booking.pickupLocation.toLowerCase();
@@ -647,6 +690,11 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                              menyetel koordinat tetap: pelanggan harus memilih
                              sendiri di peta. */
                           _bukaPetaTitikBebas(booking);
+                          return;
+                        }
+                        if (coords == null) {
+                          /* Titik tanpa koordinat tidak boleh dipilih: lebih baik
+                             tidak terjadi apa-apa daripada menyimpan titik palsu. */
                           return;
                         }
                         booking.setPickupLocation(name, coords.latitude, coords.longitude);
