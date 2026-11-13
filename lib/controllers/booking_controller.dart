@@ -440,9 +440,12 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Membatalkan pesanan (baik pesanan aktif maupun pesanan spesifik berdasarkan ID)
-  /// Menerapkan aturan pengembalian dana 85% untuk pesanan online yang telah dibayar.
-  /// Untuk pesanan COD yang belum diserahkan uangnya, refund bernilai Rp 0 tanpa potongan penalti.
+  /// Membatalkan pesanan (baik pesanan aktif maupun pesanan spesifik berdasarkan ID).
+  ///
+  /// Nominal pengembalian dana dihitung SERVER (potongan tetap Rp 50.000 untuk
+  /// pembatalan oleh pelanggan setelah bayar, penuh bila dibatalkan kantor).
+  /// Aplikasi hanya menampilkan angka yang dikirim balik; bila server tidak
+  /// terjangkau, pesanan tetap ditandai batal di perangkat tanpa nominal karangan.
   Future<void> cancelBooking({
     required String bookingId,
     required String reason,
@@ -454,28 +457,40 @@ class BookingController extends ChangeNotifier {
     if (index == -1) return;
 
     final target = _bookingHistory[index];
-    final bool isCod =
-        target.paymentMethodType == PaymentMethodType.tunaiDiTempat;
-    final bool isPaidBooking =
-        !isCod &&
-        (target.status == BookingStatus.pembayaranSelesai ||
-            target.status == BookingStatus.verifikasiKantor ||
-            target.status == BookingStatus.mobilSiapDigunakan);
 
-    final double refundRate = isPaidBooking ? 0.85 : 0.0;
-    final int refundAmount = isPaidBooking
-        ? (target.totalCost * 0.85).round()
-        : 0;
+    final hasilServer = await repository?.cancelBookingRemote(
+      bookingId: bookingId,
+      reason: reason,
+    );
+    final refund = hasilServer?['refund'];
+    final int? refundNominal = refund is Map
+        ? (refund['nominal'] is num
+              ? (refund['nominal'] as num).toInt()
+              : int.tryParse('${refund['nominal'] ?? ''}'))
+        : null;
+    final int? totalDibayarServer = refund is Map
+        ? (refund['totalDibayar'] is num
+              ? (refund['totalDibayar'] as num).toInt()
+              : int.tryParse('${refund['totalDibayar'] ?? ''}'))
+        : null;
+
+    // Rasio hanya dipakai untuk label ringkas; angkanya tetap dari server.
+    final double? refundRate =
+        (refundNominal != null &&
+            totalDibayarServer != null &&
+            totalDibayarServer > 0)
+        ? refundNominal / totalDibayarServer
+        : null;
 
     final updated = target.copyWith(
       status: BookingStatus.dibatalkan,
       cancellationReason: reason,
       cancelledAt: DateTime.now(),
       cancellationRefundRate: refundRate,
-      cancellationRefundAmount: refundAmount,
-      cancellationBank: isPaidBooking ? bankName : null,
-      cancellationAccountNumber: isPaidBooking ? accountNumber : null,
-      cancellationAccountName: isPaidBooking ? accountHolderName : null,
+      cancellationRefundAmount: refundNominal,
+      cancellationBank: refundNominal != null ? bankName : null,
+      cancellationAccountNumber: refundNominal != null ? accountNumber : null,
+      cancellationAccountName: refundNominal != null ? accountHolderName : null,
     );
 
     _bookingHistory[index] = updated;
@@ -483,7 +498,6 @@ class BookingController extends ChangeNotifier {
       _activeBooking = updated;
     }
     await repository?.saveBooking(updated);
-    await repository?.cancelBookingRemote(bookingId: bookingId, reason: reason);
     notifyListeners();
   }
 

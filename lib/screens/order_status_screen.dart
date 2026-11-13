@@ -4161,9 +4161,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   }
 
   Widget _buildCancelledBannerCard(BookingModel booking) {
-    final isCod = booking.paymentMethodType == PaymentMethodType.tunaiDiTempat;
-    final hasRefund = !isCod &&
-        booking.cancellationRefundAmount != null &&
+    final hasRefund = booking.cancellationRefundAmount != null &&
         booking.cancellationRefundAmount! > 0;
     final cancelledAtText = booking.cancelledAt != null
         ? '${booking.cancelledAt!.day.toString().padLeft(2, '0')}/${booking.cancelledAt!.month.toString().padLeft(2, '0')}/${booking.cancelledAt!.year}, ${booking.cancelledAt!.hour.toString().padLeft(2, '0')}.${booking.cancelledAt!.minute.toString().padLeft(2, '0')} WIT'
@@ -4326,7 +4324,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           const SizedBox(height: 14),
 
           // Penyelesaian Finansial (Ledger Box Profesional)
-          if (isCod) ...[
+          // Hanya menyangkut pesanan lama yang masih memakai metode tunai di
+          // tempat; pesanan baru tidak lagi menawarkan metode ini.
+          if (booking.paymentMethodType == PaymentMethodType.tunaiDiTempat &&
+              !hasRefund) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -4430,7 +4431,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       runSpacing: 6,
                     children: [
                       const Text(
-                        'Potongan Operasional (15%)',
+                        'Potongan Pembatalan',
                         style: TextStyle(fontSize: AppTypography.sizeCaption, color: Color(0xFFDC2626), fontFamily: 'Inter'),
                       ),
                       Text(

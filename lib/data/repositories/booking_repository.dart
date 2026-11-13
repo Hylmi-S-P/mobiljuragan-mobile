@@ -402,8 +402,13 @@ class BookingRepository {
     await _bookingDao.updateBookingStatus(id, newStatus.name);
   }
 
-  /// Mengirimkan pembatalan pesanan ke backend API
-  Future<bool> cancelBookingRemote({
+  /// Mengirimkan pembatalan pesanan ke backend API.
+  ///
+  /// Mengembalikan data pesanan yang sudah dibatalkan (berisi `refund` bila
+  /// pembatalan ini memicu pengembalian dana), atau `null` bila gagal/offline.
+  /// Nominal refund SELALU berasal dari server; aplikasi tidak menghitung
+  /// sendiri potongannya.
+  Future<Map<String, dynamic>?> cancelBookingRemote({
     required String bookingId,
     String? reason,
   }) async {
@@ -412,10 +417,14 @@ class BookingRepository {
         bookingId: bookingId,
         reason: reason,
       );
-      return res.isNotEmpty;
+      final booking = res['booking'];
+      if (booking is Map) {
+        return Map<String, dynamic>.from(booking);
+      }
+      return res.isEmpty ? null : res;
     } catch (_) {
       // Offline fallback: tetap aman jika offline
-      return false;
+      return null;
     }
   }
 }

@@ -18,8 +18,9 @@ class FakeBookingApiService extends BookingApiService {
   DateTime? lastEnd;
   bool? lastWithDriver;
   Exception? exceptionToThrow;
+  Map<String, dynamic>? cancelResponseToReturn;
 
-  FakeBookingApiService({this.exceptionToThrow});
+  FakeBookingApiService({this.exceptionToThrow, this.cancelResponseToReturn});
 
   @override
   Future<Map<String, dynamic>> cancelBooking({
@@ -29,7 +30,8 @@ class FakeBookingApiService extends BookingApiService {
     cancelCount++;
     lastCancelledBookingId = bookingId;
     if (exceptionToThrow != null) throw exceptionToThrow!;
-    return {'status': 'success', 'message': 'Booking cancelled'};
+    return cancelResponseToReturn ??
+        {'status': 'success', 'message': 'Booking cancelled'};
   }
 
   @override
@@ -148,7 +150,7 @@ void main() {
         reason: 'Rencana berubah',
       );
 
-      expect(success, isTrue);
+      expect(success, isNotNull);
       expect(fakeApi.cancelCount, equals(1));
       expect(fakeApi.lastCancelledBookingId, equals('bkg-123'));
 
@@ -156,7 +158,35 @@ void main() {
       final offlineApi = FakeBookingApiService(exceptionToThrow: Exception('Offline network error'));
       final offlineRepo = BookingRepository(database.bookingDao, offlineApi);
       final offlineResult = await offlineRepo.cancelBookingRemote(bookingId: 'bkg-999');
-      expect(offlineResult, isFalse);
+      expect(offlineResult, isNull);
+    });
+
+    test('cancelBookingRemote meneruskan catatan refund dari server apa adanya', () async {
+      final fakeApi = FakeBookingApiService(
+        cancelResponseToReturn: {
+          'booking': {
+            'id': 'bkg-777',
+            'status': 'CANCELLED',
+            'refund': {
+              'totalDibayar': 900000,
+              'potongan': 50000,
+              'nominal': 850000,
+              'dibatalkanOleh': 'PELANGGAN',
+            },
+          },
+        },
+      );
+      final repository = BookingRepository(database.bookingDao, fakeApi);
+
+      final hasil = await repository.cancelBookingRemote(
+        bookingId: 'bkg-777',
+        reason: 'Rencana keluarga berubah',
+      );
+
+      expect(hasil?['id'], equals('bkg-777'));
+      final refund = hasil?['refund'] as Map<String, dynamic>?;
+      expect(refund?['nominal'], equals(850000));
+      expect(refund?['potongan'], equals(50000));
     });
   });
 }
