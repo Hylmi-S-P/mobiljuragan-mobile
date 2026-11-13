@@ -24,6 +24,7 @@ import 'date_time_screen.dart';
 import 'main_navigation_screen.dart';
 import '../theme/app_typography.dart';
 import '../widgets/gambar_kendaraan.dart';
+import '../widgets/payment_countdown_chip.dart';
 
 /// Layar pelacakan status pesanan (Frame 07)
 /// Mengikuti alur stepper Figma dengan penambahan tahap Menunggu Pembayaran
@@ -781,50 +782,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 ),
               )
             else
-              Builder(
-                builder: (ctx) {
-                  /* Batas waktu diambil dari tagihan yang diterbitkan server.
-                     Sebelumnya dihitung lokal (createdAt + 12 jam), sehingga
-                     angka di header berbeda dengan hitungan di lembar pembayaran
-                     dan tidak pernah mencerminkan tagihan sebenarnya. */
-                  final deadline = _payment?.expiresAt;
-                  final remaining = deadline?.difference(DateTime.now());
-                  final isOverdue = remaining?.isNegative ?? false;
-                  final timerString = remaining == null
-                      ? 'Menunggu tagihan'
-                      : isOverdue
-                          ? 'Kedaluwarsa'
-                          : '${remaining.inHours.toString().padLeft(2, '0')}:${(remaining.inMinutes % 60).toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}';
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isOverdue ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.timer_outlined,
-                          size: 12,
-                          color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFFB45309),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          timerString,
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            fontWeight: FontWeight.w700,
-                            color: isOverdue ? const Color(0xFFDC2626) : const Color(0xFFB45309),
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              /* Batas waktu diambil dari tagihan yang diterbitkan server, dan
+                 chip ini memegang ticker sendiri supaya detiknya benar-benar
+                 berjalan tanpa menunggu polling 30 detik. */
+              PaymentCountdownChip(expiresAt: _payment?.expiresAt),
           ],
         ),
         const SizedBox(height: 12),
