@@ -5231,7 +5231,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               },
               icon: const Icon(Icons.support_agent_rounded, size: 19, color: Colors.white),
               label: const Text(
-                'Koordinasi Penjemputan via Chat CS',
+                'Chat dengan CS',
                 style: AppTypography.cardTitle,
               ),
               style: ElevatedButton.styleFrom(

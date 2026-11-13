@@ -104,6 +104,36 @@ class FakeTicketApiService extends TicketApiService {
   Future<bool> handover({required String ticketId}) async {
     return true;
   }
+
+  Map<String, dynamic>? bookingTicketResponse;
+  int createBookingTicketCount = 0;
+  String? lastBookingTicketId;
+
+  @override
+  Future<Map<String, dynamic>> createBookingTicket({required String bookingId}) async {
+    createBookingTicketCount++;
+    lastBookingTicketId = bookingId;
+    if (exceptionToThrow != null) throw exceptionToThrow!;
+    return bookingTicketResponse ??
+        {
+          'id': 'tck-booking-1',
+          'ticketNumber': 'TKT-20261114-0001',
+          'title': 'Bantuan pesanan MJ-20261114-AAAA',
+          'category': 'GENERAL',
+          'status': 'OPEN',
+          'handledBy': 'AI',
+          'bookingId': bookingId,
+          'messages': [
+            {
+              'id': 'msg-1',
+              'body': 'Halo, ini percakapan bantuan untuk pesanan MJ-20261114-AAAA.',
+              'isCustomer': false,
+              'isAi': true,
+              'sentAt': '2026-11-14T05:00:00.000Z',
+            },
+          ],
+        };
+  }
 }
 
 void main() {
@@ -372,6 +402,40 @@ void main() {
         messages.any((m) => m.senderName == 'Sistem' && m.message.contains('telah ditutup oleh pelanggan')),
         isTrue,
       );
+    });
+
+    test('bukaTiketPesanan memakai tiket dari server dan memuat pesan pembukanya', () async {
+      final fakeService = FakeTicketApiService();
+      final controller = SupportController(ticketApiService: fakeService);
+
+      final tiket = await controller.bukaTiketPesanan(bookingId: 'booking-1');
+
+      expect(tiket, isNotNull);
+      expect(fakeService.createBookingTicketCount, equals(1));
+      expect(fakeService.lastBookingTicketId, equals('booking-1'));
+      expect(tiket!.bookingId, equals('booking-1'));
+      expect(tiket.isHandledByHuman, isFalse);
+
+      /* Pesan pembuka ditulis server; aplikasi tidak boleh mengarangnya sendiri. */
+      final pesan = controller.getMessages('ticket_${tiket.id}');
+      expect(pesan, hasLength(1));
+      expect(pesan.first.isAI, isTrue);
+      expect(pesan.first.message, contains('MJ-20261114-AAAA'));
+
+      /* Daftar tiket ikut memuat tiket baru ini supaya muncul di pusat bantuan. */
+      expect(controller.tickets.any((t) => t.id == tiket.id), isTrue);
+    });
+
+    test('bukaTiketPesanan mengembalikan null saat server tidak terjangkau', () async {
+      final fakeService = FakeTicketApiService(
+        exceptionToThrow: ApiException('Server tidak dapat dijangkau (Offline).', statusCode: 503),
+      );
+      final controller = SupportController(ticketApiService: fakeService);
+
+      final tiket = await controller.bukaTiketPesanan(bookingId: 'booking-1');
+
+      expect(tiket, isNull);
+      expect(controller.tickets.any((t) => t.id == 'tck-booking-1'), isFalse);
     });
   });
 }

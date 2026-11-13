@@ -64,6 +64,22 @@ class TicketApiService {
     }
   }
 
+  /// Membuka percakapan bantuan untuk satu pesanan.
+  ///
+  /// Server memakai satu tiket terbuka per pesanan, jadi memanggil ini berkali-kali
+  /// tidak membuat percakapan baru. Pesan pembuka berisi ringkasan sewa ditulis
+  /// server, bukan aplikasi: isinya harus sama dengan yang dilihat staf.
+  Future<Map<String, dynamic>> createBookingTicket({required String bookingId}) async {
+    final response = await _client.post(
+      '${ApiConstants.ticketsEndpoint}/booking/$bookingId',
+      requiresAuth: true,
+    );
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    return {};
+  }
+
   /// Mengirim pesan balasan pelanggan pada thread tiket
   Future<Map<String, dynamic>> addMessage({
     required String ticketId,

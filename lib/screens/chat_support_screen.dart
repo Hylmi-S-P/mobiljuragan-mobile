@@ -29,6 +29,19 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   Timer? _keyboardScrollTimer;
   SupportController? _supportController;
 
+  /* Tiket yang lahir dari tombol "Chat dengan CS" pada satu pesanan.
+   *
+   * Layar ini bisa dibuka dengan tiket yang sudah ada (dari daftar bantuan) atau
+   * hanya dengan pesanan. Untuk yang kedua, tiketnya dibuat server lebih dulu —
+   * pesan pembuka berisi ringkasan sewa ditulis di sana supaya isinya sama
+   * dengan yang dibaca staf. */
+  SupportTicketModel? _tiketPesanan;
+  bool _memuatTiket = false;
+  String? _galatTiket;
+
+  /// Tiket yang sedang dibuka, dari mana pun asalnya.
+  SupportTicketModel? get _tiketAktif => widget.ticket ?? _tiketPesanan;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -37,11 +50,12 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   /// Menghasilkan key unik sesi percakapan agar tidak tercampur antar transaksi/tiket
   String get conversationKey {
+    final tiket = _tiketAktif;
+    if (tiket != null) {
+      return SupportController.buildConversationKey(ticketId: tiket.id);
+    }
     if (widget.booking != null) {
       return SupportController.buildConversationKey(bookingId: widget.booking!.id);
-    }
-    if (widget.ticket != null) {
-      return SupportController.buildConversationKey(ticketId: widget.ticket!.id);
     }
     return SupportController.buildConversationKey();
   }
@@ -73,59 +87,86 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
        * tersimpan di server. Balasan staf yang masuk saat layar tertutup pun tidak
        * akan pernah terlihat. */
       if (widget.ticket != null) {
-        final support = context.read<SupportController>();
-        support.muatRiwayatTiket(ticketId: widget.ticket!.id).then((_) {
-          if (!mounted) return;
-          final currentMsgs = support.getMessages(conversationKey);
-          final hasAi = currentMsgs.any((m) => m.isAI);
-          if (!hasAi && !support.isAiHandoffToAdminFor(conversationKey)) {
-            support.inisialisasiResponAiTiket(ticket: widget.ticket!);
-          }
-        });
-
-        /* Langganan peristiwa tiket.
-         *
-         * Backend sudah mengirim peristiwa setiap ada pesan atau perubahan
-         * status, tetapi sebelumnya tidak ada klien yang mendengarkan. Akibatnya
-         * balasan staf baru terlihat setelah layar dimuat ulang manual. */
-        support.dengarkanTiket(
-          ticketId: widget.ticket!.id,
-          onPesanBaru: () {
-            if (!mounted) return;
-            support.muatRiwayatTiket(ticketId: widget.ticket!.id);
-            _scrollToBottom();
-          },
-          /* Tiket bisa ditutup dari sisi lain (admin atau penutupan otomatis)
-             saat layar ini sedang terbuka. Tanpa penanganan di sini, kotak
-             isian tetap terbuka sampai layar dimuat ulang manual. */
-          onStatusBerubah: (status) {
-            if (!mounted) return;
-            if (SupportTicketModel.isStatusClosed(status)) {
-              support.tandaiTiketTertutup(conversationKey);
-            }
-            support.muatRiwayatTiket(ticketId: widget.ticket!.id);
-          },
-        );
+        _sambungkanTiket(widget.ticket!);
+        return;
       }
 
-      // Inisialisasi otomatis hanya jika chat dibuka dari pesanan sewa mobil spesifik
+      /* Dibuka dari pesanan: tiketnya dibuat server lebih dulu. */
       if (widget.booking != null) {
-        final bookingCtrl = context.read<BookingController>();
-        final targetBooking = bookingCtrl.bookingHistory.firstWhere(
-          (b) => b.id == widget.booking!.id,
-          orElse: () => widget.booking!,
-        );
-
-        if (targetBooking.status == BookingStatus.mobilSiapDigunakan ||
-            targetBooking.status == BookingStatus.pembayaranSelesai) {
-          context.read<SupportController>().sendPickupCoordinationMessage(targetBooking);
-          _scrollToBottom();
-        } else if (targetBooking.status == BookingStatus.menungguPembayaran) {
-          context.read<SupportController>().sendPaymentInstructionMessage(targetBooking);
-          _scrollToBottom();
-        }
+        _bukaTiketPesanan();
       }
     });
+  }
+
+  /// Memuat riwayat dan mendengarkan peristiwa untuk satu tiket.
+  void _sambungkanTiket(SupportTicketModel tiket) {
+    final support = context.read<SupportController>();
+    support.muatRiwayatTiket(ticketId: tiket.id).then((_) {
+      if (!mounted) return;
+      final currentMsgs = support.getMessages(conversationKey);
+      final hasAi = currentMsgs.any((m) => m.isAI);
+      if (!hasAi && !support.isAiHandoffToAdminFor(conversationKey)) {
+        support.inisialisasiResponAiTiket(ticket: tiket);
+      }
+    });
+
+    /* Langganan peristiwa tiket.
+     *
+     * Backend sudah mengirim peristiwa setiap ada pesan atau perubahan
+     * status, tetapi sebelumnya tidak ada klien yang mendengarkan. Akibatnya
+     * balasan staf baru terlihat setelah layar dimuat ulang manual. */
+    support.dengarkanTiket(
+      ticketId: tiket.id,
+      onPesanBaru: () {
+        if (!mounted) return;
+        support.muatRiwayatTiket(ticketId: tiket.id);
+        _scrollToBottom();
+      },
+      /* Tiket bisa ditutup dari sisi lain (admin atau penutupan otomatis)
+         saat layar ini sedang terbuka. Tanpa penanganan di sini, kotak
+         isian tetap terbuka sampai layar dimuat ulang manual. */
+      onStatusBerubah: (status) {
+        if (!mounted) return;
+        if (SupportTicketModel.isStatusClosed(status)) {
+          support.tandaiTiketTertutup(conversationKey);
+        }
+        support.muatRiwayatTiket(ticketId: tiket.id);
+      },
+    );
+  }
+
+  /// Membuka percakapan bantuan untuk pesanan yang dibawa layar ini.
+  Future<void> _bukaTiketPesanan() async {
+    final booking = widget.booking;
+    if (booking == null) return;
+
+    setState(() {
+      _memuatTiket = true;
+      _galatTiket = null;
+    });
+
+    final tiket = await context.read<SupportController>().bukaTiketPesanan(
+      bookingId: booking.id,
+    );
+
+    if (!mounted) return;
+
+    if (tiket == null) {
+      setState(() {
+        _memuatTiket = false;
+        _galatTiket =
+            'Percakapan bantuan gagal dibuka. Periksa koneksi lalu coba lagi.';
+      });
+      return;
+    }
+
+    setState(() {
+      _memuatTiket = false;
+      _tiketPesanan = tiket;
+    });
+
+    _sambungkanTiket(tiket);
+    _scrollToBottom();
   }
 
   @override
@@ -135,6 +176,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
          serta kuota. */
     if (widget.ticket != null) {
       _supportController?.berhentiDengarkanTiket(widget.ticket!.id);
+    }
+    if (_tiketPesanan != null) {
+      _supportController?.berhentiDengarkanTiket(_tiketPesanan!.id);
     }
 
     _keyboardScrollTimer?.cancel();
@@ -163,7 +207,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   /// dari versi terbaru di controller (hasil muat ulang dari server), bukan dari
   /// objek yang dibawa saat layar dibuka — admin bisa menutup tiket kapan saja.
   SupportTicketModel? get _ticketFinal {
-    final dasar = widget.ticket;
+    final dasar = _tiketAktif;
     if (dasar == null) return null;
 
     final support = _supportController ?? context.read<SupportController>();
@@ -221,7 +265,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         : null;
 
     // activeTicket hanya ada jika layar ini memang dibuka untuk tiket keluhan tertentu
-    final activeTicket = widget.ticket;
+    final activeTicket = _tiketAktif;
 
     /* Status tiket terbaru dari controller: admin bisa menutup tiket setelah
        layar ini terbuka, dan composer harus ikut terkunci tanpa perlu restart. */
@@ -387,41 +431,80 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
           // Daftar Pesan Chat terisolasi per sesi
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: messages.length + (support.isAiThinking(conversationKey) ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == messages.length) {
-                  return _buildAiThinkingIndicator(maxBubbleWidth);
-                }
-                final msg = messages[index];
+            child: _memuatTiket
+                ? const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 12),
+                        Text('Membuka percakapan bantuan...'),
+                      ],
+                    ),
+                  )
+                : _galatTiket != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 40,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _galatTiket!,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: _bukaTiketPesanan,
+                            child: const Text('Coba lagi'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const ClampingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: messages.length + (support.isAiThinking(conversationKey) ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == messages.length) {
+                        return _buildAiThinkingIndicator(maxBubbleWidth);
+                      }
+                      final msg = messages[index];
 
-                /* Pengelompokan ala aplikasi pesan: nama pengirim dan avatar
-                   hanya muncul pada pesan pertama rangkaian berurutan, dan sudut
-                   bubble menyesuaikan posisi di dalam rangkaian. */
-                final sebelum = index > 0 ? messages[index - 1] : null;
-                final sesudah = index + 1 < messages.length ? messages[index + 1] : null;
+                      /* Pengelompokan ala aplikasi pesan: nama pengirim dan avatar
+                         hanya muncul pada pesan pertama rangkaian berurutan, dan sudut
+                         bubble menyesuaikan posisi di dalam rangkaian. */
+                      final sebelum = index > 0 ? messages[index - 1] : null;
+                      final sesudah = index + 1 < messages.length ? messages[index + 1] : null;
 
-                return _buildMessageItem(
-                  msg,
-                  maxBubbleWidth,
-                  tampilkanKepala: !_sameSender(sebelum, msg),
-                  ekorRapat: _sameSender(msg, sesudah),
-                );
-              },
-            ),
+                      return _buildMessageItem(
+                        msg,
+                        maxBubbleWidth,
+                        tampilkanKepala: !_sameSender(sebelum, msg),
+                        ekorRapat: _sameSender(msg, sesudah),
+                      );
+                    },
+                  ),
           ),
 
           // Panel Bawah Terpadu (Saran Cepat + Input Pesan)
-          _buildUnifiedBottomArea(
-            suggestions: isTicketFinal ? const [] : suggestions,
-            support: support,
-            booking: currentBooking,
-            bookingCtrl: bookingCtrl,
-          ),
+          if (!_memuatTiket && _galatTiket == null)
+            _buildUnifiedBottomArea(
+              suggestions: isTicketFinal ? const [] : suggestions,
+              support: support,
+              booking: currentBooking,
+              bookingCtrl: bookingCtrl,
+            ),
         ],
       ),
     );
@@ -527,7 +610,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 /* Laporan diteruskan ke staf, bukan langsung melunasi pesanan.
                    Status pembayaran hanya berubah setelah admin memeriksa bukti
                    transfer di portal. */
-                await support.confirmPaymentFromChat(booking: booking);
+                await support.confirmPaymentFromChat(
+                  booking: booking,
+                  ticketId: _tiketAktif?.id,
+                );
 
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -874,7 +960,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 ),
                 onPressed: () async {
                   if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
-                    await controller.confirmPaymentFromChat(booking: booking);
+                    await controller.confirmPaymentFromChat(
+                      booking: booking,
+                      ticketId: _tiketAktif?.id,
+                    );
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -910,7 +999,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   Widget _buildComposerBar(SupportController controller) {
     final isHandedOff =
         controller.isAiHandoffToAdminFor(conversationKey) ||
-        (widget.ticket?.isHandledByHuman ?? false);
+        (_tiketAktif?.isHandledByHuman ?? false);
 
     final finalTicket = _ticketFinal;
     if (finalTicket != null) {

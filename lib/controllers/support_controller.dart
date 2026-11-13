@@ -239,6 +239,53 @@ class SupportController extends ChangeNotifier {
     }
   }
 
+  /// Membuka percakapan bantuan untuk satu pesanan.
+  ///
+  /// Server memakai satu tiket terbuka per pesanan, jadi menekan tombol dua kali
+  /// mengembalikan tiket yang sama. Pesan pembuka (ringkasan sewa) sudah ditulis
+  /// server, jadi aplikasi tidak perlu mengarang pesan sambutan sendiri.
+  ///
+  /// Mengembalikan `null` bila server tidak bisa dihubungi: layar chat lalu
+  /// menampilkan pesan galat, bukan percakapan kosong yang menyesatkan.
+  Future<SupportTicketModel?> bukaTiketPesanan({required String bookingId}) async {
+    try {
+      final data = await _ticketApiService.createBookingTicket(bookingId: bookingId);
+      if (data.isEmpty) return null;
+
+      final ticket = SupportTicketModel.fromJson(data);
+      final ticketKey = 'ticket_${ticket.id}';
+
+      final rawMessages = data['messages'];
+      if (rawMessages is List && rawMessages.isNotEmpty) {
+        _conversations[ticketKey] = rawMessages
+            .whereType<Map>()
+            .map(
+              (m) => ChatMessageModel.fromJson(
+                Map<String, dynamic>.from(m),
+                conversationKey: ticketKey,
+              ),
+            )
+            .toList();
+      }
+
+      if (ticket.isHandledByHuman) {
+        _handoffStatus[ticketKey] = true;
+      }
+
+      final idx = _tickets.indexWhere((t) => t.id == ticket.id);
+      if (idx == -1) {
+        _tickets.insert(0, ticket);
+      } else {
+        _tickets[idx] = ticket;
+      }
+
+      notifyListeners();
+      return ticket;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Mengambil daftar tiket milik pelanggan dari backend dengan penanganan offline graceful
   Future<void> fetchTickets({bool force = false}) async {
     if (_isLoadingTickets && !force) return;
@@ -927,47 +974,6 @@ class SupportController extends ChangeNotifier {
     return buffer.toString().split('').reversed.join();
   }
 
-  /// Mengirim pesan bot berisi instruksi tagihan resmi ke thread pesanan terkait
-  void sendPaymentInstructionMessage(BookingModel booking) {
-    final convKey = 'booking_${booking.id}';
-    final invoiceMsgId = 'pay-${booking.id}';
-
-    final list = _conversations.putIfAbsent(convKey, () => []);
-    final alreadySent = list.any((m) => m.id == invoiceMsgId);
-    if (alreadySent) return;
-
-    final driverPhoneText =
-        booking.assignedDriver != null &&
-            booking.assignedDriver!.phoneNumber.isNotEmpty
-        ? '· Kontak WhatsApp Sopir: ${booking.assignedDriver!.phoneNumber}\n'
-        : '';
-    final driverDetail = booking.withDriver && booking.assignedDriver != null
-        ? '· Staf Pengemudi: ${booking.assignedDriver!.driverName} (Staf Tetap)\n$driverPhoneText'
-        : '';
-
-    final invoiceText =
-        'Halo! Berikut rincian tagihan resmi untuk pesanan #${booking.id} (${booking.vehicle.name}):\n\n'
-        '· Total Biaya: Rp ${_formatRupiah(booking.totalCost)}\n'
-        '· Bank Transfer: Bank BRI Merauke\n'
-        '· No. Rekening: 0321-01-002847-53-1\n'
-        '· Atas Nama: MobilJuragan Merauke\n'
-        '$driverDetail\n'
-        'Metode pembayaran telah diterbitkan oleh sistem. Silakan transfer sesuai nominal di atas, lalu Anda dapat mengonfirmasi pembayaran di bawah agar armada segera disiapkan.';
-
-    list.add(
-      ChatMessageModel(
-        id: invoiceMsgId,
-        message: invoiceText,
-        timestamp: DateTime.now(),
-        isFromUser: false,
-        senderName: 'Customer Service MobilJuragan',
-        isAI: true,
-        conversationKey: convKey,
-      ),
-    );
-    notifyListeners();
-  }
-
   /// Mencatat bahwa pelanggan mengaku sudah transfer, tanpa mengubah status apa pun.
   ///
   /// Sebelumnya method ini mengarang pesan "pembayaran berhasil diverifikasi lunas"
@@ -977,8 +983,11 @@ class SupportController extends ChangeNotifier {
   ///
   /// Sekarang yang dikirim hanya pesan ke thread tiket. Status pembayaran tetap
   /// menunggu admin memverifikasi bukti transfer lewat portal.
-  Future<void> confirmPaymentFromChat({required BookingModel booking}) async {
-    final convKey = 'booking_${booking.id}';
+  Future<void> confirmPaymentFromChat({
+    required BookingModel booking,
+    String? ticketId,
+  }) async {
+    final convKey = ticketId != null ? 'ticket_$ticketId' : 'booking_${booking.id}';
     final list = _conversations.putIfAbsent(convKey, () => []);
 
     final pesan = ChatMessageModel(
@@ -995,12 +1004,16 @@ class SupportController extends ChangeNotifier {
 
     /* Pesan diteruskan ke backend supaya staf melihatnya di portal. Kalau gagal,
        pesan tetap tampil di layar tetapi bendera di bawah memberi tahu bahwa
-       laporannya belum tersampaikan. */
+       laporannya belum tersampaikan. Tanpa id tiket, pesan tidak dikirim ke mana
+       pun — lebih baik ditandai belum terkirim daripada dikirim ke id pesanan. */
+    if (ticketId == null) {
+      _pesanBelumTerkirim = true;
+      notifyListeners();
+      return;
+    }
+
     try {
-      await _ticketApiService.addMessage(
-        ticketId: booking.id,
-        message: pesan.message,
-      );
+      await _ticketApiService.addMessage(ticketId: ticketId, message: pesan.message);
       _pesanBelumTerkirim = false;
     } catch (_) {
       _pesanBelumTerkirim = true;
@@ -1011,53 +1024,6 @@ class SupportController extends ChangeNotifier {
   /// Benar kalau laporan pembayaran terakhir gagal terkirim ke server.
   bool get pesanBelumTerkirim => _pesanBelumTerkirim;
   bool _pesanBelumTerkirim = false;
-
-  /// Mengirimkan pesan koordinasi penjemputan E-Ticket resmi ke thread pesanan terkait
-  void sendPickupCoordinationMessage(BookingModel booking) {
-    final convKey = 'booking_${booking.id}';
-    final ticketMsgId = 'ticket-coord-${booking.id}';
-
-    final list = _conversations.putIfAbsent(convKey, () => []);
-    final alreadySent = list.any((m) => m.id == ticketMsgId);
-    if (alreadySent) return;
-
-    final driverPhoneSuffix =
-        booking.assignedDriver != null &&
-            booking.assignedDriver!.phoneNumber.isNotEmpty
-        ? ' (HP/WA: ${booking.assignedDriver!.phoneNumber}).'
-        : '.';
-    final driverInfo = booking.withDriver && booking.assignedDriver != null
-        ? 'Staf pengemudi tetap: ${booking.assignedDriver!.driverName}$driverPhoneSuffix'
-        : (booking.withDriver
-              ? 'Staf pengemudi sedang disiapkan oleh tim operasional MobilJuragan.'
-              : 'Pengambilan armada mandiri di ${booking.pickupLocation}. Tim staf kami siap menyambut serah terima kunci.');
-
-    final paymentStatusText = booking.isCodPayment
-        ? 'Metode: Bayar Tunai di Tempat (COD Rp ${_formatRupiah(booking.totalCost)} disiapkan saat serah terima unit).'
-        : 'Metode: Non-Tunai / QRIS (LUNAS Terverifikasi Otomatis).';
-
-    final text =
-        'Halo! E-Ticket resmi untuk reservasi #${booking.id} telah terbit.\n\n'
-        'Armada: ${booking.vehicle.name} (${booking.vehicle.plateNumber})\n'
-        'Jadwal: ${booking.startDate.day}/${booking.startDate.month}/${booking.startDate.year}, ${booking.startTime} (${booking.durationDays} Hari)\n'
-        'Titik Jemput: ${booking.pickupLocation}\n'
-        '$paymentStatusText\n'
-        '$driverInfo\n\n'
-        'Silakan sampaikan catatan titik temu spesifik atau koordinasi langsung penjemputan dengan kami di sini.';
-
-    list.add(
-      ChatMessageModel(
-        id: ticketMsgId,
-        message: text,
-        timestamp: DateTime.now(),
-        isFromUser: false,
-        senderName: 'Customer Service MobilJuragan',
-        isAI: true,
-        conversationKey: convKey,
-      ),
-    );
-    notifyListeners();
-  }
 }
 
 /// Adapter untuk menjaga kompatibilitas pengujian lama yang menyuntikkan AiChatApiService

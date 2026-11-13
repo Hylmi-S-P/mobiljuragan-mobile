@@ -98,7 +98,7 @@ void main() {
       expect(find.text('Tutup riwayat ▲'), findsNothing);
 
       // Tombol koordinasi tim lapangan
-      expect(find.text('Koordinasi Penjemputan via Chat CS'), findsOneWidget);
+      expect(find.text('Chat dengan CS'), findsOneWidget);
 
       // Tombol pembatalan diubah menjadi tautan bantuan elegan, bukan tombol merah mencolok
       expect(find.text('Butuh bantuan pembatalan atau perubahan jadwal? Ajukan di sini'), findsOneWidget);
