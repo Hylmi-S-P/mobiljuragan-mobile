@@ -1,8 +1,33 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobiljuragan_mobile/core/network/api_client.dart';
 import 'package:mobiljuragan_mobile/data/local/database/app_database.dart';
+import 'package:mobiljuragan_mobile/data/local/secure/secure_storage_service.dart';
+import 'package:mobiljuragan_mobile/data/remote/booking_api_service.dart';
 import 'package:mobiljuragan_mobile/data/repositories/booking_repository.dart';
+
+/// Layanan penyimpanan kredensial palsu: hanya menjawab pemilik cache.
+class _PenyimpananPalsu extends SecureStorageService {
+  _PenyimpananPalsu(this.userId);
+
+  final String? userId;
+
+  @override
+  Future<String?> getUserId() async => userId;
+}
+
+/// API palsu yang menolak dengan kode tertentu, meniru akun yang sudah dihapus.
+class _ApiMenolak extends BookingApiService {
+  _ApiMenolak(this.statusCode);
+
+  final int statusCode;
+
+  @override
+  Future<List<dynamic>> fetchBookings() async {
+    throw ApiException('Sesi tidak berlaku', statusCode: statusCode);
+  }
+}
 
 /// Riwayat pesanan harus terikat pada satu akun.
 ///
@@ -71,8 +96,16 @@ void main() {
     repository.setActiveUserForTest('user-A');
     await repository.purgeOtherAccounts();
 
-    final tersisa = await database.bookingDao.getAllBookings();
-    expect(tersisa.map((row) => row.id).toSet(), {'book-a1', 'book-a2'});
+    /* Pembacaan selalu meminta pemiliknya, jadi hasil purge diperiksa dari tiga
+       sudut: milik A utuh, milik B hilang, dan baris tanpa pemilik hilang. */
+    final milikA = await database.bookingDao.getAllBookings(userId: 'user-A');
+    expect(milikA.map((row) => row.id).toSet(), {'book-a1', 'book-a2'});
+
+    final milikB = await database.bookingDao.getAllBookings(userId: 'user-B');
+    expect(milikB, isEmpty);
+
+    final tanpaPemilik = await database.bookingDao.getAllBookings();
+    expect(tanpaPemilik, isEmpty);
   });
 
   test('logout menghapus seluruh cache pesanan', () async {
@@ -99,5 +132,28 @@ void main() {
 
     final riwayatB = await repository.getAllBookings();
     expect(riwayatB.map((b) => b.id), ['book-b1']);
+  });
+
+  test('mode tamu hanya melihat baris tanpa pemilik', () async {
+    repository.setActiveUserForTest(null);
+
+    final riwayatTamu = await repository.getAllBookings();
+    expect(riwayatTamu.map((b) => b.id).toSet(), {'book-legacy'});
+  });
+
+  test('akun yang dihapus di server tidak meninggalkan riwayat di perangkat', () async {
+    final repo = BookingRepository(
+      database.bookingDao,
+      _ApiMenolak(401),
+      _PenyimpananPalsu('user-A'),
+    );
+
+    await repo.syncAllBookingsFromRemote();
+
+    final milikA = await database.bookingDao.getAllBookings(userId: 'user-A');
+    expect(milikA, isEmpty);
+    // Akun lain tidak ikut terhapus hanya karena satu sesi ditolak.
+    final milikB = await database.bookingDao.getAllBookings(userId: 'user-B');
+    expect(milikB.map((row) => row.id), ['book-b1']);
   });
 }

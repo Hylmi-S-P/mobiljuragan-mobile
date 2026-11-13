@@ -53,12 +53,15 @@ class BookingRepository {
 
   /// Memfilter baris Drift milik akun aktif.
   ///
-  /// Saat belum ada sesi (mode tamu), baris yang ada adalah data contoh/kurasi
-  /// yang memang ditampilkan ke pengunjung; bukan riwayat orang lain, karena
-  /// logout selalu mengosongkan cache.
+  /// Saat belum ada sesi (mode tamu), hanya baris **tanpa pemilik** yang boleh
+  /// tampil. Sebelumnya mode tamu mengembalikan seluruh baris, sehingga riwayat
+  /// akun yang sudah dihapus di server tetap terlihat oleh pengunjung yang tidak
+  /// pernah logout.
   List<Booking> _ownedRows(List<Booking> rows) {
     final owner = _userId;
-    if (owner == null) return rows;
+    if (owner == null) {
+      return rows.where((row) => row.userId == null).toList();
+    }
     return rows.where((row) => row.userId == owner).toList();
   }
 
@@ -152,7 +155,7 @@ class BookingRepository {
   ]) async {
     if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
-    final driftList = _ownedRows(await _bookingDao.getAllBookings());
+    final driftList = _ownedRows(await _bookingDao.getAllBookings(userId: _userId));
     return driftList
         .map((entry) {
           final vehicle = _resolveVehicle(
@@ -172,7 +175,7 @@ class BookingRepository {
   ]) async* {
     if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
-    await for (final driftList in _bookingDao.watchAllBookings()) {
+    await for (final driftList in _bookingDao.watchAllBookings(userId: _userId)) {
       yield _ownedRows(driftList)
           .map((entry) {
             final vehicle = _resolveVehicle(
@@ -193,7 +196,7 @@ class BookingRepository {
   ]) async* {
     if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
-    await for (final driftList in _bookingDao.watchActiveBookings()) {
+    await for (final driftList in _bookingDao.watchActiveBookings(userId: _userId)) {
       yield _ownedRows(driftList)
           .map((entry) {
             final vehicle = _resolveVehicle(
@@ -325,32 +328,58 @@ class BookingRepository {
     final map = vehicleMap ?? _defaultVehicleMap;
     try {
       await refreshSession();
+      final owner = _userId;
       final list = await _apiService.fetchBookings();
-      await _bookingDao.clearAllBookings();
-      if (list.isNotEmpty) {
-        final List<BookingModel> synced = [];
-        for (final item in list) {
-          if (item is Map) {
-            final json = Map<String, dynamic>.from(item);
-            final vehicleJson = json['vehicle'] is Map
-                ? Map<String, dynamic>.from(json['vehicle'] as Map)
-                : null;
-            final rawVehicleId =
-                json['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
-            final vehicle = _resolveVehicle(
-              vehicleId: rawVehicleId,
-              vehicleJson: vehicleJson,
-              customMap: map,
-            );
-            if (vehicle == null) continue;
-            final model = BookingModel.fromJson(json, vehicle);
-            await _bookingDao.insertOrUpdateBooking(_owned(model.toCompanion()));
-            synced.add(model);
-          }
-        }
-        return synced;
+
+      /* Mode tamu tidak punya riwayat di server. Jangan menyentuh cache: yang
+         ada di perangkat mungkin milik akun yang sesinya belum terbaca. */
+      if (owner == null) return [];
+
+      /* Baris milik akun lain dibuang lebih dulu, lalu baris milik akun ini
+         yang tidak lagi dikirim server ikut dibuang. Tidak memakai
+         `clearAllBookings()`: cara lama menghapus seluruh tabel, termasuk baris
+         tamu, dan tetap menyisakan riwayat akun yang sudah dihapus di server
+         ketika pengambilan datanya gagal. */
+      await _bookingDao.deleteBookingsNotOwnedBy(owner);
+
+      final List<BookingModel> synced = [];
+      final idsDariServer = <String>{};
+      for (final item in list) {
+        if (item is! Map) continue;
+        final json = Map<String, dynamic>.from(item);
+        final vehicleJson = json['vehicle'] is Map
+            ? Map<String, dynamic>.from(json['vehicle'] as Map)
+            : null;
+        final rawVehicleId =
+            json['vehicleId']?.toString() ?? vehicleJson?['id']?.toString();
+        final vehicle = _resolveVehicle(
+          vehicleId: rawVehicleId,
+          vehicleJson: vehicleJson,
+          customMap: map,
+        );
+        if (vehicle == null) continue;
+        final model = BookingModel.fromJson(json, vehicle);
+        await _bookingDao.insertOrUpdateBooking(_owned(model.toCompanion()));
+        idsDariServer.add(model.id);
+        synced.add(model);
       }
-      return [];
+
+      await _bookingDao.deleteBookingsOwnedByExcept(owner, idsDariServer.toList());
+      return synced;
+    } on ApiException catch (e) {
+      /* Server menyatakan sesi ini tidak berlaku lagi (akun dihapus, token
+         dicabut, atau pengguna tidak ditemukan). Riwayat yang tersimpan di
+         perangkat harus ikut hilang: menampilkannya membuat pengunjung melihat
+         pesanan milik akun yang sudah tidak ada. */
+      final kode = e.statusCode;
+      if (kode == 401 || kode == 403 || kode == 404) {
+        final owner = _userId;
+        if (owner != null) {
+          await _bookingDao.deleteBookingsOwnedBy(owner);
+        } else {
+          await _bookingDao.deleteBookingsWithOwner();
+        }
+      }
     } catch (_) {}
     return [];
   }
@@ -366,7 +395,11 @@ class BookingRepository {
   /// supaya tidak menyamar sebagai riwayat akun yang baru masuk.
   Future<void> purgeOtherAccounts() async {
     final owner = _userId ?? await refreshSession();
-    if (owner == null) return;
+    if (owner == null) {
+      /* Mode tamu: baris ber-pemilik tidak boleh tampil sama sekali. */
+      await _bookingDao.deleteBookingsWithOwner();
+      return;
+    }
     await _bookingDao.deleteBookingsNotOwnedBy(owner);
   }
 
@@ -391,6 +424,16 @@ class BookingRepository {
           pickupLocation: booking.pickupLocation,
           customerRequest: booking.note,
         );
+      } on ApiException catch (e) {
+        /* Server menolak pesanan ini (validasi, kuota, atau bentrok jadwal).
+           Baris lokalnya dibuang: pesanan yang tidak pernah ada di server tidak
+           bisa dibayar maupun dibatalkan, dan hanya membingungkan pelanggan.
+           Kegagalan jaringan tidak masuk ke sini — pesanan tetap disimpan untuk
+           dikirim ulang saat online. */
+        final kode = e.statusCode;
+        if (kode != null && kode >= 400 && kode < 500) {
+          await _bookingDao.deleteBookingById(booking.id);
+        }
       } catch (_) {
         // Offline-first fallback: pesanan tetap tersimpan di database SQLite lokal
       }
