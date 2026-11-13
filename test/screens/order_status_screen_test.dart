@@ -210,6 +210,43 @@ void main() {
       expect(find.textContaining('Wajib dilengkapi sebelum serah terima unit di lokasi'), findsOneWidget);
     });
 
+    testWidgets('Menampilkan sisa waktu unggah dokumen saat tenggat berjalan', (tester) async {
+      final booking = inProgressBooking.copyWith(
+        withDriver: false,
+        status: BookingStatus.menungguPembayaran,
+        documentDeadline: const DocumentDeadline(
+          state: DocumentDeadlineState.berjalan,
+          remainingMs: 90 * 60 * 1000,
+        ),
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: booking));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Sisa waktu unggah dokumen: 1 jam 30 menit'), findsOneWidget);
+    });
+
+    testWidgets('Menampilkan chip jeda tanpa angka saat admin memeriksa dokumen', (tester) async {
+      final booking = inProgressBooking.copyWith(
+        withDriver: false,
+        status: BookingStatus.menungguPembayaran,
+        documentDeadline: const DocumentDeadline(
+          state: DocumentDeadlineState.dijeda,
+          pausedReason: 'Menunggu pemeriksaan admin',
+        ),
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: booking));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Waktu dijeda — Menunggu pemeriksaan admin'),
+        findsOneWidget,
+      );
+      // Tidak boleh ada hitungan mundur saat jamnya berhenti.
+      expect(find.textContaining('Sisa waktu unggah dokumen'), findsNothing);
+    });
+
     testWidgets('Menampilkan kode serah terima dan QR code aktif pada E-Ticket saat pembayaran lunas tanpa banner terkunci', (tester) async {
       final activeLepasKunciBooking = inProgressBooking.copyWith(
         withDriver: false,

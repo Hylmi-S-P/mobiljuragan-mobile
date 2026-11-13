@@ -2206,6 +2206,84 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
+  /* Chip tenggat unggah dokumen.
+
+     Keadaan "dijeda" sengaja tanpa angka: selama admin memeriksa, jamnya
+     memang berhenti, dan angka yang terus turun akan membuat pelanggan
+     mengira pesanannya akan batal padahal tidak. */
+  Widget _buildDocumentDeadlineChip(DocumentDeadline deadline) {
+    if (deadline.isPaused) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.pause_circle_outline, size: 14, color: Color(0xFF475569)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Waktu dijeda — ${deadline.pausedReason ?? 'menunggu pemeriksaan admin'}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF475569),
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final remaining = deadline.remaining;
+    if (remaining == null || remaining.isNegative) {
+      return const SizedBox.shrink();
+    }
+
+    final jam = remaining.inHours;
+    final menit = remaining.inMinutes.remainder(60);
+    final mendesak = remaining.inHours < 1;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: mendesak ? const Color(0xFFFEF3C7) : const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: mendesak ? const Color(0xFFFDE68A) : const Color(0xFFBAE6FD),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            size: 14,
+            color: mendesak ? const Color(0xFFB45309) : const Color(0xFF0369A1),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Sisa waktu unggah dokumen: $jam jam $menit menit',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w600,
+                color: mendesak ? const Color(0xFFB45309) : const Color(0xFF0369A1),
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatRejectionReason(String? reason) {
     if (reason == null || reason.trim().isEmpty) {
       return 'Dokumen yang diunggah belum memenuhi syarat. Mohon periksa kejelasan foto dan kelengkapan berkas.';
@@ -2512,6 +2590,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               height: 1.35,
             ),
           ),
+          /* Tenggat unggah dari server. Saat admin sedang memeriksa, jamnya
+             berhenti — jadi yang ditampilkan chip tanpa angka, bukan hitungan
+             mundur yang seolah terus berjalan. */
+          if (booking.documentDeadline != null &&
+              booking.documentDeadline!.state != DocumentDeadlineState.tidakAda) ...[
+            const SizedBox(height: 10),
+            _buildDocumentDeadlineChip(booking.documentDeadline!),
+          ],
           const SizedBox(height: 12),
 
           // Peringatan Revisi Jika Ditolak Admin (Clean UI)

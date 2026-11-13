@@ -129,6 +129,7 @@ class BookingModel {
   final String? paymentReference;
   final String? documentStatus;
   final String? documentRejectionReason;
+  final DocumentDeadline? documentDeadline;
   final String? paymentStatus;
 
   PaymentMethodType get paymentMethodType =>
@@ -170,6 +171,7 @@ class BookingModel {
     this.paymentReference,
     this.documentStatus,
     this.documentRejectionReason,
+    this.documentDeadline,
     this.paymentStatus,
   }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
 
@@ -378,6 +380,15 @@ class BookingModel {
     final pay = json['payment'];
     final String? payStatus = pay is Map ? pay['status']?.toString() : null;
 
+    /* Tenggat unggah dokumen dihitung server. Aplikasi hanya menampilkan apa
+       yang dikirim: saat berjalan, saat dijeda menunggu pemeriksaan admin, atau
+       tidak ada tenggat sama sekali. Menghitung sendiri di klien membuat jam
+       perangkat yang salah ikut menentukan kapan pesanan batal. */
+    final deadlineJson = json['deadline'];
+    final DocumentDeadline? documentDeadline = deadlineJson is Map
+        ? DocumentDeadline.fromJson(deadlineJson)
+        : null;
+
     return BookingModel(
       id: rawId,
       vehicle: vehicle,
@@ -399,6 +410,7 @@ class BookingModel {
       assignedDriver: assignedDriver,
       documentStatus: docStatus,
       documentRejectionReason: docRejectionReason,
+      documentDeadline: documentDeadline,
       paymentStatus: payStatus,
     );
   }
@@ -553,6 +565,7 @@ class BookingModel {
     String? paymentReference,
     String? documentStatus,
     String? documentRejectionReason,
+    DocumentDeadline? documentDeadline,
     String? paymentStatus,
   }) {
     return BookingModel(
@@ -594,7 +607,55 @@ class BookingModel {
       documentStatus: documentStatus ?? this.documentStatus,
       documentRejectionReason:
           documentRejectionReason ?? this.documentRejectionReason,
+      documentDeadline: documentDeadline ?? this.documentDeadline,
       paymentStatus: paymentStatus ?? this.paymentStatus,
+    );
+  }
+}
+
+/// Keadaan tenggat unggah dokumen menurut server.
+///
+/// Tiga keadaan, bukan satu angka: `berjalan` menghitung mundur, `dijeda`
+/// berarti jam berhenti karena admin sedang memeriksa, dan `tidakAda` berarti
+/// pesanan sudah lewat tahap dokumen. Menampilkan angka saat dijeda akan
+/// menakut-nakuti pelanggan dengan hitungan yang sebenarnya tidak berjalan.
+enum DocumentDeadlineState { berjalan, dijeda, tidakAda }
+
+class DocumentDeadline {
+  const DocumentDeadline({
+    required this.state,
+    this.deadlineAt,
+    this.pausedReason,
+    this.remainingMs,
+  });
+
+  final DocumentDeadlineState state;
+  final DateTime? deadlineAt;
+  final String? pausedReason;
+  final int? remainingMs;
+
+  bool get isRunning => state == DocumentDeadlineState.berjalan;
+  bool get isPaused => state == DocumentDeadlineState.dijeda;
+
+  /// Sisa waktu menurut server, bukan selisih jam perangkat.
+  Duration? get remaining =>
+      remainingMs == null ? null : Duration(milliseconds: remainingMs!);
+
+  factory DocumentDeadline.fromJson(Map<dynamic, dynamic> json) {
+    final rawState = json['state']?.toString().toUpperCase();
+    final state = switch (rawState) {
+      'RUNNING' => DocumentDeadlineState.berjalan,
+      'PAUSED' => DocumentDeadlineState.dijeda,
+      _ => DocumentDeadlineState.tidakAda,
+    };
+
+    return DocumentDeadline(
+      state: state,
+      deadlineAt: DateTime.tryParse(json['deadlineAt']?.toString() ?? '')?.toLocal(),
+      pausedReason: json['pausedReason']?.toString(),
+      remainingMs: json['remainingMs'] is num
+          ? (json['remainingMs'] as num).toInt()
+          : null,
     );
   }
 }
