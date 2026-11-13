@@ -6,7 +6,7 @@ import '../data/remote/ai_api_service.dart';
 import '../data/remote/ai_chat_api_service.dart';
 import '../data/remote/faq_api_service.dart';
 import '../data/remote/ticket_api_service.dart';
-import '../data/remote/ticket_event_stream.dart';
+import '../data/remote/ticket_socket.dart';
 import '../models/booking_model.dart';
 import '../models/faq_model.dart';
 import '../models/support_ticket_model.dart';
@@ -18,7 +18,7 @@ class SupportController extends ChangeNotifier {
   final AiApiService _aiApiService;
 
   /// Pendengar peristiwa tiket. Satu sambungan per tiket yang sedang dibuka.
-  final Map<String, TicketEventStream> _aliranPeristiwa = {};
+  final Map<String, TicketSocket> _aliranPeristiwa = {};
   final List<SupportTicketModel> _tickets = [];
 
   /// Status terakhir yang dilaporkan server per id tiket.
@@ -107,7 +107,7 @@ class SupportController extends ChangeNotifier {
        sambungan lama ditutup lebih dulu supaya tidak menumpuk. */
     _aliranPeristiwa[ticketId]?.berhenti();
 
-    final aliran = TicketEventStream();
+    final aliran = TicketSocket();
     _aliranPeristiwa[ticketId] = aliran;
 
     await aliran.mulai(
