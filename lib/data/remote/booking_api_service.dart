@@ -101,4 +101,33 @@ class BookingApiService {
     }
     return {};
   }
+
+  /// Melengkapi rekening tujuan pengembalian dana setelah pesanan dibatalkan
+  /// (PATCH /api/v1/bookings/:id/refund-account).
+  ///
+  /// Dipakai pelanggan yang membatalkan tanpa mengisi rekening, atau yang ingin
+  /// mengganti rekening selama kantor belum menutup baris pengembaliannya.
+  Future<Map<String, dynamic>> claimRefundAccount({
+    required String bookingId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+  }) async {
+    final response = await _client.patch(
+      '${ApiConstants.bookingsEndpoint}/$bookingId/refund-account',
+      requiresAuth: true,
+      body: {
+        'refundAccount': {
+          'bankName': bankName.trim(),
+          'accountNumber': accountNumber.trim(),
+          'accountHolderName': accountHolderName.trim(),
+        },
+      },
+    );
+
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    return {};
+  }
 }

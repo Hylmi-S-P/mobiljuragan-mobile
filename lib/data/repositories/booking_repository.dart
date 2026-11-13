@@ -476,4 +476,31 @@ class BookingRepository {
       return null;
     }
   }
+
+  /// Mengirim rekening tujuan pengembalian dana untuk pesanan yang sudah batal.
+  ///
+  /// Mengembalikan `null` bila server menolak atau tidak terjangkau, supaya
+  /// pemanggil tidak menampilkan rekening yang sebenarnya belum tersimpan.
+  Future<Map<String, dynamic>?> claimRefundAccountRemote({
+    required String bookingId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+  }) async {
+    try {
+      final res = await _apiService.claimRefundAccount(
+        bookingId: bookingId,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        accountHolderName: accountHolderName,
+      );
+      final refund = res['refund'];
+      if (refund is Map) {
+        return Map<String, dynamic>.from(refund);
+      }
+      return res.isEmpty ? null : res;
+    } catch (_) {
+      return null;
+    }
+  }
 }

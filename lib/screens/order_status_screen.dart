@@ -18,6 +18,7 @@ import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
 import '../models/payment_model.dart';
 import '../services/notification_service.dart';
+import '../widgets/refund_account_form.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
@@ -4508,42 +4509,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Rekening Tujuan: ${booking.cancellationBank ?? "-"} • ${booking.cancellationAccountNumber ?? "-"}',
-                          style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w700, color: Color(0xFF1F2937), fontFamily: 'Inter'),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Atas Nama: ${booking.cancellationAccountName ?? "-"}',
-                          style: const TextStyle(fontSize: AppTypography.sizeTiny, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildRefundAccountBox(booking),
                   const SizedBox(height: 8),
-                  const Row(
-                    children: [
-                      Icon(Icons.schedule, size: 12, color: Color(0xFF0D9488)),
-                      SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Status: Sedang diproses oleh staf finance (Estimasi 1x24 jam kerja).',
-                          style: TextStyle(fontSize: AppTypography.sizeTiny, fontWeight: FontWeight.w500, color: Color(0xFF0F766E), fontFamily: 'Inter'),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildRefundStatusRow(booking),
                 ],
               ),
             ),
@@ -4650,6 +4618,300 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
+  /// Kotak rekening tujuan pengembalian dana pada kartu pesanan yang dibatalkan.
+  ///
+  /// Rekening bisa kosong: pelanggan yang membatalkan lewat versi aplikasi lama
+  /// tidak pernah mengirimnya, dan kantor butuh nomor rekening untuk mentransfer.
+  Widget _buildRefundAccountBox(BookingModel booking) {
+    final bank = booking.cancellationBank?.trim() ?? '';
+    final nomor = booking.cancellationAccountNumber?.trim() ?? '';
+    final pemilik = booking.cancellationAccountName?.trim() ?? '';
+    final adaRekening = bank.isNotEmpty && nomor.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            adaRekening
+                ? 'Rekening Tujuan: $bank • $nomor'
+                : 'Rekening tujuan belum diisi.',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1F2937),
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            adaRekening
+                ? 'Atas Nama: ${pemilik.isEmpty ? "-" : pemilik}'
+                : 'Isi nomor rekening supaya dana bisa ditransfer kantor.',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeTiny,
+              color: AppColors.textSecondary,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Baris keadaan pengembalian dana beserta tombol klaim/ubah rekening.
+  ///
+  /// Rekening dikunci setelah kantor mulai memproses (`DIPROSES`) supaya staf
+  /// tidak mentransfer ke rekening yang berubah di tengah jalan.
+  Widget _buildRefundStatusRow(BookingModel booking) {
+    final status = booking.refundStatus?.toUpperCase();
+    final adaRekening = (booking.cancellationBank?.trim().isNotEmpty ?? false) &&
+        (booking.cancellationAccountNumber?.trim().isNotEmpty ?? false);
+
+    late final String teks;
+    late final Color warna;
+    late final IconData ikon;
+    String? labelTombol;
+
+    if (status == 'SELESAI') {
+      teks = 'Dana sudah ditransfer kantor.';
+      warna = const Color(0xFF15803D);
+      ikon = Icons.check_circle_outline_rounded;
+    } else if (status == 'DIPROSES') {
+      teks = 'Sedang diproses staf kantor. Rekening tidak bisa diubah lagi.';
+      warna = const Color(0xFF0F766E);
+      ikon = Icons.schedule;
+    } else if (adaRekening) {
+      teks = 'Menunggu transfer dari kantor.';
+      warna = const Color(0xFF0F766E);
+      ikon = Icons.schedule;
+      labelTombol = 'Ubah Rekening';
+    } else {
+      teks = 'Lengkapi rekening supaya dana bisa dikembalikan.';
+      warna = const Color(0xFFB45309);
+      ikon = Icons.error_outline_rounded;
+      labelTombol = 'Klaim Pengembalian Dana';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(ikon, size: 12, color: warna),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                teks,
+                style: TextStyle(
+                  fontSize: AppTypography.sizeTiny,
+                  fontWeight: FontWeight.w500,
+                  color: warna,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (labelTombol != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showRefundAccountSheet(context, booking),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primaryTeal,
+                side: const BorderSide(color: AppColors.primaryTeal),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(labelTombol, style: AppTypography.captionBold),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Form klaim/ubah rekening pengembalian dana untuk pesanan yang sudah batal.
+  void _showRefundAccountSheet(BuildContext context, BookingModel booking) {
+    final namaAkun = context.read<AuthController>().currentUser?.name.trim() ?? '';
+    RefundAccountDraft draft = RefundAccountDraft(
+      bankName: booking.cancellationBank ?? '',
+      accountNumber: booking.cancellationAccountNumber ?? '',
+      accountHolderName: booking.cancellationAccountName ?? '',
+    );
+    bool sedangKirim = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.borderSubtle,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Rekening Pengembalian Dana',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeHeading,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Kode Reservasi: ${booking.id}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, color: AppColors.borderSubtle),
+                    const SizedBox(height: 14),
+                    RefundAccountForm(
+                      initialHolderName: namaAkun,
+                      initialBankName: booking.cancellationBank,
+                      initialAccountNumber: booking.cancellationAccountNumber,
+                      initialHolderNameValue: booking.cancellationAccountName,
+                      onChanged: (nilai) {
+                        setModalState(() => draft = nilai);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: sedangKirim
+                                ? null
+                                : () => Navigator.pop(sheetContext),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: const BorderSide(color: AppColors.borderSubtle),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text('Batal', style: AppTypography.bodyStrong),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: sedangKirim
+                                ? null
+                                : () async {
+                                    final galat = validasiRefundAccount(draft);
+                                    if (galat != null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(galat),
+                                          backgroundColor: const Color(0xFFDC2626),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    setModalState(() => sedangKirim = true);
+                                    final berhasil = await context
+                                        .read<BookingController>()
+                                        .claimRefundAccount(
+                                          bookingId: booking.id,
+                                          bankName: draft.bankName,
+                                          accountNumber: draft.accountNumber,
+                                          accountHolderName: draft.accountHolderName,
+                                        );
+                                    if (!sheetContext.mounted) return;
+                                    setModalState(() => sedangKirim = false);
+
+                                    if (!berhasil) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Rekening gagal disimpan. Periksa koneksi, atau pengembalian dana ini sudah ditutup kantor.',
+                                          ),
+                                          backgroundColor: Color(0xFFDC2626),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    Navigator.pop(sheetContext);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        backgroundColor: Color(0xFF16A34A),
+                                        behavior: SnackBarBehavior.floating,
+                                        content: Text(
+                                          'Rekening pengembalian dana tersimpan.',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryTeal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              sedangKirim ? 'Menyimpan...' : 'Simpan Rekening',
+                              style: AppTypography.bodyBold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showCancellationBottomSheet(BuildContext context, BookingModel booking) {
     final isCod = booking.paymentMethodType == PaymentMethodType.tunaiDiTempat;
     final isPaid = !isCod &&
@@ -4668,31 +4930,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
     String selectedReason = 'Perubahan rencana atau jadwal perjalanan';
     final customReasonController = TextEditingController();
-    final accNumberController = TextEditingController();
-    final accNameController = TextEditingController();
 
     /* Rekening tujuan diisi di sini karena hanya pelanggan yang tahu ke mana
-       uangnya harus dikembalikan. Nama pemilik diisi awal dengan nama akun
-       supaya pelanggan tidak perlu mengetik ulang, tetapi tetap bisa diubah
-       bila rekeningnya milik orang lain. */
-    const daftarBank = [
-      'Bank BRI',
-      'Bank BCA',
-      'Bank BNI',
-      'Bank Mandiri',
-      'Bank Papua',
-      'Bank BTN',
-      'Bank Syariah Indonesia',
-      'CIMB Niaga',
-      'Bank Permata',
-      'Bank Danamon',
-    ];
-    String? bankTerpilih;
-    final bankLainController = TextEditingController();
-    bool atasNamaSendiri = true;
-    String hubunganRekening = 'Keluarga';
+       uangnya harus dikembalikan. Isian dan aturannya dipakai bersama dengan
+       form klaim refund lewat `RefundAccountForm`. */
     final namaAkun = context.read<AuthController>().currentUser?.name.trim() ?? '';
-    if (namaAkun.isNotEmpty) accNameController.text = namaAkun;
+    RefundAccountDraft draftRekening = const RefundAccountDraft(
+      bankName: '',
+      accountNumber: '',
+      accountHolderName: '',
+    );
 
     final List<String> reasonOptions = [
       'Perubahan rencana atau jadwal perjalanan',
@@ -4904,112 +5151,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       ),
                       const SizedBox(height: 16),
 
-                      const Text(
-                        'Rekening Tujuan Pengembalian Dana',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: bankTerpilih,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Bank',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        items: [
-                          ...daftarBank.map(
-                            (bank) => DropdownMenuItem(value: bank, child: Text(bank)),
-                          ),
-                          const DropdownMenuItem(value: 'Bank lain', child: Text('Bank lain')),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() => bankTerpilih = value);
+                      RefundAccountForm(
+                        initialHolderName: namaAkun,
+                        onChanged: (draft) {
+                          setModalState(() => draftRekening = draft);
                         },
                       ),
-                      if (bankTerpilih == 'Bank lain') ...[
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          controller: bankLainController,
-                          maxLength: 60,
-                          decoration: InputDecoration(
-                            labelText: 'Nama bank / e-wallet',
-                            hintText: 'Contoh: Bank Sulselbar',
-                            counterText: '',
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: accNumberController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 30,
-                        decoration: InputDecoration(
-                          labelText: 'Nomor Rekening',
-                          hintText: '6–30 angka, tanpa spasi atau tanda hubung',
-                          counterText: '',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: accNameController,
-                        maxLength: 120,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Pemilik Rekening',
-                          hintText: 'Sesuai buku tabungan / identitas',
-                          counterText: '',
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      CheckboxListTile(
-                        value: atasNamaSendiri,
-                        onChanged: (value) {
-                          setModalState(() => atasNamaSendiri = value ?? true);
-                        },
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        dense: true,
-                        title: const Text(
-                          'Rekening atas nama saya sendiri',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ),
-                      if (!atasNamaSendiri) ...[
-                        const SizedBox(height: 4),
-                        DropdownButtonFormField<String>(
-                          initialValue: hubunganRekening,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: 'Hubungan dengan pemilik rekening',
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'Keluarga', child: Text('Keluarga')),
-                            DropdownMenuItem(value: 'Rekan kerja', child: Text('Rekan kerja')),
-                            DropdownMenuItem(value: 'Pihak lain', child: Text('Pihak lain')),
-                          ],
-                          onChanged: (value) {
-                            setModalState(() => hubunganRekening = value ?? 'Keluarga');
-                          },
-                        ),
-                      ],
                       const SizedBox(height: 16),
                     ],
 
@@ -5121,19 +5268,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                   : selectedReason;
 
                               if (isPaid) {
-                                final bankFinal = bankTerpilih == 'Bank lain'
-                                    ? bankLainController.text.trim()
-                                    : (bankTerpilih ?? '');
-                                final nomorRekening = accNumberController.text.trim();
-                                final namaPemilik = accNameController.text.trim();
-                                String? galat;
-                                if (bankFinal.isEmpty) {
-                                  galat = 'Pilih bank tujuan pengembalian dana.';
-                                } else if (!RegExp(r'^\d{6,30}$').hasMatch(nomorRekening)) {
-                                  galat = 'Nomor rekening harus 6–30 angka tanpa spasi.';
-                                } else if (namaPemilik.length < 2) {
-                                  galat = 'Nama pemilik rekening wajib diisi.';
-                                }
+                                final galat = validasiRefundAccount(draftRekening);
                                 if (galat != null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -5147,16 +5282,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
                               Navigator.pop(sheetContext);
 
-                              final bankFinal = bankTerpilih == 'Bank lain'
-                                  ? bankLainController.text.trim()
-                                  : (bankTerpilih ?? '');
                               final controller = context.read<BookingController>();
                               controller.cancelBooking(
                                 bookingId: booking.id,
                                 reason: finalReason,
-                                bankName: isPaid ? bankFinal : null,
-                                accountNumber: isPaid ? accNumberController.text.trim() : null,
-                                accountHolderName: isPaid ? accNameController.text.trim() : null,
+                                bankName: isPaid ? draftRekening.bankName : null,
+                                accountNumber: isPaid ? draftRekening.accountNumber : null,
+                                accountHolderName: isPaid ? draftRekening.accountHolderName : null,
                               );
 
                               // Segera sinkronkan katalog armada agar badge ketersediaan langsung kembali Tersedia

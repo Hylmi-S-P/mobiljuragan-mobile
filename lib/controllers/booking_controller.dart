@@ -515,6 +515,45 @@ class BookingController extends ChangeNotifier {
     }
   }
 
+  /// Melengkapi rekening tujuan pengembalian dana untuk pesanan yang sudah batal.
+  ///
+  /// Mengembalikan `true` hanya bila server menyimpan rekeningnya. Saat server
+  /// menolak (mis. baris sudah ditutup kantor) atau tidak terjangkau, data lokal
+  /// tidak diubah supaya layar tidak menampilkan rekening yang belum tercatat.
+  Future<bool> claimRefundAccount({
+    required String bookingId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+  }) async {
+    final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
+    if (index == -1) return false;
+
+    final hasil = await repository?.claimRefundAccountRemote(
+      bookingId: bookingId,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      accountHolderName: accountHolderName,
+    );
+    if (hasil == null) return false;
+
+    final target = _bookingHistory[index];
+    final updated = target.copyWith(
+      cancellationBank: bankName,
+      cancellationAccountNumber: accountNumber,
+      cancellationAccountName: accountHolderName,
+      refundStatus: hasil['status']?.toString() ?? target.refundStatus,
+    );
+
+    _bookingHistory[index] = updated;
+    if (_activeBooking?.id == bookingId) {
+      _activeBooking = updated;
+    }
+    await repository?.saveBooking(updated);
+    notifyListeners();
+    return true;
+  }
+
   /// Mengatur ulang pesanan aktif agar bernilai 0 / tidak ada
   void clearActiveBooking() {
     _activeBooking = null;

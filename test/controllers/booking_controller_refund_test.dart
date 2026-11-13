@@ -34,6 +34,37 @@ class FakeApiRefund extends BookingApiService {
 
   /// Rekening yang benar-benar sampai ke lapisan API saat pembatalan dikirim.
   Map<String, String?>? rekeningTerkirim;
+
+  /// Rekening yang dikirim lewat jalur klaim setelah pesanan batal.
+  Map<String, String?>? rekeningDiklaim;
+
+  /// Bila diisi, klaim rekening dianggap ditolak server.
+  bool tolakKlaim = false;
+
+  @override
+  Future<Map<String, dynamic>> claimRefundAccount({
+    required String bookingId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+  }) async {
+    rekeningDiklaim = {
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'accountHolderName': accountHolderName,
+    };
+    if (tolakKlaim) {
+      throw Exception('Pengembalian dana sudah ditutup kantor');
+    }
+    return {
+      'refund': {
+        'namaBank': bankName,
+        'nomorRekening': accountNumber,
+        'namaPemilik': accountHolderName,
+        'status': 'MENUNGGU',
+      },
+    };
+  }
 }
 
 void main() {
@@ -215,5 +246,106 @@ void main() {
     expect(hasil.cancellationReason, contains('Rencana keluarga berubah'));
 
     controllerBaru.dispose();
+  });
+
+  test('rekening bisa diklaim setelah pesanan batal dan tersimpan di perangkat',
+      () async {
+    final api = FakeApiRefund(
+      balasan: {
+        'booking': {
+          'id': 'MJ-REFUND-1',
+          'status': 'CANCELLED',
+          'refund': {
+            'totalDibayar': 900000,
+            'potongan': 50000,
+            'nominal': 850000,
+            'dibatalkanOleh': 'PELANGGAN',
+            'status': 'MENUNGGU',
+          },
+        },
+      },
+    );
+    final repository = BookingRepository(database.bookingDao, api);
+    await repository.saveBooking(pesananTerbayar());
+
+    final controller = BookingController(repository: repository);
+    await tungguRiwayat(controller);
+
+    // Pelanggan membatalkan tanpa mengisi rekening (versi aplikasi lama).
+    await controller.cancelBooking(
+      bookingId: 'MJ-REFUND-1',
+      reason: 'Rencana keluarga berubah',
+    );
+
+    final berhasil = await controller.claimRefundAccount(
+      bookingId: 'MJ-REFUND-1',
+      bankName: 'Bank Papua',
+      accountNumber: '9876543210',
+      accountHolderName: 'Yahya Pratama',
+    );
+
+    expect(berhasil, isTrue);
+    expect(api.rekeningDiklaim?['bankName'], equals('Bank Papua'));
+    expect(api.rekeningDiklaim?['accountNumber'], equals('9876543210'));
+
+    /* Riwayat di controller disegarkan oleh stream Drift, jadi tunggu sampai
+       baris hasil tulis ulang benar-benar sampai ke daftar. */
+    for (var i = 0; i < 50; i++) {
+      final baris = controller.bookingHistory
+          .firstWhere((b) => b.id == 'MJ-REFUND-1');
+      if (baris.cancellationBank != null) break;
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+
+    final hasil = controller.bookingHistory
+        .firstWhere((b) => b.id == 'MJ-REFUND-1');
+    expect(hasil.cancellationBank, equals('Bank Papua'));
+    expect(hasil.cancellationAccountNumber, equals('9876543210'));
+    expect(hasil.cancellationAccountName, equals('Yahya Pratama'));
+
+    controller.dispose();
+  });
+
+  test('klaim rekening yang ditolak server tidak mengubah data di perangkat',
+      () async {
+    final api = FakeApiRefund(
+      balasan: {
+        'booking': {
+          'id': 'MJ-REFUND-1',
+          'status': 'CANCELLED',
+          'refund': {
+            'totalDibayar': 900000,
+            'potongan': 50000,
+            'nominal': 850000,
+            'dibatalkanOleh': 'PELANGGAN',
+            'status': 'SELESAI',
+          },
+        },
+      },
+    )..tolakKlaim = true;
+    final repository = BookingRepository(database.bookingDao, api);
+    await repository.saveBooking(pesananTerbayar());
+
+    final controller = BookingController(repository: repository);
+    await tungguRiwayat(controller);
+
+    await controller.cancelBooking(
+      bookingId: 'MJ-REFUND-1',
+      reason: 'Rencana keluarga berubah',
+    );
+
+    final berhasil = await controller.claimRefundAccount(
+      bookingId: 'MJ-REFUND-1',
+      bankName: 'Bank BRI',
+      accountNumber: '111222333',
+      accountHolderName: 'Yahya Pratama',
+    );
+
+    expect(berhasil, isFalse);
+    final hasil = controller.bookingHistory
+        .firstWhere((b) => b.id == 'MJ-REFUND-1');
+    expect(hasil.cancellationBank, isNull);
+
+    controller.dispose();
   });
 }
