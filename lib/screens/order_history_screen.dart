@@ -9,6 +9,7 @@ import 'date_time_screen.dart';
 import 'order_status_screen.dart';
 import '../theme/app_typography.dart';
 import '../widgets/gambar_kendaraan.dart';
+import '../widgets/refund_account_form.dart';
 
 /// Layar Riwayat Pesanan (Frame 08)
 /// Menampilkan daftar pesanan berjalan dan riwayat selesai dengan segmented tab switcher
@@ -489,6 +490,16 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               fontFamily: 'Inter',
                             ),
                           ),
+                        ],
+                        /* Rekening dan status pengembalian dana ditampilkan di
+                           sini juga supaya pelanggan yang dulu membatalkan tanpa
+                           mengisi rekening bisa melengkapinya dari riwayat. */
+                        if (booking.refundStatus != null ||
+                            (booking.cancellationBank?.isNotEmpty ?? false)) ...[
+                          const SizedBox(height: 8),
+                          kotakRekeningRefund(booking),
+                          const SizedBox(height: 6),
+                          barisStatusRefund(context, booking),
                         ],
                       ],
                     ),
