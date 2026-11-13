@@ -437,5 +437,23 @@ void main() {
       expect(tiket, isNull);
       expect(controller.tickets.any((t) => t.id == 'tck-booking-1'), isFalse);
     });
+
+    test('tiket pesanan membawa kode pesanan yang bisa dibaca pelanggan', () {
+      final tiket = SupportTicketModel.fromJson({
+        'id': 'tck-1',
+        'ticketNumber': 'TKT-20261114-0001',
+        'title': 'Bantuan pesanan MJ-20261114-AAAA',
+        'category': 'GENERAL',
+        'description': 'Percakapan bantuan untuk pesanan MJ-20261114-AAAA.',
+        'status': 'OPEN',
+        'handledBy': 'AI',
+        'bookingId': 'booking-1',
+        'booking': {'id': 'booking-1', 'bookingCode': 'MJ-20261114-AAAA', 'status': 'CONFIRMED'},
+        'createdAt': '2026-11-14T05:00:00.000Z',
+      });
+
+      expect(tiket.bookingId, equals('booking-1'));
+      expect(tiket.bookingCode, equals('MJ-20261114-AAAA'));
+    });
   });
 }
