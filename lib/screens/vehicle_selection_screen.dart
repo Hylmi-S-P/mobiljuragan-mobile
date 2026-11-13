@@ -31,12 +31,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
       if (mounted) {
         context.read<VehicleController>().refreshCatalog(force: true);
       }
-      final currentVehicle = context.read<BookingController>().selectedVehicle;
-      if (currentVehicle != null && mounted) {
-        setState(() {
-          _selectedVehicleId = currentVehicle.id;
-        });
-      }
     });
   }
 
@@ -177,17 +171,13 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     List<VehicleModel> semua,
   ) {
     final id = _selectedVehicleId;
-    if (id != null) {
-      for (final kendaraan in tersaring) {
-        if (kendaraan.id == id) return kendaraan;
-      }
-      for (final kendaraan in semua) {
-        if (kendaraan.id == id) return kendaraan;
-      }
+    if (id == null) return null;
+    for (final kendaraan in tersaring) {
+      if (kendaraan.id == id) return kendaraan;
     }
-
-    if (tersaring.isNotEmpty) return tersaring.first;
-    if (semua.isNotEmpty) return semua.first;
+    for (final kendaraan in semua) {
+      if (kendaraan.id == id) return kendaraan;
+    }
     return null;
   }
 

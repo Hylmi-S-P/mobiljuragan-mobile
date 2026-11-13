@@ -248,7 +248,7 @@ void main() {
      * Sekarang isinya hanya berasal dari backend, jadi pengujian menyuntikkan
      * armadanya sendiri.
      */
-    testWidgets('Tombol sticky CTA menampilkan unit pertama saat katalog berisi', (tester) async {
+    testWidgets('Tombol sticky CTA baru muncul setelah pelanggan memilih unit', (tester) async {
       final vehicleController = VehicleController();
       vehicleController.updateVehicles(armadaUji);
 
@@ -264,6 +264,15 @@ void main() {
         ),
       );
 
+      await tester.pumpAndSettle();
+
+      /* Katalog tidak lagi memilih unit pertama diam-diam: tombol "Lanjutkan"
+         hanya muncul setelah pelanggan mengetuk salah satu kartu. Sebelumnya
+         tombol itu sudah menunjuk satu mobil saat layar dibuka, sehingga
+         pelanggan bisa lanjut tanpa pernah memilih. */
+      expect(find.textContaining('Lanjutkan:'), findsNothing);
+
+      await tester.tap(find.text(armadaUji.first.name).first);
       await tester.pumpAndSettle();
 
       expect(

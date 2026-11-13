@@ -168,9 +168,14 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Bulan & Navigasi Kalender
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          /* Wrap, bukan Row: pada layar 320–360dp chip "Pilih tanggal selesai"
+             tidak muat sebaris dengan navigasi bulan dan dulu meluber keluar
+             kartu. Wrap memindahkannya ke baris berikutnya apa adanya. */
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -631,24 +636,35 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     const SizedBox(height: 20),
 
                     // Tombol Konfirmasi
+                    /* Roda jam bawaan Cupertino tidak bisa dibatasi ke rentang
+                       tertentu, jadi jam di luar operasional tetap bisa digeser.
+                       Yang dilakukan: tombol terapkan dimatikan dan alasannya
+                       ditulis di atasnya, bukan membiarkan pelanggan menekan
+                       lalu ditolak SnackBar. */
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(sheetContext).pop(tempTime);
-                        },
+                        onPressed: isOperational
+                            ? () {
+                                Navigator.of(sheetContext).pop(tempTime);
+                              }
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryNavy,
                           foregroundColor: AppColors.textWhite,
+                          disabledBackgroundColor: AppColors.borderSubtle,
+                          disabledForegroundColor: AppColors.textSecondary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Terapkan Jam Sewa',
-                          style: TextStyle(
+                        child: Text(
+                          isOperational
+                              ? 'Terapkan Jam Sewa'
+                              : 'Pilih jam 06.00 - 22.00 WIT',
+                          style: const TextStyle(
                             fontSize: AppTypography.sizeBodyLarge,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'Inter',
