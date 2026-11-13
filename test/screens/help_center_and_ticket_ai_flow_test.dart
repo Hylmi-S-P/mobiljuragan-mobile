@@ -144,7 +144,10 @@ void main() {
 
       // Memastikan kartu Buat Tiket Bantuan ada
       expect(find.text('Buat Tiket Bantuan'), findsOneWidget);
-      expect(find.text('Respon AI'), findsOneWidget);
+      // Badge "Respon AI" sengaja dihapus: pelanggan tidak perlu tahu siapa
+      // yang menjawab lebih dulu, dan label itu membuat tiket terasa otomatis
+      // padahal staf tetap bisa mengambil alih.
+      expect(find.text('Respon AI'), findsNothing);
 
       // Memastikan aksi lama Tanya Cepat tidak ada
       expect(find.text('Tanya Cepat'), findsNothing);

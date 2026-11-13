@@ -305,24 +305,6 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           fontFamily: 'Inter',
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
-                        ),
-                        child: const Text(
-                          'Respon AI',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1D4ED8),
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 3),

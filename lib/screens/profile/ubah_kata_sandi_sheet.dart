@@ -43,6 +43,7 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
   final _ulangiController = TextEditingController();
 
   bool _obscure = true;
+  bool _obscureLama = true;
   bool _isLoading = false;
   bool _baruTersentuh = false;
 
@@ -172,12 +173,23 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _lamaController,
-                obscureText: true,
+                obscureText: _obscureLama,
                 autocorrect: false,
                 enableSuggestions: false,
                 autofillHints: const [AutofillHints.password],
                 style: _gayaIsi,
-                decoration: _dekorasi('Kata sandi saat ini'),
+                decoration: _dekorasi(
+                  'Kata sandi saat ini',
+                  suffix: IconButton(
+                    onPressed: () => setState(() => _obscureLama = !_obscureLama),
+                    icon: Icon(
+                      _obscureLama ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                    tooltip: _obscureLama ? 'Tampilkan kata sandi' : 'Sembunyikan kata sandi',
+                  ),
+                ),
                 validator: (val) {
                   if (val == null || val.isEmpty) {
                     return 'Kata sandi saat ini wajib diisi.';
