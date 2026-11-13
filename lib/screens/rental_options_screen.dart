@@ -59,6 +59,135 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
     _loadPickupPoints();
   }
 
+  /// Titik bawaan saat mode sewa berubah.
+  ///
+  /// Lepas kunci diambil di kantor; dengan sopir dijemput di bandara. Titik
+  /// yang dipilih sendiri oleh pelanggan (hotel, alamat bebas, atau hasil
+  /// ketukan peta) TIDAK ditimpa — titik jemput adalah keputusan pelanggan,
+  /// bukan efek samping pergantian mode. Yang diganti hanya titik bawaan mode
+  /// sebelumnya.
+  void _pilihTitikBawaan(BookingController booking, {required bool denganSopir}) {
+    const bawaanLepasKunci = 'Kantor MobilJuragan';
+    const bawaanDenganSopir = 'Bandara Mopah Merauke';
+    final sekarang = booking.pickupLocation.trim();
+    final masihBawaan =
+        sekarang == bawaanLepasKunci || sekarang == bawaanDenganSopir;
+    if (!masihBawaan) return;
+
+    final idBawaan = denganSopir ? 'bandara-mopah' : 'kantor-mobiljuragan';
+    final cocok = _pickupPoints.where((p) => p.id == idBawaan).toList();
+    if (cocok.isNotEmpty) {
+      final titik = cocok.first;
+      booking.setPickupLocation(titik.label, titik.latitude, titik.longitude);
+      return;
+    }
+
+    if (denganSopir) {
+      booking.setPickupLocation(bawaanDenganSopir, -8.5202, 140.4180);
+    } else {
+      booking.setPickupLocation(bawaanLepasKunci, -8.4905, 140.3995);
+    }
+  }
+
+  /// Membuka peta penuh supaya pelanggan mengetuk sendiri titik jemputnya.
+  ///
+  /// Dipakai chip "Titik Lain": sebelumnya chip itu menyetel koordinat tetap di
+  /// pusat kota dengan nama generik, sehingga titik yang terlihat di peta bukan
+  /// titik yang dipilih pelanggan.
+  Future<void> _bukaPetaTitikBebas(BookingController booking) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.cardWhite,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: AppColors.primaryNavy,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_location_alt_outlined,
+                          size: 20, color: AppColors.primaryTeal),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Pilih Titik di Peta',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBodyLarge,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close, size: 20, color: Colors.white),
+                        tooltip: 'Tutup',
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: MeraukeLocationMapPicker(
+                    selectedLocationName: booking.pickupLocation,
+                    selectedCoordinates: (booking.pickupLatitude != null &&
+                            booking.pickupLongitude != null)
+                        ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
+                        : null,
+                    isWithDriver: true,
+                    mapHeight: 320,
+                    showCardContainer: false,
+                    showFullscreenButton: false,
+                    showOverlayBanner: false,
+                    onCustomCoordinateSelected: (customName, coords) {
+                      booking.setPickupLocation(
+                        customName,
+                        coords.latitude,
+                        coords.longitude,
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryTeal,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text(
+                        'Pakai Titik Ini',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _loadPickupPoints() async {
     try {
       final points = await _pickupPointApiService.fetchPickupPoints();
@@ -163,9 +292,12 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         // Opsi 1: Lepas Kunci
         InkWell(
           onTap: () {
+            final berubah = booking.withDriver;
             booking.toggleDriver(false);
-            // Default titik serah terima lepas kunci: Kantor MobilJuragan (gratis)
-            booking.setPickupLocation('Kantor MobilJuragan', -8.4905, 140.3995);
+            /* Titik hanya diganti ketika modenya benar-benar berubah. Sebelumnya
+               setiap ketukan menyetel ulang ke kantor, sehingga titik yang sudah
+               dipilih pelanggan di peta terhapus tanpa peringatan. */
+            if (berubah) _pilihTitikBawaan(booking, denganSopir: false);
           },
           borderRadius: BorderRadius.circular(14),
           child: Container(
@@ -270,9 +402,9 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
         // Opsi 2: Dengan Sopir Lokal
         InkWell(
           onTap: () {
+            final berubah = !booking.withDriver;
             booking.toggleDriver(true);
-            // Default titik penjemputan dengan sopir: Bandara Mopah Merauke
-            booking.setPickupLocation('Bandara Mopah Merauke', -8.5202, 140.4180);
+            if (berubah) _pilihTitikBawaan(booking, denganSopir: true);
           },
           borderRadius: BorderRadius.circular(14),
           child: Container(
@@ -510,6 +642,13 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
+                        if (isCustom) {
+                          /* "Titik Lain" bukan tempat, jadi tidak boleh
+                             menyetel koordinat tetap: pelanggan harus memilih
+                             sendiri di peta. */
+                          _bukaPetaTitikBebas(booking);
+                          return;
+                        }
                         booking.setPickupLocation(name, coords.latitude, coords.longitude);
                       },
                       borderRadius: BorderRadius.circular(20),

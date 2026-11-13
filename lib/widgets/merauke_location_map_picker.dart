@@ -139,6 +139,18 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
     }
   }
 
+  /// Nama cadangan saat geocoding tidak menghasilkan apa pun.
+  ///
+  /// Permintaan yang tersusul ketukan berikutnya selesai dengan `null`, dan
+  /// dulu pemanggil berhenti di situ sehingga label tertinggal di
+  /// "Memuat nama lokasi...". Koordinat selalu bisa ditampilkan, jadi lebih
+  /// baik menyebut titiknya daripada menggantung.
+  String _namaCadangan(LatLng coords) {
+    final lat = coords.latitude.toStringAsFixed(4);
+    final lng = coords.longitude.toStringAsFixed(4);
+    return 'Titik peta ($lat, $lng)';
+  }
+
   LatLng _findMatchingCoordinates(String name) {
     for (final preset in MeraukeLocationPreset.standardPresets) {
       if (preset.name.toLowerCase().contains(name.toLowerCase()) ||
@@ -201,8 +213,11 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
     // untuk mendapatkan nama lokasinya.
     widget.onCustomCoordinateSelected?.call('Memuat nama lokasi...', coords);
     final resolvedName = await MeraukeGeocodingService.resolveLocationNameDebounced(coords);
-    if (mounted && resolvedName != null) {
-      widget.onCustomCoordinateSelected?.call(resolvedName, coords);
+    if (mounted) {
+      widget.onCustomCoordinateSelected?.call(
+        resolvedName ?? _namaCadangan(coords),
+        coords,
+      );
     }
   }
 
@@ -577,9 +592,9 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                       point,
                     );
                     final resolvedLocation = await MeraukeGeocodingService.resolveLocationNameDebounced(point);
-                    if (mounted && resolvedLocation != null) {
+                    if (mounted) {
                       widget.onCustomCoordinateSelected!(
-                        resolvedLocation,
+                        resolvedLocation ?? _namaCadangan(point),
                         point,
                       );
                     }
@@ -838,10 +853,10 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                     point,
                                   );
                                   final resolvedLocation = await MeraukeGeocodingService.resolveLocationNameDebounced(point);
-                                  if (mounted && resolvedLocation != null) {
+                                  if (mounted) {
                                     setDialogState(() {});
                                     widget.onCustomCoordinateSelected!(
-                                      resolvedLocation,
+                                      resolvedLocation ?? _namaCadangan(point),
                                       point,
                                     );
                                   }
