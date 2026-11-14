@@ -22,8 +22,15 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Inisialisasi layanan notifikasi sistem perangkat
-  await NotificationService().init();
+  /* 1. Inisialisasi layanan notifikasi sistem perangkat.
+     Notifikasi hanya pelengkap: kegagalannya tidak boleh menghalangi aplikasi
+     dibuka, jadi galat ditelan di sini juga (init() sendiri sudah menangkap,
+     ini jaring kedua kalau kegagalan terjadi di luar jangkauannya). */
+  try {
+    await NotificationService().init();
+  } catch (galat) {
+    debugPrint('Notifikasi perangkat tidak aktif: $galat');
+  }
 
   // 2. Inisialisasi tier penyimpanan pengaturan (SharedPreferences)
   final settingsService = await AppSettingsService.create();

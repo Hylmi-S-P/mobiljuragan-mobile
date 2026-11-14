@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Layanan notifikasi lokal perangkat (System Notification)
@@ -10,7 +11,11 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
 
-  /// Inisialisasi plugin notifikasi dan permission handler
+  /// Inisialisasi plugin notifikasi dan permission handler.
+  ///
+  /// Kegagalan di sini tidak boleh menghentikan aplikasi: notifikasi hanya
+  /// pelengkap, sementara pesanan, pembayaran, dan chat tetap harus bisa
+  /// dipakai. Karena itu galat ditangkap dan dicatat, bukan dilempar.
   Future<void> init() async {
     if (_isInitialized) return;
 
@@ -26,16 +31,22 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _notificationsPlugin.initialize(settings: initSettings);
+    try {
+      await _notificationsPlugin.initialize(settings: initSettings);
 
-    // Meminta izin notifikasi untuk Android 13+ (TIRAMISU ke atas)
-    final androidImplementation = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImplementation != null) {
-      await androidImplementation.requestNotificationsPermission();
+      // Meminta izin notifikasi untuk Android 13+ (TIRAMISU ke atas)
+      final androidImplementation = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImplementation != null) {
+        await androidImplementation.requestNotificationsPermission();
+      }
+
+      _isInitialized = true;
+    } catch (galat) {
+      /* Dibiarkan mati: setiap pemanggil show* memeriksa _isInitialized setelah
+         init(), jadi aplikasi berjalan tanpa notifikasi alih-alih gagal buka. */
+      debugPrint('Notifikasi perangkat tidak aktif: $galat');
     }
-
-    _isInitialized = true;
   }
 
   /// Menampilkan notifikasi native saat tarif final terbit dari admin
@@ -45,6 +56,8 @@ class NotificationService {
     required int totalCost,
   }) async {
     await init();
+    // Tanpa plugin yang siap, memanggil show() akan melempar galat.
+    if (!_isInitialized) return;
 
     const androidDetails = AndroidNotificationDetails(
       'mobiljuragan_order_status',
@@ -84,6 +97,8 @@ class NotificationService {
     required String vehicleName,
   }) async {
     await init();
+    // Tanpa plugin yang siap, memanggil show() akan melempar galat.
+    if (!_isInitialized) return;
 
     const androidDetails = AndroidNotificationDetails(
       'mobiljuragan_order_status',
@@ -122,6 +137,8 @@ class NotificationService {
     String? reason,
   }) async {
     await init();
+    // Tanpa plugin yang siap, memanggil show() akan melempar galat.
+    if (!_isInitialized) return;
 
     const androidDetails = AndroidNotificationDetails(
       'mobiljuragan_order_status',
