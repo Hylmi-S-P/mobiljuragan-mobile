@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 
+import '../core/config/app_config_store.dart';
+import '../core/util/rental_duration.dart';
 import '../data/local/database/app_database.dart';
 import 'vehicle_model.dart';
 
@@ -375,7 +377,7 @@ class BookingModel {
     final end =
         DateTime.tryParse(json['endDateTime']?.toString() ?? '')?.toLocal() ??
         start.add(const Duration(days: 1));
-    final duration = end.difference(start).inDays;
+    final duration = hitungHariSewa(start, end);
     final withDriver = json['rentalType'] == 'WITH_DRIVER';
 
     final rawStatus = json['status']?.toString() ?? 'CREATED';
@@ -530,8 +532,13 @@ class BookingModel {
   /// Subtotal sewa unit mobil
   int get vehicleSubtotal => dailyRate * durationDays;
 
-  /// Subtotal biaya jasa pengemudi di Merauke
-  int get driverSubtotal => withDriver ? (150000 * durationDays) : 0;
+  /// Subtotal biaya jasa pengemudi di Merauke.
+  ///
+  /// Tarif per hari dibaca dari backend (`GET /config`), bukan dikarang di
+  /// aplikasi: kalau admin mengubah tarif, layar pelanggan harus ikut berubah
+  /// supaya perkiraan di aplikasi sama dengan tagihan server.
+  int get driverSubtotal =>
+      withDriver ? (AppConfigStore.driverDailyRate * durationDays) : 0;
 
   /// Label mode sewa
   String get modeLabel => withDriver ? 'Dengan Sopir' : 'Lepas Kunci';

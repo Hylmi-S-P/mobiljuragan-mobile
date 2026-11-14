@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
+import '../core/config/app_config_store.dart';
 import '../core/network/pickup_point_api_service.dart';
 import '../data/remote/document_api_service.dart';
 import '../models/vehicle_model.dart';
@@ -469,7 +470,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '+Rp ${_formatRupiah(BookingController.driverCostPerDay)} / hari',
+                              '+Rp ${_formatRupiah(AppConfigStore.driverDailyRate)} / hari',
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeTiny,
                                 fontWeight: FontWeight.w700,

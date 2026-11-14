@@ -6,6 +6,8 @@ import 'controllers/auth_controller.dart';
 import 'controllers/booking_controller.dart';
 import 'controllers/support_controller.dart';
 import 'controllers/vehicle_controller.dart';
+import 'core/config/app_config_store.dart';
+import 'core/network/app_config_api_service.dart';
 import 'data/local/database/app_database.dart';
 import 'data/local/preferences/app_settings_service.dart';
 import 'data/local/secure/secure_storage_service.dart';
@@ -31,6 +33,16 @@ void main() async {
 
   // 4. Inisialisasi tier penyimpanan terstruktur lokal (Drift SQLite)
   final appDatabase = AppDatabase();
+
+  /* Pengaturan publik (tarif jasa supir, jam operasional) dibaca dari backend.
+     Kegagalan diabaikan: aplikasi tetap bisa dibuka dengan nilai cadangan, dan
+     tagihan tetap dihitung server. */
+  try {
+    final konfigurasi = await AppConfigApiService().fetchConfig();
+    AppConfigStore.terapkan(konfigurasi);
+  } catch (_) {
+    AppConfigStore.reset();
+  }
 
   // 5. Inisialisasi lapisan Repository Offline-First
   final vehicleRepo = VehicleRepository(

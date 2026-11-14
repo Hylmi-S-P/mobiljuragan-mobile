@@ -1758,17 +1758,31 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
-                    const SizedBox(height: 6),
-                    _buildTariffRow(
-                      'Layanan Sopir (${booking.durationDays} Hari)',
-                      booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
-                    ),
-                    if (booking.serviceFee > 0) ...[
+                    /* Saat tarif belum ditetapkan admin, yang ditampilkan hanya
+                       satu angka perkiraan. Rincian per komponen baru punya arti
+                       setelah admin mengonfirmasi tarif resmi. */
+                    if (!booking.isFinalTariffConfirmed) ...[
+                      const Text(
+                        'Perkiraan dari katalog. Rincian resmi muncul setelah admin menetapkan tarif.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ] else ...[
+                      _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
                       const SizedBox(height: 6),
-                      _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
+                      _buildTariffRow(
+                        'Layanan Sopir (${booking.durationDays} Hari)',
+                        booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
+                      ),
+                      if (booking.serviceFee > 0) ...[
+                        const SizedBox(height: 6),
+                        _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
+                      ],
+                      _buildTariffGapRow(booking),
                     ],
-                    _buildTariffGapRow(booking),
 
                     // Penyesuaian Biaya Operasional jika ada
                     if (booking.adminAdjustments.isNotEmpty) ...[

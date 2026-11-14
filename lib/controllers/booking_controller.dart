@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/config/app_config_store.dart';
 import '../data/remote/booking_api_service.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
@@ -28,8 +29,9 @@ class BookingController extends ChangeNotifier {
   String _customerNote = '';
   bool _agreementChecked = true;
 
-  // Tarif layanan tetap sistem operasional MobilJuragan
-  static const int driverCostPerDay = 150000;
+  // Tarif layanan sistem operasional MobilJuragan. Tarif jasa supir tidak lagi
+  // dikonstankan di sini: nilainya dibaca dari backend (`GET /config`) lewat
+  // `AppConfigStore` supaya sama dengan yang dipakai server saat menagih.
   static const int standardServiceFee = 0;
 
   // Status pesanan aktif dan daftar riwayat pesanan
@@ -232,7 +234,7 @@ class BookingController extends ChangeNotifier {
   int get dailyRate => _selectedVehicle?.pricePerDay ?? 400000;
   int get vehicleSubtotal => dailyRate * _durationDays;
   int get driverSubtotal =>
-      _withDriver ? (driverCostPerDay * _durationDays) : 0;
+      _withDriver ? (AppConfigStore.driverDailyRate * _durationDays) : 0;
   int get serviceFee => standardServiceFee;
   int get totalCalculatedCost => vehicleSubtotal + driverSubtotal + serviceFee;
   int get totalEstimatedCost => totalCalculatedCost;

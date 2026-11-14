@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../core/network/api_client.dart';
+import '../../core/util/rental_duration.dart';
 import '../../models/booking_model.dart';
 import '../../models/vehicle_model.dart';
 import '../local/database/app_database.dart';
@@ -223,14 +224,18 @@ class BookingRepository {
     double? pickupLongitude,
     String? note,
   }) async {
-    final end = startDate.add(
+    /* Jam yang dipilih pelanggan ikut dikirim. Sebelumnya hanya tanggalnya yang
+       dipakai, sehingga pesanan selalu tercatat mulai tengah malam dan jam yang
+       tampil di layar tinjauan tidak pernah berlaku. */
+    final mulai = gabungTanggalDanJam(startDate, startTime);
+    final end = mulai.add(
       Duration(days: durationDays > 0 ? durationDays : 1),
     );
 
     try {
       final res = await _apiService.createBooking(
         vehicleId: vehicle.id,
-        startDateTime: startDate,
+        startDateTime: mulai,
         endDateTime: end,
         withDriver: withDriver,
         pickupLocation: pickupLocation,
