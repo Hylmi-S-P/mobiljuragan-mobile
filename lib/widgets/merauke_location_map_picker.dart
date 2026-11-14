@@ -102,6 +102,16 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
   bool _isSearching = false;
   bool _isLocating = false;
 
+  /// Nama yang ditampilkan di peta penuh.
+  ///
+  /// Peta penuh hidup di rute dialog tersendiri, jadi ia hanya ikut berubah
+  /// saat [setDialogState] dipanggil. Kalau labelnya dibaca langsung dari
+  /// `widget.selectedLocationName`, urutan pembangunan ulang induk dan dialog
+  /// bisa membuat dialog menampilkan "Memuat nama lokasi..." selamanya.
+  /// Menyimpan nama di sini membuat dialog selalu menampilkan nilai terakhir
+  /// yang benar-benar diketuk pengguna.
+  String? _namaDialog;
+
   @override
   void initState() {
     super.initState();
@@ -771,6 +781,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
   }
 
   void _openFullScreenMap(BuildContext context) {
+    _namaDialog = null;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -847,18 +858,14 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                   setState(() {
                                     _currentCenter = point;
                                   });
+                                  _namaDialog = 'Memuat nama lokasi...';
+                                  widget.onCustomCoordinateSelected!(_namaDialog!, point);
                                   setDialogState(() {});
-                                  widget.onCustomCoordinateSelected!(
-                                    'Memuat nama lokasi...',
-                                    point,
-                                  );
                                   final resolvedLocation = await MeraukeGeocodingService.resolveLocationNameDebounced(point);
                                   if (mounted) {
+                                    _namaDialog = resolvedLocation ?? _namaCadangan(point);
+                                    widget.onCustomCoordinateSelected!(_namaDialog!, point);
                                     setDialogState(() {});
-                                    widget.onCustomCoordinateSelected!(
-                                      resolvedLocation ?? _namaCadangan(point),
-                                      point,
-                                    );
                                   }
                                 }
                               },
@@ -892,7 +899,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                             ],
                                           ),
                                           child: Text(
-                                            widget.selectedLocationName,
+                                            _namaDialog ?? widget.selectedLocationName,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
@@ -960,7 +967,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              widget.selectedLocationName,
+                              _namaDialog ?? widget.selectedLocationName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(

@@ -121,24 +121,27 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.all(12),
-                  child: MeraukeLocationMapPicker(
-                    selectedLocationName: booking.pickupLocation,
-                    selectedCoordinates: (booking.pickupLatitude != null &&
-                            booking.pickupLongitude != null)
-                        ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
-                        : null,
-                    isWithDriver: true,
-                    mapHeight: 320,
-                    showCardContainer: false,
-                    showFullscreenButton: false,
-                    showOverlayBanner: false,
-                    onCustomCoordinateSelected: (customName, coords) {
-                      booking.setPickupLocation(
-                        customName,
-                        coords.latitude,
-                        coords.longitude,
-                      );
-                    },
+                  child: ListenableBuilder(
+                    listenable: booking,
+                    builder: (context, _) => MeraukeLocationMapPicker(
+                      selectedLocationName: booking.pickupLocation,
+                      selectedCoordinates: (booking.pickupLatitude != null &&
+                              booking.pickupLongitude != null)
+                          ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
+                          : null,
+                      isWithDriver: true,
+                      mapHeight: 320,
+                      showCardContainer: false,
+                      showFullscreenButton: false,
+                      showOverlayBanner: false,
+                      onCustomCoordinateSelected: (customName, coords) {
+                        booking.setPickupLocation(
+                          customName,
+                          coords.latitude,
+                          coords.longitude,
+                        );
+                      },
+                    ),
                   ),
                 ),
                 Padding(
