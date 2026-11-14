@@ -389,8 +389,9 @@ class BookingController extends ChangeNotifier {
     return false;
   }
 
-  /// Memproses pelunasan pembayaran online (QRIS / Virtual Account simulasi otomatis)
-  /// Status beralih ke mobilSiapDigunakan dengan bukti referensi transaksi dan E-Ticket resmi
+  /// Mencatat tagihan sudah dibayar pada salinan lokal setelah bukti transfer
+  /// terkirim, supaya layar langsung menampilkan keadaan menunggu verifikasi
+  /// tanpa menunggu sinkronisasi. Status sebenarnya tetap ditentukan server.
   void completeOnlinePayment({
     required String bookingId,
     required PaymentMethodType paymentMethod,

@@ -719,9 +719,9 @@ class SupportController extends ChangeNotifier {
   /// Menandai satu sesi tiket sebagai tertutup.
   ///
   /// Dipakai layar saat status tiket berubah menjadi ditutup (lewat tombol
-  /// "Teratasi", event SSE, atau muat ulang riwayat) supaya penguncian input di
-  /// UI punya satu sumber kebenaran di controller, bukan disimpulkan ulang di
-  /// setiap widget.
+  /// "Teratasi", peristiwa WebSocket, atau muat ulang riwayat) supaya penguncian
+  /// input di UI punya satu sumber kebenaran di controller, bukan disimpulkan
+  /// ulang di setiap widget.
   void tandaiTiketTertutup(String conversationKey) {
     _tiketTertutup[conversationKey] = true;
     notifyListeners();

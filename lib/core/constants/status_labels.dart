@@ -23,10 +23,10 @@ enum VehicleAvailability {
   tidakTersedia,
 }
 
-/// Menentukan status dari tag yang tersimpan (termasuk data lama).
+/// Menentukan status dari tag yang tersimpan.
 ///
-/// Label lama (ejaan sebelum revisi) tetap dikenali supaya cache lokal dari
-/// versi sebelumnya tidak tiba-tiba tampil sebagai "Tersedia".
+/// Istilah yang dipakai di seluruh aplikasi adalah "Disewa"; ejaan lain tidak
+/// lagi dikenali supaya satu unit tidak pernah tampil dengan dua sebutan.
 VehicleAvailability classifyVehicleAvailability(String tag) {
   final value = tag.toLowerCase();
 
@@ -35,7 +35,7 @@ VehicleAvailability classifyVehicleAvailability(String tag) {
       value.contains('in-service')) {
     return VehicleAvailability.pemeriksaan;
   }
-  if (value.contains('disewa') || value.contains('tersewa')) {
+  if (value.contains('disewa')) {
     return VehicleAvailability.disewa;
   }
   if (value.contains('perawatan')) {

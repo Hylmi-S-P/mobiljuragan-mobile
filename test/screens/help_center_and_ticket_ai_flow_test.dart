@@ -107,7 +107,7 @@ class MockSupportControllerForChat extends SupportController {
     void Function(String status)? onStatusBerubah,
     void Function(String pesan)? onGalat,
   }) async {
-    // Hindari sambungan socket SSE riil pada widget test
+    // Hindari sambungan WebSocket riil pada widget test
   }
 
   @override
