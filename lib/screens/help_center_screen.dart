@@ -18,14 +18,26 @@ class HelpCenterScreen extends StatefulWidget {
   State<HelpCenterScreen> createState() => _HelpCenterScreenState();
 }
 
-class _HelpCenterScreenState extends State<HelpCenterScreen> {
+class _HelpCenterScreenState extends State<HelpCenterScreen>
+    with WidgetsBindingObserver {
   String _selectedCategory = 'Semua';
   int? _expandedFaqIndex;
   Timer? _ticketsPollingTimer;
 
+  /*
+   * Daftar tiket disegarkan berkala sebagai jaring pengaman, bukan sebagai
+   * sumber utama. Perubahan status yang penting sudah datang lewat WebSocket
+   * saat percakapan dibuka, dan pelanggan bisa menarik daftar untuk menyegarkan
+   * sendiri. Menyegarkan tiap lima detik berarti mengunduh ulang seluruh daftar
+   * tiket beserta pesannya — mahal untuk perubahan yang jarang.
+   */
+  static const Duration _jedaSegarkanTiket = Duration(seconds: 30);
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final support = context.read<SupportController>();
@@ -34,18 +46,48 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       }
     });
 
-    // Polling periodik 5 detik agar perubahan status tiket di dashboard otomatis tersinkron
-    _ticketsPollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (mounted) {
-        context.read<SupportController>().fetchTickets();
-      }
-    });
+    _mulaiSegarkanTiket();
   }
 
   @override
   void dispose() {
-    _ticketsPollingTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _hentikanSegarkanTiket();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    /*
+     * Aplikasi di latar belakang tidak perlu menyegarkan apa pun: tidak ada
+     * yang melihat daftarnya, dan Android tetap membatasi jaringan di sana.
+     * Saat kembali ke depan, daftar disegarkan sekali lalu jadwal dilanjutkan.
+     */
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) {
+        context.read<SupportController>().fetchTickets();
+      }
+      _mulaiSegarkanTiket();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _hentikanSegarkanTiket();
+    }
+  }
+
+  void _mulaiSegarkanTiket() {
+    _hentikanSegarkanTiket();
+    _ticketsPollingTimer = Timer.periodic(_jedaSegarkanTiket, (_) {
+      if (!mounted) return;
+      context.read<SupportController>().fetchTickets();
+    });
+  }
+
+  void _hentikanSegarkanTiket() {
+    _ticketsPollingTimer?.cancel();
+    _ticketsPollingTimer = null;
   }
 
   List<FaqModel> _filterFaqs(List<FaqModel> allFaqs) {

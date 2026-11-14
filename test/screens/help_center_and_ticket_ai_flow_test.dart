@@ -34,6 +34,7 @@ class MockAiApiService extends AiApiService {
 class MockTicketApiService extends TicketApiService {
   int createTicketCount = 0;
   int handoverCount = 0;
+  int fetchCustomerTicketsCount = 0;
   String? lastHandoverTicketId;
 
   @override
@@ -84,6 +85,7 @@ class MockTicketApiService extends TicketApiService {
 
   @override
   Future<List<dynamic>> fetchCustomerTickets({String? status}) async {
+    fetchCustomerTicketsCount++;
     return [];
   }
 }
@@ -152,6 +154,84 @@ void main() {
       // Memastikan aksi lama Tanya Cepat tidak ada
       expect(find.text('Tanya Cepat'), findsNothing);
       expect(find.text('Panggil Staf'), findsNothing);
+    });
+
+    testWidgets('Menyegarkan daftar tiket tiap 30 detik, bukan tiap 5 detik', (tester) async {
+      final mockTicket = MockTicketApiService();
+      final supportController = SupportController(
+        aiApiService: MockAiApiService(),
+        ticketApiService: mockTicket,
+        faqApiService: MockFaqApiService(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<SupportController>.value(value: supportController),
+              ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ],
+            child: const HelpCenterScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Satu permintaan dari initState.
+      final awal = mockTicket.fetchCustomerTicketsCount;
+      expect(awal, greaterThanOrEqualTo(1));
+
+      /*
+       * Lima detik pertama tidak boleh memicu permintaan baru. Daftar tiket
+       * membawa seluruh pesan tiap tiket, jadi menyegarkannya sesering itu
+       * berarti mengunduh ulang percakapan yang tidak berubah.
+       */
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(mockTicket.fetchCustomerTicketsCount, awal);
+
+      // Lewat 30 detik, jaring pengaman bekerja sekali.
+      await tester.pump(const Duration(seconds: 25));
+      await tester.pump();
+      expect(mockTicket.fetchCustomerTicketsCount, awal + 1);
+    });
+
+    testWidgets('Berhenti menyegarkan saat aplikasi di latar belakang', (tester) async {
+      final mockTicket = MockTicketApiService();
+      final supportController = SupportController(
+        aiApiService: MockAiApiService(),
+        ticketApiService: mockTicket,
+        faqApiService: MockFaqApiService(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<SupportController>.value(value: supportController),
+              ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+            ],
+            child: const HelpCenterScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final awal = mockTicket.fetchCustomerTicketsCount;
+
+      /*
+       * Di latar belakang tidak ada yang melihat daftar, jadi tidak ada alasan
+       * memakai jaringan. Dua menit lewat tanpa satu pun permintaan baru.
+       */
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(const Duration(minutes: 2));
+      await tester.pump();
+      expect(mockTicket.fetchCustomerTicketsCount, awal);
+
+      // Kembali ke depan: satu penyegaran langsung, lalu jadwal berjalan lagi.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(mockTicket.fetchCustomerTicketsCount, greaterThan(awal));
     });
   });
 
