@@ -50,12 +50,19 @@ class BookingFeeAdjustment {
   };
 
   factory BookingFeeAdjustment.fromJson(Map<String, dynamic> json) {
+    /* Dua bentuk diterima: bentuk lama `{title, amount, note}` dan bentuk baris
+       penyesuaian backend `{deskripsi, nominal, arah, justifikasi}`. `nominal`
+       selalu positif; arahnya ada di `arah`. */
+    final arah = json['arah']?.toString();
+    final nominalMentah = json['nominal'] ?? json['amount'];
+    final nominal = (nominalMentah is num)
+        ? nominalMentah.toInt()
+        : int.tryParse(nominalMentah?.toString() ?? '0') ?? 0;
+
     return BookingFeeAdjustment(
-      title: json['title']?.toString() ?? '',
-      amount: (json['amount'] is num)
-          ? (json['amount'] as num).toInt()
-          : int.tryParse(json['amount']?.toString() ?? '0') ?? 0,
-      note: json['note']?.toString(),
+      title: json['deskripsi']?.toString() ?? json['title']?.toString() ?? '',
+      amount: arah == 'KURANG' ? -nominal : nominal,
+      note: json['justifikasi']?.toString() ?? json['note']?.toString(),
     );
   }
 }
@@ -114,6 +121,10 @@ class BookingModel {
      Null berarti admin belum menetapkan tarif, jadi yang ditampilkan hanya
      estimasi. Sebelumnya nilai ini tidak pernah dibaca sama sekali. */
   final int? quotedAmount;
+  /* Total yang dikunci server saat admin menetapkan tarif: subtotal katalog
+     ditambah seluruh penyesuaian yang masih berlaku. Null selama tarif belum
+     ditetapkan. Angka inilah yang ditagihkan, bukan `quotedAmount` mentah. */
+  final int? finalAmount;
   final int serviceFee;
   final String paymentBank;
   final String paymentAccountNumber;
@@ -161,6 +172,7 @@ class BookingModel {
     required this.dailyRate,
     this.serviceFee = 0,
     this.quotedAmount,
+    this.finalAmount,
     this.paymentBank = 'Bank BRI Merauke',
     this.paymentAccountNumber = '0087-01-002345-53-1',
     this.adminAdjustments = const [],
@@ -294,6 +306,7 @@ class BookingModel {
       dailyRate: entry.dailyRate,
       serviceFee: entry.serviceFee,
       quotedAmount: entry.quotedAmount,
+      finalAmount: entry.finalAmount,
       paymentBank: entry.paymentBank,
       paymentAccountNumber: entry.paymentAccountNumber,
       adminAdjustments: adjustments,
@@ -353,6 +366,7 @@ class BookingModel {
       dailyRate: Value(dailyRate),
       serviceFee: Value(serviceFee),
       quotedAmount: Value(quotedAmount),
+      finalAmount: Value(finalAmount),
       paymentBank: Value(paymentBank),
       paymentAccountNumber: Value(paymentAccountNumber),
       isFinalTariffConfirmed: Value(isFinalTariffConfirmed),
@@ -396,14 +410,30 @@ class BookingModel {
       }
     }
 
+    final rawFinal = json['finalAmount'];
+    int? finalInt;
+    if (rawFinal != null) {
+      if (rawFinal is num) {
+        finalInt = rawFinal.toInt();
+      } else {
+        finalInt = int.tryParse(
+          rawFinal.toString().replaceAll(RegExp(r'[^\d]'), ''),
+        );
+      }
+    }
+
     final isTariffConfirmed =
         tariffStatus == 'CONFIRMED' ||
         (quotedInt != null && quotedInt > 0) ||
         rawStatus == 'CONFIRMED';
 
+    /* Sumber penyesuaian biaya adalah `lineItems` dari backend. Kunci lama
+       `surcharges` tidak pernah dikirim server, sehingga daftar ini selalu
+       kosong dan total di aplikasi tidak pernah ikut diskon/biaya tambahan. */
     final List<BookingFeeAdjustment> adjustments = [];
-    if (json['surcharges'] is List) {
-      for (final s in json['surcharges'] as List) {
+    final sumberPenyesuaian = json['lineItems'] ?? json['surcharges'];
+    if (sumberPenyesuaian is List) {
+      for (final s in sumberPenyesuaian) {
         if (s is Map) {
           adjustments.add(
             BookingFeeAdjustment.fromJson(Map<String, dynamic>.from(s)),
@@ -508,6 +538,7 @@ class BookingModel {
       dailyRate: vehicle.pricePerDay,
       serviceFee: 0,
       quotedAmount: quotedInt,
+      finalAmount: finalInt,
       adminAdjustments: adjustments,
       isFinalTariffConfirmed: isTariffConfirmed,
       assignedDriver: assignedDriver,
@@ -553,9 +584,13 @@ class BookingModel {
   /// Apakah admin sudah menetapkan tarif final untuk pesanan ini.
   bool get tarifFinalAda => quotedAmount != null && quotedAmount! > 0;
 
-  /// Total tarif resmi: jika tarif final sudah ditetapkan admin atau terdapat quotedAmount resmi,
-  /// prioritaskan quotedAmount. Jika belum, gunakan estimasi dasar ditambah penyesuaian biaya jika ada.
+  /// Total tarif resmi: angka yang dikunci server saat tarif ditetapkan
+  /// (`finalAmount`) sudah mencakup seluruh penyesuaian, jadi dipakai apa
+  /// adanya. Sebelum tarif ditetapkan, yang ditampilkan hanya estimasi.
   int get totalCost {
+    if (finalAmount != null && finalAmount! > 0) {
+      return finalAmount!;
+    }
     if (tarifFinalAda) {
       return quotedAmount!;
     }
@@ -664,6 +699,7 @@ class BookingModel {
     DateTime? createdAt,
     int? dailyRate,
     int? quotedAmount,
+    int? finalAmount,
     int? serviceFee,
     String? paymentBank,
     String? paymentAccountNumber,
@@ -701,6 +737,7 @@ class BookingModel {
       createdAt: createdAt ?? this.createdAt,
       dailyRate: dailyRate ?? this.dailyRate,
       quotedAmount: quotedAmount ?? this.quotedAmount,
+      finalAmount: finalAmount ?? this.finalAmount,
       serviceFee: serviceFee ?? this.serviceFee,
       paymentBank: paymentBank ?? this.paymentBank,
       paymentAccountNumber: paymentAccountNumber ?? this.paymentAccountNumber,

@@ -47,6 +47,10 @@ class Bookings extends Table {
   /// Nominal tarif sewa resmi yang disahkan admin (quotedAmount backend)
   IntColumn get quotedAmount => integer().nullable()();
 
+  /// Total akhir yang dikunci server saat tarif ditetapkan (finalAmount backend).
+  /// Sudah mencakup seluruh penyesuaian, jadi inilah angka yang ditagihkan.
+  IntColumn get finalAmount => integer().nullable()();
+
   /// Biaya layanan pemesanan
   IntColumn get serviceFee => integer()();
 

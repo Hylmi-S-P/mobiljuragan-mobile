@@ -27,7 +27,9 @@ class BookingController extends ChangeNotifier {
   double? _pickupLatitude = -8.5202;
   double? _pickupLongitude = 140.4180;
   String _customerNote = '';
-  bool _agreementChecked = true;
+  /* Persetujuan syarat & ketentuan sengaja dimulai TIDAK tercentang: pelanggan
+     harus menyatakan setuju sendiri, bukan mewarisi centang bawaan. */
+  bool _agreementChecked = false;
 
   // Tarif layanan sistem operasional MobilJuragan. Tarif jasa supir tidak lagi
   // dikonstankan di sini: nilainya dibaca dari backend (`GET /config`) lewat
@@ -582,7 +584,7 @@ class BookingController extends ChangeNotifier {
     _pickupLatitude = -8.5202;
     _pickupLongitude = 140.4180;
     _customerNote = '';
-    _agreementChecked = true;
+    _agreementChecked = false;
     notifyListeners();
   }
 

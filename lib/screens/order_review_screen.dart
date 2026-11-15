@@ -68,8 +68,14 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                     _buildRentalOptionsSummaryCard(context, booking),
                     const SizedBox(height: 14),
                     _buildCostBreakdownCard(booking),
-                    const SizedBox(height: 14),
-                    _buildDocumentPreparationCard(context, booking),
+                    /* Sewa dengan supir tidak meminta unggahan dokumen apa pun,
+                       jadi kartu persiapan dokumen tidak ditampilkan. Dulu
+                       kartunya tetap muncul dan menyebut e-KTP wajib, padahal
+                       tidak ada wadah untuk mengunggahnya. */
+                    if (!booking.withDriver) ...[
+                      const SizedBox(height: 14),
+                      _buildDocumentPreparationCard(context, booking),
+                    ],
                     const SizedBox(height: 16),
                     _buildAgreementCheckbox(booking),
                     const SizedBox(height: 24),
@@ -554,10 +560,11 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
 
 
   Widget _buildAgreementCheckbox(BookingController booking) {
-    final isDriver = booking.withDriver;
-    final agreementText = isDriver
-        ? 'Saya menyetujui syarat & ketentuan rental MobilJuragan serta bersedia mematuhi tata tertib perjalanan bersama sopir resmi.'
-        : 'Saya menyatakan bebas pengaruh alkohol/narkoba serta bersedia melengkapi unggahan e-KTP, SIM A, dan Surat Pernyataan setelah pesanan diajukan.';
+    /* Satu teks untuk kedua mode. Sebelumnya teksnya berbeda per mode dan
+       sudah tercentang sejak awal, sehingga persetujuan pelanggan tidak pernah
+       benar-benar diminta. */
+    const agreementText =
+        'Saya menyetujui syarat dan ketentuan rental MobilJuragan.';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
