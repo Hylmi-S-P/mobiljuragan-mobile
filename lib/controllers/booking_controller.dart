@@ -74,7 +74,39 @@ class BookingController extends ChangeNotifier {
         .where((b) => b.status != BookingStatus.selesai && b.status != BookingStatus.dibatalkan)
         .cast<BookingModel?>()
         .firstWhere((_) => true, orElse: () => null);
+
+    /* Langganan Drift dibuat saat aplikasi dibuka, ketika pemilik cache belum
+       tentu terbaca. DAO menyaring baris di SQL dengan `userId` yang ditangkap
+       saat langganan dibuat, jadi langganan lama tetap memakai filter tamu
+       (`userId IS NULL`) walau sesi sudah diketahui. Setiap tulisan ke Drift
+       sesudahnya — termasuk hasil polling status — memancarkan daftar kosong
+       dan menghapus riwayat yang baru dimuat. Karena itu langganan dipasang
+       ulang setelah sesi pasti. */
+    _pasangLanggananRiwayat(repo);
+
     notifyListeners();
+  }
+
+  /// Membuat langganan stream riwayat memakai pemilik cache yang berlaku.
+  ///
+  /// Versi sebelumnya hanya dipanggil sekali di `_init`, sehingga filter
+  /// `userId` membeku pada keadaan saat aplikasi dibuka.
+  void _pasangLanggananRiwayat(BookingRepository repo) {
+    _bookingsSubscription?.cancel();
+    _bookingsSubscription = repo.watchAllBookings().listen((updatedList) {
+      _bookingHistory
+        ..clear()
+        ..addAll(updatedList);
+      final actives = _bookingHistory
+          .where(
+            (b) =>
+                b.status != BookingStatus.selesai &&
+                b.status != BookingStatus.dibatalkan,
+          )
+          .toList();
+      _activeBooking = actives.isNotEmpty ? actives.first : null;
+      notifyListeners();
+    });
   }
 
   /* Mengambil tarif terbaru satu pesanan dari server.
@@ -134,19 +166,7 @@ class BookingController extends ChangeNotifier {
         notifyListeners();
       } catch (_) {}
 
-      _bookingsSubscription = repo.watchAllBookings().listen((updatedList) {
-        _bookingHistory.clear();
-        _bookingHistory.addAll(updatedList);
-        final actives = _bookingHistory
-            .where(
-              (b) =>
-                  b.status != BookingStatus.selesai &&
-                  b.status != BookingStatus.dibatalkan,
-            )
-            .toList();
-        _activeBooking = actives.isNotEmpty ? actives.first : null;
-        notifyListeners();
-      });
+      _pasangLanggananRiwayat(repo);
 
       // Lakukan sinkronisasi pesanan dari remote REST API ke Drift SQLite
       unawaited(repo.syncAllBookingsFromRemote());

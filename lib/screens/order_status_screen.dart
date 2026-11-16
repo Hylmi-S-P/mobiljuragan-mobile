@@ -439,10 +439,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     final bookingController = context.watch<BookingController>();
     final targetId = _trackingBookingId ?? widget.booking?.id;
+    /* Data dari controller selalu didahulukan: `widget.booking` adalah potret
+       saat layar dibuka, dan bisa tertinggal beberapa tahap di belakang status
+       yang sudah diperbarui admin. Dulu potret itu dipakai lebih dulu, sehingga
+       stepper sempat menampilkan "Permintaan Masuk" padahal pesanan sudah
+       dikonfirmasi. */
     final activeBooking = targetId != null
         ? (bookingController.bookingHistory.firstWhere(
             (b) => b.id == targetId,
-            orElse: () => widget.booking ?? (bookingController.activeBooking ?? (bookingController.bookingHistory.isNotEmpty ? bookingController.bookingHistory.first : widget.booking!)),
+            orElse: () {
+              final aktif = bookingController.activeBooking;
+              if (aktif != null && aktif.id == targetId) return aktif;
+              return widget.booking ??
+                  aktif ??
+                  (bookingController.bookingHistory.isNotEmpty
+                      ? bookingController.bookingHistory.first
+                      : widget.booking!);
+            },
           ))
         : bookingController.activeBooking;
 
