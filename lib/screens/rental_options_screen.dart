@@ -8,6 +8,7 @@ import '../data/remote/document_api_service.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/daftar_geser_horizontal.dart';
 import '../widgets/merauke_location_map_picker.dart';
 import 'date_time_screen.dart';
 import '../theme/app_typography.dart';
@@ -67,108 +68,11 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
       return;
     }
     final titik = cocok.first;
-    booking.setPickupLocation(titik.label, titik.latitude, titik.longitude);
-  }
-
-  /// Membuka peta penuh supaya pelanggan mengetuk sendiri titik jemputnya.
-  ///
-  /// Dipakai chip "Titik Lain": sebelumnya chip itu menyetel koordinat tetap di
-  /// pusat kota dengan nama generik, sehingga titik yang terlihat di peta bukan
-  /// titik yang dipilih pelanggan.
-  Future<void> _bukaPetaTitikBebas(BookingController booking) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardWhite,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  color: AppColors.primaryNavy,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_location_alt_outlined,
-                          size: 20, color: AppColors.primaryTeal),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Pilih Titik di Peta',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBodyLarge,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        icon: const Icon(Icons.close, size: 20, color: Colors.white),
-                        tooltip: 'Tutup',
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: ListenableBuilder(
-                    listenable: booking,
-                    builder: (context, _) => MeraukeLocationMapPicker(
-                      selectedLocationName: booking.pickupLocation,
-                      selectedCoordinates: (booking.pickupLatitude != null &&
-                              booking.pickupLongitude != null)
-                          ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
-                          : null,
-                      isWithDriver: true,
-                      mapHeight: 320,
-                      showCardContainer: false,
-                      showFullscreenButton: false,
-                      showOverlayBanner: false,
-                      onCustomCoordinateSelected: (customName, coords) {
-                        booking.setPickupLocation(
-                          customName,
-                          coords.latitude,
-                          coords.longitude,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryTeal,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text(
-                        'Pakai Titik Ini',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    booking.setPickupLocation(
+      titik.label,
+      titik.latitude,
+      titik.longitude,
+      titik.address,
     );
   }
 
@@ -196,8 +100,13 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
     }
   }
 
-  /// Titik serah terima untuk lepas kunci.
-  List<Map<String, dynamic>> get _selfDriveLocations => _pickupPoints
+  /// Titik serah terima yang ditawarkan sebagai chip.
+  ///
+  /// Isinya sama untuk kedua mode: daftar titik resmi dari backend. Titik bebas
+  /// tidak dibuatkan chip karena pelanggan memilihnya langsung dengan mengetuk
+  /// peta di dalam kartu — kalau dijadikan chip, pilihan itu bersembunyi di luar
+  /// tepi kanan dan tidak pernah terlihat tanpa menggeser baris chip.
+  List<Map<String, dynamic>> get _pickupLocations => _pickupPoints
       .map((point) => {
             'name': point.label,
             'shortName': point.label,
@@ -206,17 +115,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
             'isFree': point.isFree,
           })
       .toList();
-
-  /// Titik serah terima untuk layanan dengan sopir, ditambah opsi titik bebas.
-  List<Map<String, dynamic>> get _withDriverLocations => [
-        ..._selfDriveLocations,
-        {
-          'name': 'Alamat / Titik Lain di Merauke',
-          'shortName': 'Titik Lain',
-          'desc': 'Tentukan titik jemput bebas pada peta di bawah',
-          'isCustom': true,
-        },
-      ];
 
   @override
   Widget build(BuildContext context) {
@@ -507,7 +405,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
 
   Widget _buildUnifiedLocationCard(BookingController booking) {
     final isDriver = booking.withDriver;
-    final locations = isDriver ? _withDriverLocations : _selfDriveLocations;
+    final locations = _pickupLocations;
 
     // Cari deskripsi preset aktif secara aman tanpa resiko type cast error
     Map<String, dynamic> matchingLoc;
@@ -651,11 +549,9 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
               ),
             ),
 
-          // Horizontal Chips Selector (terisolasi dan terpotong rapi dengan padding insets)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            clipBehavior: Clip.hardEdge,
+          // Horizontal Chips Selector (satu baris geser, dengan gradasi tepi
+          // supaya terlihat masih ada pilihan di luar layar)
+          DaftarGeserHorizontal(
             child: Row(
               children: locations.map((loc) {
                 final name = (loc['name'] as String?) ?? 'Lokasi';
@@ -663,7 +559,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     (name.startsWith('Diantar ke ') ? name.replaceFirst('Diantar ke ', '') : name);
                 final coords = loc['coords'] as LatLng?;
                 final isFree = loc['isFree'] == true;
-                final isCustom = loc['isCustom'] == true;
                 final pickup = booking.pickupLocation.toLowerCase();
                 final isSelected = pickup.contains(shortName.toLowerCase()) ||
                     pickup.contains(name.toLowerCase()) ||
@@ -679,8 +574,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                   iconData = Icons.directions_boat_outlined;
                 } else if (name.toLowerCase().contains('hotel')) {
                   iconData = Icons.hotel_outlined;
-                } else if (isCustom) {
-                  iconData = Icons.edit_location_alt_outlined;
                 }
 
                 return Padding(
@@ -689,19 +582,17 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        if (isCustom) {
-                          /* "Titik Lain" bukan tempat, jadi tidak boleh
-                             menyetel koordinat tetap: pelanggan harus memilih
-                             sendiri di peta. */
-                          _bukaPetaTitikBebas(booking);
-                          return;
-                        }
                         if (coords == null) {
                           /* Titik tanpa koordinat tidak boleh dipilih: lebih baik
                              tidak terjadi apa-apa daripada menyimpan titik palsu. */
                           return;
                         }
-                        booking.setPickupLocation(name, coords.latitude, coords.longitude);
+                        booking.setPickupLocation(
+                          name,
+                          coords.latitude,
+                          coords.longitude,
+                          loc['desc'] as String?,
+                        );
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
@@ -869,9 +760,8 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
           ),
           const SizedBox(height: 10),
           if (!isDriver) ...[
-            _buildPolicyRow('Wajib mengunggah foto asli e-KTP dan SIM A aktif pada halaman status pesanan setelah pengajuan dikirim.'),
+            _buildPolicyRow('Unggah foto e-KTP dan SIM A aktif di halaman status pesanan, lalu tunjukkan berkas fisiknya saat serah terima unit.'),
             _buildPolicyRow('Wajib mengunduh, menandatangani, dan mengunggah Surat Pernyataan Penyewa (bebas alkohol/narkoba & tanggung jawab unit) sebelum pengambilan kunci.'),
-            _buildPolicyRow('Penyewa wajib menunjukkan fisik e-KTP dan SIM A asli saat serah terima unit.'),
             _buildPolicyRow('Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
             const SizedBox(height: 8),
             InkWell(

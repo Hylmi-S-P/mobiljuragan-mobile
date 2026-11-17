@@ -13,6 +13,7 @@ import '../controllers/vehicle_controller.dart';
 import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
 import '../core/util/berkas_unduhan.dart';
+import '../core/util/format_tanggal.dart';
 import '../data/remote/document_api_service.dart';
 import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
@@ -891,7 +892,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${booking.startDate.day}/${booking.startDate.month} - ${booking.endDate.day}/${booking.endDate.month}/${booking.endDate.year} (${booking.durationDays} Hari) • ${booking.pickupLocation}',
+                      '${formatRentangSewa(booking.startDate, booking.endDate)} (${booking.durationDays} Hari) • ${booking.pickupLocation}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1125,11 +1126,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               const Divider(height: 1, color: AppColors.borderSubtle),
               const SizedBox(height: 14),
               _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
-              const SizedBox(height: 8),
-              _buildTariffRow(
-                'Layanan Sopir (${booking.durationDays} Hari)',
-                booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
-              ),
+              if (booking.withDriver) ...[
+                const SizedBox(height: 8),
+                _buildTariffRow(
+                  'Layanan Sopir (${booking.durationDays} Hari)',
+                  'Rp ${_formatRupiah(booking.driverSubtotal)}',
+                ),
+              ],
               if (booking.serviceFee > 0) ...[
                 const SizedBox(height: 8),
                 _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
@@ -1220,20 +1223,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.borderSubtle),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Tutup Rincian', style: AppTypography.bodyStrong),
-                ),
               ),
             ],
           ),
@@ -1346,7 +1335,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${booking.startDate.day}/${booking.startDate.month} - ${booking.endDate.day}/${booking.endDate.month}/${booking.endDate.year} (${booking.durationDays} Hari) • ${booking.pickupLocation}',
+                      '${formatRentangSewa(booking.startDate, booking.endDate)} (${booking.durationDays} Hari) • ${booking.pickupLocation}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1629,7 +1618,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            '${booking.startDate.day}/${booking.startDate.month}/${booking.startDate.year} (${booking.startTime})',
+                            '${formatTanggalSingkat(booking.startDate)} (${booking.startTime})',
                             style: const TextStyle(
                               fontSize: AppTypography.sizeCaption,
                               color: AppColors.textSecondary,
@@ -1785,11 +1774,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       ),
                     ] else ...[
                       _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
-                      const SizedBox(height: 6),
-                      _buildTariffRow(
-                        'Layanan Sopir (${booking.durationDays} Hari)',
-                        booking.withDriver ? 'Rp ${_formatRupiah(booking.driverSubtotal)}' : 'Gratis',
-                      ),
+                      if (booking.withDriver) ...[
+                        const SizedBox(height: 6),
+                        _buildTariffRow(
+                          'Layanan Sopir (${booking.durationDays} Hari)',
+                          'Rp ${_formatRupiah(booking.driverSubtotal)}',
+                        ),
+                      ],
                       if (booking.serviceFee > 0) ...[
                         const SizedBox(height: 6),
                         _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
@@ -1874,7 +1865,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   Widget _buildFigmaStepper(BookingModel booking) {
     final status = booking.status;
     final isDriver = booking.withDriver;
-    final isCod = booking.paymentMethodType == PaymentMethodType.tunaiDiTempat;
 
     // Tahap 1: Permintaan Masuk (CREATED)
     final step1Done = status != BookingStatus.permintaanDiterima;
@@ -1891,15 +1881,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         (status == BookingStatus.pemeriksaanArmada ||
             status == BookingStatus.menungguTarifFinal);
 
-    // Tahap 3: Menunggu Pembayaran / Pelunasan Tunai di Tempat (CONFIRMED)
-    // Selesai jika pembayaran online terverifikasi atau unit telah diserahkan (jika COD)
-    final step3Done = isCod
-        ? (status == BookingStatus.mobilSiapDigunakan ||
-            status == BookingStatus.selesai)
-        : (status == BookingStatus.pembayaranSelesai ||
-            status == BookingStatus.verifikasiKantor ||
-            status == BookingStatus.mobilSiapDigunakan ||
-            status == BookingStatus.selesai);
+    // Tahap 3: Menunggu Pembayaran (CONFIRMED)
+    final step3Done = status == BookingStatus.pembayaranSelesai ||
+        status == BookingStatus.verifikasiKantor ||
+        status == BookingStatus.mobilSiapDigunakan ||
+        status == BookingStatus.selesai;
     final step3Active = !step3Done &&
         (status == BookingStatus.menungguPembayaran ||
             booking.isFinalTariffConfirmed);
@@ -1969,34 +1955,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               isLast: false,
             ),
 
-            // Tahap 3: Pembayaran / Pelunasan Tunai di Tempat
+            // Tahap 3: Pembayaran
             _buildStepRow(
               stepNumber: 3,
-              title: isCod
-                  ? (step3Done ? 'Pelunasan Tunai Selesai' : 'Pelunasan Tunai di Tempat (COD)')
-                  : (step3Done ? 'Pembayaran Diterima' : 'Pembayaran'),
-              subtitle: isCod
-                  ? (step3Done
-                      ? 'Pembayaran tunai telah diterima petugas kantor atau sopir di lokasi'
-                      : (step3Active
-                          ? 'Siapkan uang tunai pas Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit'
-                          : 'Menunggu serah terima unit untuk pelunasan tunai'))
-                  : (step3Done
-                      ? 'Pembayaran telah terverifikasi dan tercatat lunas'
-                      : (step3Active
-                          ? (isProofUploaded
-                              ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
-                              : 'Batas pelunasan sesuai tagihan yang diterbitkan admin')
-                          : (isDriver
-                              ? 'Menunggu penetapan rincian tarif final'
-                              : 'Menunggu konfirmasi tarif dan verifikasi dokumen'))),
+              title: step3Done ? 'Pembayaran Diterima' : 'Pembayaran',
+              subtitle: step3Done
+                  ? 'Pembayaran telah terverifikasi dan tercatat lunas'
+                  : (step3Active
+                      ? (isProofUploaded
+                          ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
+                          : 'Batas pelunasan sesuai tagihan yang diterbitkan admin')
+                      : (isDriver
+                          ? 'Menunggu penetapan rincian tarif final'
+                          : 'Menunggu konfirmasi tarif dan verifikasi dokumen')),
               isDone: step3Done,
               isActive: step3Active,
               isLast: false,
               badgeText: step3Active
-                  ? (isProofUploaded
-                      ? 'VERIFIKASI ADMIN'
-                      : (isCod ? 'MENUNGGU COD' : 'MENUNGGU BAYAR'))
+                  ? (isProofUploaded ? 'VERIFIKASI ADMIN' : 'MENUNGGU BAYAR')
                   : null,
               badgeColor: step3Active ? AppColors.primaryTeal : null,
               badgeBgColor: step3Active ? AppColors.tealLight : null,
@@ -2257,7 +2233,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                'Waktu dijeda — ${deadline.pausedReason ?? 'menunggu pemeriksaan admin'}',
+                'Waktu dijeda: ${deadline.pausedReason ?? 'menunggu pemeriksaan admin'}',
                 style: const TextStyle(
                   fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w600,
@@ -2395,6 +2371,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             reasonLower.contains('meterai'),
           ]);
 
+    /* Banner di atas kartu sudah menyatakan "perlu revisi", jadi badge di sini
+       hanya perlu menunjukkan berapa berkas yang harus diperbaiki. */
+    final jumlahPerluPerbaikan = [
+      isKtpTargeted,
+      isSimTargeted,
+      isStatementTargeted,
+    ].where((targeted) => targeted).length;
+
     Color badgeBg;
     Color badgeText;
     Color badgeBorder;
@@ -2409,7 +2393,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       badgeBg = const Color(0xFFFEF2F2);
       badgeText = const Color(0xFFDC2626);
       badgeBorder = const Color(0xFFFECACA);
-      badgeLabel = 'Perlu Revisi';
+      badgeLabel = '$jumlahPerluPerbaikan/3 Perlu Perbaikan';
     } else if (uploadedCount == 3) {
       badgeBg = const Color(0xFFF0F9FF);
       badgeText = const Color(0xFF0369A1);
@@ -2441,30 +2425,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.borderSubtle, width: 1),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
-            const Expanded(
-              child: Row(
-                children: [
-                  Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primaryTeal),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Dokumen Lepas Kunci',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBodyLarge,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primaryTeal),
+                SizedBox(width: 8),
+                Text(
+                  'Dokumen Lepas Kunci',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -2612,7 +2594,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           ),
           const SizedBox(height: 6),
           const Text(
-            'Wajib dilengkapi sebelum serah terima unit di lokasi untuk mengaktifkan E-Ticket pengambilan kunci.',
+            'E-Ticket aktif setelah semua berkas diverifikasi petugas.',
             style: TextStyle(
               fontSize: AppTypography.sizeCaption,
               color: AppColors.textSecondary,
@@ -2646,18 +2628,35 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     children: [
                       const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFDC2626)),
                       const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Catatan Staf: "${_formatRejectionReason(doc?.rejectionReason)}"',
-                          style: const TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF991B1B),
-                            fontFamily: 'Inter',
-                          ),
+                      const Text(
+                        'Catatan staf',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF991B1B),
+                          fontFamily: 'Inter',
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  // Kutipan blok: ditandai garis kiri, tanpa tanda kutip ganda.
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.only(left: 10),
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Color(0xFFDC2626), width: 2)),
+                    ),
+                    child: Text(
+                      _formatRejectionReason(doc?.rejectionReason),
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w400,
+                        height: 1.35,
+                        color: Color(0xFF991B1B),
+                        fontFamily: 'Inter',
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -2743,7 +2742,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       ? 'Mengirim Berkas...'
                       : (hasAnyDraft
                           ? 'Kirim Pembaruan Dokumen'
-                          : 'Pilih Berkas Baru Terlebih Dahulu'),
+                          : 'Pilih berkas untuk diunggah'),
                   style: const TextStyle(
                     fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w700,
@@ -2962,7 +2961,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       statementSubtitle = 'surat_ttd_basah.jpg • Menunggu verifikasi staf.';
       subtitleColor = AppColors.textSecondary;
       subtitleWeight = FontWeight.w500;
-      uploadButtonLabel = 'Ubah Foto';
+      uploadButtonLabel = 'Unggah Ulang';
       uploadTextColor = AppColors.primaryNavy;
       uploadSide = const BorderSide(color: AppColors.borderMedium);
     } else {
@@ -3863,8 +3862,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
 
   Widget _buildETicketCard(BuildContext context, BookingModel booking) {
-    final isCod = booking.isCodPayment;
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
@@ -3959,19 +3956,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isCod ? const Color(0xFF1E3A8A) : const Color(0xFF065F46),
+                        color: const Color(0xFF065F46),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: isCod ? const Color(0xFF60A5FA) : const Color(0xFF34D399),
+                          color: const Color(0xFF34D399),
                           width: 0.8,
                         ),
                       ),
-                      child: Text(
-                        isCod ? 'METODE COD' : 'LUNAS',
+                      child: const Text(
+                        'LUNAS',
                         style: TextStyle(
                           fontSize: AppTypography.sizeTiny,
                           fontWeight: FontWeight.w800,
-                          color: isCod ? const Color(0xFFDBEAFE) : const Color(0xFFD1FAE5),
+                          color: Color(0xFFD1FAE5),
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -4003,41 +4000,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Info Pelunasan Tunai (hanya jika COD, jika online lunas sudah diwakili badge LUNAS di header)
-                if (isCod) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.borderSubtle),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: AppColors.primaryNavy,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Pelunasan Tunai: Siapkan Rp ${_formatRupiah(booking.totalCost)} saat serah terima unit.',
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
                 // Grid Ringkasan Reservasi
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4065,15 +4027,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   children: [
                     Expanded(
                       child: _buildTicketDetailItem(
-                        label: 'Waktu Penjemputan',
-                        value: '${booking.startDate.day}/${booking.startDate.month}/${booking.startDate.year}',
+                        label: booking.withDriver
+                            ? 'Waktu Penjemputan'
+                            : 'Waktu Pengambilan Kunci',
+                        value: formatTanggalSingkat(booking.startDate),
                         subValue: booking.startTime,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildTicketDetailItem(
-                        label: 'Lokasi Penjemputan',
+                        label: booking.withDriver
+                            ? 'Lokasi Penjemputan'
+                            : 'Lokasi Pengambilan Kunci',
                         value: booking.pickupLocation,
                         subValue: 'Merauke, Papua Selatan',
                       ),
@@ -4109,9 +4075,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                               ),
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              'Tunjukkan kode QR ini ke petugas atau sopir saat serah terima unit',
-                              style: TextStyle(
+                            Text(
+                              booking.withDriver
+                                  ? 'Tunjukkan kode QR ini ke petugas atau sopir saat serah terima unit'
+                                  : 'Tunjukkan kode QR ini ke petugas saat pengambilan kunci',
+                              style: const TextStyle(
                                 fontSize: AppTypography.sizeTiny,
                                 color: AppColors.textSecondary,
                                 fontFamily: 'Inter',
@@ -4234,7 +4202,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Kode Reservasi: ${booking.id}',
+                'Kode reservasi: ${booking.id}',
                 style: const TextStyle(
                   fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w700,
@@ -4374,7 +4342,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Kode Reservasi: ${booking.id}',
+                'Kode reservasi: ${booking.id}',
                 style: const TextStyle(
                   fontSize: AppTypography.sizeCaption,
                   fontWeight: FontWeight.w700,
@@ -4440,62 +4408,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           const SizedBox(height: 14),
 
           // Penyelesaian Finansial (Ledger Box Profesional)
-          // Hanya menyangkut pesanan lama yang masih memakai metode tunai di
-          // tempat; pesanan baru tidak lagi menawarkan metode ini.
-          if (booking.paymentMethodType == PaymentMethodType.tunaiDiTempat &&
-              !hasRefund) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 16, color: AppColors.primaryNavy),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Penyelesaian Finansial (COD)',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ),
-                      Spacer(),
-                      Text(
-                        'Bebas Biaya',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF16A34A),
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Metode sewa adalah Tunai di Tempat (COD) dan pembayaran belum diserahkan ke tim lapangan. Tidak ada penalti dan tidak ada proses transfer dana (Refund Rp 0).',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else if (hasRefund) ...[
+          if (hasRefund) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -4696,11 +4609,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       barisStatusRefund(context, booking);
 
   void _showCancellationBottomSheet(BuildContext context, BookingModel booking) {
-    final isCod = booking.paymentMethodType == PaymentMethodType.tunaiDiTempat;
-    final isPaid = !isCod &&
-        (booking.status == BookingStatus.pembayaranSelesai ||
-            booking.status == BookingStatus.verifikasiKantor ||
-            booking.status == BookingStatus.mobilSiapDigunakan);
+    final isPaid = booking.status == BookingStatus.pembayaranSelesai ||
+        booking.status == BookingStatus.verifikasiKantor ||
+        booking.status == BookingStatus.mobilSiapDigunakan;
 
     /* Potongan pembatalan oleh pelanggan ditetapkan server sebesar Rp 50.000
        tetap, bukan persentase. Angka di layar ini hanya pratinjau; nominal yang
@@ -4750,7 +4661,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 left: 20,
                 right: 20,
                 top: 20,
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+                // `padding.bottom` adalah area aman perangkat (gesture bar),
+                // sedangkan `viewInsets.bottom` tinggi papan tik.
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom +
+                    MediaQuery.of(sheetContext).padding.bottom +
+                    20,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -4788,9 +4703,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isPaid
-                                    ? 'Ajukan Pembatalan & Refund'
-                                    : (isCod ? 'Batalkan Reservasi COD' : 'Batalkan Pesanan'),
+                                isPaid ? 'Ajukan Pembatalan & Refund' : 'Batalkan Pesanan',
                                 style: const TextStyle(
                                   fontSize: AppTypography.sizeHeading,
                                   fontWeight: FontWeight.w800,
@@ -4800,7 +4713,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Kode Reservasi: ${booking.id}',
+                                'Kode reservasi: ${booking.id}',
                                 style: const TextStyle(
                                   fontSize: AppTypography.sizeCaption,
                                   color: AppColors.textSecondary,
@@ -4810,54 +4723,20 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                             ],
                           ),
                         ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          tooltip: 'Tutup',
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     const Divider(height: 1, color: AppColors.borderSubtle),
                     const SizedBox(height: 14),
 
-                    // Ketentuan Pembatalan COD vs Refund Online
-                    if (isCod) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.borderSubtle),
-                        ),
-                        child: const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.info_outline, size: 16, color: AppColors.primaryNavy),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Ketentuan Pembatalan COD',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeBody,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Karena metode pembayaran adalah Tunai di Tempat (COD) dan pembayaran sewa belum diserahkan, reservasi ini dibatalkan tanpa penalti dan tanpa pengembalian dana (Refund Rp 0). Anda tidak perlu mengisi data rekening bank.',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ] else if (isPaid) ...[
+                    // Transparansi ketentuan pembatalan
+                    if (isPaid) ...[
                       // Transparansi Kebijakan Refund 85% jika sudah bayar
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -4939,6 +4818,39 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         onChanged: (draft) {
                           setModalState(() => draftRekening = draft);
                         },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Akibat pembatalan untuk pesanan yang belum dibayar. Tanpa
+                    // penjelasan ini pelanggan mengira pembatalan tidak
+                    // berpengaruh apa pun, padahal armada langsung dilepas.
+                    if (!isPaid) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Armada akan dilepas kembali, sehingga Anda bisa mengajukan sewa lain. Batas sewa aktif Anda 2 mobil sekaligus. Tindakan ini tidak bisa dibatalkan.',
+                                style: TextStyle(
+                                  fontSize: AppTypography.sizeCaption,
+                                  color: AppColors.textSecondary,
+                                  fontFamily: 'Inter',
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -5087,9 +4999,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                   content: Text(
                                     isPaid
                                         ? 'Pengajuan pembatalan & refund berhasil dikirim.'
-                                        : (isCod
-                                            ? 'Reservasi COD ${booking.id} berhasil dibatalkan tanpa penalti.'
-                                            : 'Pesanan ${booking.id} berhasil dibatalkan.'),
+                                        : 'Pesanan ${booking.id} berhasil dibatalkan.',
                                     style: AppTypography.bodyStrong,
                                   ),
                                 ),
@@ -6036,66 +5946,39 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.borderSubtle,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+      child: SafeArea(
+        top: false,
+        child: AnimatedPadding(
+          // Padding bawah ikut menyesuaikan tinggi papan ketik supaya tombol
+          // kirim tidak tertutup saat kolom nama pengirim sedang diisi.
+          duration: const Duration(milliseconds: 150),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 12,
+            bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSheetDragHandleRow(),
+              const SizedBox(height: 8),
 
-            // Judul + status/waktu di baris atas. Nominal sengaja tidak diulang
-            // di bawah: satu angka (di kartu Total Tagihan) lebih jelas daripada
-            // tiga tempat berbeda yang menampilkan nominal sama.
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
+              // Judul + status/waktu di baris atas. Nominal sengaja tidak diulang
+              // di bawah: satu angka (di kartu Total Tagihan) lebih jelas daripada
+              // tiga tempat berbeda yang menampilkan nominal sama.
+              _buildSheetHeadline(isExpired),
+              const SizedBox(height: 14),
+
+              // Badan sheet digulir sendiri; judul dan tombol kirim tetap diam
+              // sehingga pelanggan tidak perlu menggulir untuk menemukan aksi.
+              Flexible(
+                child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Pembayaran Pemesanan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeHeading,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Reservasi #${widget.booking.id}',
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildHeaderStatusChip(isExpired),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            _buildAmountCard(),
+                      _buildAmountCard(),
             const SizedBox(height: 14),
 
             if (isExpired) ...[
@@ -6146,14 +6029,137 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
             ),
             const SizedBox(height: 16),
 
-            // Hanya dua metode yang bisa dipilih pelanggan; tunai dicatat admin.
-            if (_selectedTab == 0) ...[
-              _buildQrisContent(isExpired: isExpired),
-            ] else ...[
-              _buildBankTransferContent(isExpired: isExpired),
+                      // Hanya dua metode yang bisa dipilih pelanggan.
+                      if (_selectedTab == 0) ...[
+                        _buildQrisContent(isExpired: isExpired),
+                      ] else ...[
+                        _buildBankTransferContent(isExpired: isExpired),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // Tombol kirim di luar area gulir supaya selalu terlihat tanpa
+              // harus menggulir ke dasar sheet.
+              if (!_isProofUploaded) ...[
+                const SizedBox(height: 12),
+                _buildSubmitProofButton(isExpired: isExpired),
+              ],
             ],
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// Gagang seret di tengah dan tombol tutup di kanan.
+  ///
+  /// Sebelumnya sheet ini tidak punya kontrol tutup sama sekali: gerakan seret
+  /// ke bawah dikonsumsi area gulir, sehingga satu-satunya jalan keluar adalah
+  /// tombol back sistem.
+  Widget _buildSheetDragHandleRow() {
+    return SizedBox(
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.borderSubtle,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              tooltip: 'Tutup',
+              icon: const Icon(Icons.close_rounded, size: 20),
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Judul, nomor reservasi, lalu penanda status di baris sendiri.
+  ///
+  /// Sengaja ditumpuk vertikal, bukan satu baris dengan penanda status: pada
+  /// layar sempit penanda butuh hampir seluruh lebar, sehingga judul tinggal
+  /// beberapa piksel dan melipat menjadi belasan baris.
+  Widget _buildSheetHeadline(bool isExpired) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pembayaran Pemesanan',
+          style: TextStyle(
+            fontSize: AppTypography.sizeHeading,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          labelKodeReservasi(widget.booking.id),
+          style: const TextStyle(
+            fontSize: AppTypography.sizeCaption,
+            color: AppColors.textSecondary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _buildHeaderStatusChip(isExpired),
+        ),
+      ],
+    );
+  }
+
+  /// Tombol kirim bukti bayar. Hanya hidup saat nama pengirim dan berkas sudah
+  /// lengkap, supaya pelanggan tidak baru tahu kekurangannya setelah menekan.
+  Widget _buildSubmitProofButton({required bool isExpired}) {
+    return SizedBox(
+      width: double.infinity,
+      height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+      child: ElevatedButton(
+        onPressed: (_isSubmittingProof || isExpired || !_isProofFormComplete)
+            ? null
+            : _submitPaymentProof,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryNavy,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFCBD5E1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          elevation: 0,
+        ),
+        child: _isSubmittingProof
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  ),
+                  SizedBox(width: 8),
+                  Text('Mengirim bukti…', style: TextStyle(fontSize: AppTypography.sizeBody)),
+                ],
+              )
+            : Text(
+                isExpired ? 'Batas waktu berakhir' : 'Kirim Bukti Pembayaran',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Inter',
+                ),
+              ),
       ),
     );
   }
@@ -6377,7 +6383,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
               ),
               const SizedBox(height: 2),
               const Text(
-                'Nominal sudah tercantum di dalam kode QR — tidak perlu mengetik ulang.',
+                'Nominal sudah tercantum di dalam kode QR. Tidak perlu mengetik ulang.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: AppTypography.sizeMicro,
@@ -6390,7 +6396,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
           ),
         ),
         const SizedBox(height: 16),
-        _buildPaymentProofUploadSection(isExpired: isExpired),
+        _buildPaymentProofUploadSection(),
       ],
     );
   }
@@ -6515,12 +6521,12 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
           ),
         ),
         const SizedBox(height: 14),
-        _buildPaymentProofUploadSection(isExpired: isExpired),
+        _buildPaymentProofUploadSection(),
       ],
     );
   }
 
-  Widget _buildPaymentProofUploadSection({bool isExpired = false}) {
+  Widget _buildPaymentProofUploadSection() {
     final isQris = _selectedTab == 0;
 
     if (_isProofUploaded) {
@@ -6599,47 +6605,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
             ),
           ),
         ],
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-          child: ElevatedButton(
-            /* Tombol hanya hidup saat datanya lengkap. Sebelumnya tombol aktif
-               dengan kolom kosong, dan pelanggan baru tahu kekurangannya setelah
-               menekan lalu mendapat pesan galat. */
-            onPressed: (_isSubmittingProof || isExpired || !_isProofFormComplete)
-                ? null
-                : _submitPaymentProof,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFFCBD5E1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-            child: _isSubmittingProof
-                ? const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      ),
-                      SizedBox(width: 8),
-                      Text('Mengirim bukti…', style: TextStyle(fontSize: AppTypography.sizeBody)),
-                    ],
-                  )
-                : Text(
-                    isExpired ? 'Batas waktu berakhir' : 'Kirim Bukti Pembayaran',
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeBody,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-          ),
-        ),
       ],
     );
   }

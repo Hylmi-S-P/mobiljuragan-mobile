@@ -593,6 +593,8 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 Text(
                   isWaiting
                       ? 'BRI Merauke: 0321-01-002847-53-1 (a.n MobilJuragan)'
+                      : booking.withDriver
+                      ? 'Sopir siap menjemput Anda di ${booking.pickupLocation}.'
                       : 'Kunci siap diserahterimakan di ${booking.pickupLocation}.',
                   style: TextStyle(
                     fontSize: AppTypography.sizeTiny,

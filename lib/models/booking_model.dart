@@ -25,7 +25,6 @@ enum PaymentMethodType {
   belumDipilih,
   qrisOtomatis,
   virtualAccount,
-  tunaiDiTempat, // COD saat serah terima unit dan cek fisik
 }
 
 /// Model item penyesuaian biaya / surcharge / deposit / diskon yang diinput dinamis oleh admin dari dashboard website
@@ -647,16 +646,12 @@ class BookingModel {
     }
   }
 
-  /// Apakah pesanan memakai skema pelunasan tunai saat serah terima (COD)
-  bool get isCodPayment => paymentMethodType == PaymentMethodType.tunaiDiTempat;
-
   /// Apakah pesanan sudah lunas terverifikasi secara online atau otomatis
   bool get isPaidOnline =>
-      (status == BookingStatus.pembayaranSelesai ||
-          status == BookingStatus.verifikasiKantor ||
-          status == BookingStatus.mobilSiapDigunakan ||
-          status == BookingStatus.selesai) &&
-      !isCodPayment;
+      status == BookingStatus.pembayaranSelesai ||
+      status == BookingStatus.verifikasiKantor ||
+      status == BookingStatus.mobilSiapDigunakan ||
+      status == BookingStatus.selesai;
 
   /// Judul ringkas metode pembayaran
   String get paymentMethodTitle {
@@ -665,8 +660,6 @@ class BookingModel {
         return 'QRIS (Otomatis)';
       case PaymentMethodType.virtualAccount:
         return 'Virtual Account Bank';
-      case PaymentMethodType.tunaiDiTempat:
-        return 'Tunai di Tempat (COD)';
       case PaymentMethodType.belumDipilih:
         return 'Belum Dipilih';
     }
@@ -674,9 +667,6 @@ class BookingModel {
 
   /// Badge status pelunasan resmi untuk E-Ticket
   String get paymentTicketBadge {
-    if (isCodPayment) {
-      return 'COD (BAYAR SAAT SERAH TERIMA)';
-    }
     if (isPaidOnline) {
       return 'LUNAS (TERVERIFIKASI OTOMATIS)';
     }

@@ -47,7 +47,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Pembayaran Pemesanan'), findsOneWidget);
-      expect(find.text('Reservasi #MBJ-TEST-2026'), findsOneWidget);
+      expect(find.text('Kode reservasi: MBJ-TEST-2026'), findsOneWidget);
       expect(find.byIcon(Icons.schedule), findsOneWidget);
     });
 

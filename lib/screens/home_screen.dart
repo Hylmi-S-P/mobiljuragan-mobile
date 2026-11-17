@@ -503,7 +503,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case BookingStatus.pembayaranSelesai:
         return 'Pembayaran terkonfirmasi, armada disiapkan';
       case BookingStatus.mobilSiapDigunakan:
-        return 'Kunci siap diserahterimakan di ${order.pickupLocation}';
+        /* Mode dengan sopir tidak menyerahkan kunci, jadi kalimatnya dibedakan:
+           "kunci siap diserahterimakan" hanya benar untuk lepas kunci. */
+        return order.withDriver
+            ? 'Sopir siap menjemput Anda di ${order.pickupLocation}'
+            : 'Kunci siap diserahterimakan di ${order.pickupLocation}';
       default:
         return 'Jadwal sewa unit terkonfirmasi';
     }

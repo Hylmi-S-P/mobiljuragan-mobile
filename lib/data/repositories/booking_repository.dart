@@ -410,7 +410,7 @@ class BookingRepository {
 
   /// Menyimpan pesanan atau pembaruan status ke dalam SQLite lokal (Offline-First)
   /// Hanya mengirimkan createBooking ke remote jika pesanan belum ada di database lokal,
-  /// guna mencegah duplikasi pesanan saat pembaruan status (seperti pembatalan atau konfirmasi COD).
+  /// guna mencegah duplikasi pesanan saat pembaruan status (seperti pembatalan).
   Future<void> saveBooking(BookingModel booking) async {
     final existing = await _bookingDao.getBookingById(booking.id);
     await _bookingDao.insertOrUpdateBooking(_owned(booking.toCompanion()));

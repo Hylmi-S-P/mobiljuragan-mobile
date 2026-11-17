@@ -15,7 +15,6 @@ enum PaymentMethod {
       case 'TRANSFER':
         return PaymentMethod.bankTransfer;
       case 'CASH':
-      case 'COD':
         return PaymentMethod.cash;
       default:
         return PaymentMethod.qris;
@@ -40,7 +39,9 @@ enum PaymentMethod {
       case PaymentMethod.bankTransfer:
         return 'Transfer Bank';
       case PaymentMethod.cash:
-        return 'Bayar Tunai di Tempat (COD)';
+        // Sisa data lama yang dicatat staf kantor. Pembayaran tunai tidak lagi
+        // ditawarkan ke pelanggan, jadi labelnya tidak boleh menyebut metode itu.
+        return 'Pembayaran Tercatat Staf';
     }
   }
 }

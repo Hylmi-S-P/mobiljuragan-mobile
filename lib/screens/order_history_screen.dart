@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../models/booking_model.dart';
 import '../theme/app_colors.dart';
+import '../core/util/format_tanggal.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/order_empty_state.dart';
 import 'date_time_screen.dart';
@@ -29,11 +30,6 @@ class OrderHistoryScreen extends StatefulWidget {
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   int _selectedSegment = 0; // 0: Pesanan Berjalan, 1: Riwayat Selesai
-
-  final List<String> _monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -263,13 +259,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     final startDate = booking.startDate;
     final endDate = booking.endDate;
 
-    final startMonth = _monthNames[startDate.month - 1];
-    final endMonth = _monthNames[endDate.month - 1];
-    final dateRange = (startDate.year == endDate.year && startDate.month == endDate.month)
-        ? '${startDate.day} - ${endDate.day} $endMonth ${endDate.year}'
-        : (startDate.year == endDate.year)
-            ? '${startDate.day} $startMonth - ${endDate.day} $endMonth ${endDate.year}'
-            : '${startDate.day} $startMonth ${startDate.year} - ${endDate.day} $endMonth ${endDate.year}';
+    final dateRange = formatRentangSewa(startDate, endDate);
     final timeStr = (booking.startTime.isNotEmpty && booking.startTime != '00.00 WIT')
         ? ' • Pukul ${booking.startTime}'
         : '';

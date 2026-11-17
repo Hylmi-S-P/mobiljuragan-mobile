@@ -1,7 +1,6 @@
 import 'dart:async';
 import '../core/network/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
@@ -9,7 +8,6 @@ import '../controllers/vehicle_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
-import '../widgets/merauke_location_map_picker.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'order_status_screen.dart';
@@ -17,6 +15,7 @@ import '../theme/app_typography.dart';
 import '../widgets/gambar_kendaraan.dart';
 import '../data/remote/document_api_service.dart';
 import '../core/util/berkas_unduhan.dart';
+import '../core/util/format_tanggal.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
 /// Menampilkan 3 kartu ringkasan pesanan dengan tombol Ubah dan rincian tarif resmi
@@ -34,11 +33,6 @@ class OrderReviewScreen extends StatefulWidget {
 }
 
 class _OrderReviewScreenState extends State<OrderReviewScreen> {
-  final List<String> _monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingController>();
@@ -233,8 +227,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     final startDate = booking.selectedDate;
     final endDate = startDate.add(Duration(days: booking.durationDays));
 
-    final startStr = '${startDate.day} ${_monthNames[startDate.month - 1]} ${startDate.year}';
-    final endStr = '${endDate.day} ${_monthNames[endDate.month - 1]} ${endDate.year}';
+    final startStr = formatTanggalPanjang(startDate);
+    final endStr = formatTanggalPanjang(endDate);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -372,15 +366,13 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           const SizedBox(height: 6),
           _buildInfoRow(
             booking.withDriver ? 'Titik Penjemputan' : 'Titik Serah Terima',
-            booking.withDriver
-                ? booking.pickupLocation
-                : 'Kantor MobilJuragan',
+            booking.pickupLocation,
           ),
-          if (!booking.withDriver) ...[
+          if (booking.pickupAddress.isNotEmpty) ...[
             const SizedBox(height: 2),
-            const Text(
-              'Jl. Pendidikan, Mandala, Kec. Merauke, Kabupaten Merauke, Papua Selatan 99614',
-              style: TextStyle(
+            Text(
+              booking.pickupAddress,
+              style: const TextStyle(
                 fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w400,
                 height: 1.4,
@@ -390,21 +382,11 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          /* Lepas kunci selalu diambil di kantor, jadi peta tidak perlu
-             ditampilkan — yang dibutuhkan pelanggan hanya alamatnya. Peta tetap
-             muncul untuk mode dengan sopir karena titik jemputnya bisa berubah. */
-          if (booking.withDriver)
-            MeraukeLocationMapPicker(
-              selectedLocationName: booking.pickupLocation,
-              selectedCoordinates: (booking.pickupLatitude != null && booking.pickupLongitude != null)
-                  ? LatLng(booking.pickupLatitude!, booking.pickupLongitude!)
-                  : null,
-              isMiniPreview: true,
-              showOverlayBanner: false,
-              isWithDriver: booking.withDriver,
-            ),
-          const SizedBox(height: 12),
-          // Inline Notice Box Netral
+          /* Sesuai standar layar tinjauan (Perbaikan.md §2.3), peta tidak
+             dirender ulang di sini pada mode apa pun. Titik yang dipilih sudah
+             diwakili nama titik + alamatnya di atas, dan pelanggan bisa
+             mengubahnya lewat tombol "Ubah" bila ternyata bukan titik yang
+             dimaksud. */
           _buildInlineServiceNotice(booking),
         ],
       ),
@@ -449,7 +431,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 const SizedBox(height: 3),
                 Text(
                   isDriver
-                      ? 'Armada dikemudikan staf profesional MobilJuragan. Bebas repot berkendara dan tanpa syarat SIM A pemesan.'
+                      ? 'Staf tetap MobilJuragan yang terikat SOP. Ketentuan lengkap ada di Langkah 2.'
                       : 'Form Kesanggupan penyewa dapat diunduh pada halaman status pesanan, atau ditandatangani langsung secara fisik saat serah terima unit di Merauke.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeTiny,
@@ -539,8 +521,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 Expanded(
                   child: Text(
                     booking.withDriver
-                        ? 'Biaya final (termasuk rute luar kota, durasi sewa >12 jam/hari, atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.'
-                        : 'Biaya final (termasuk penyesuaian rute atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.',
+                        ? 'Biaya final (termasuk durasi sewa lebih dari 12 jam per hari atau potongan promo) akan dikonfirmasi admin setelah pengajuan dikirim.'
+                        : 'Biaya final (termasuk penyesuaian atau potongan promo dari admin) akan dikonfirmasi setelah pengajuan dikirim.',
                     style: const TextStyle(
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w400,
@@ -715,7 +697,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              catatan == null ? label : '$label — $catatan',
+              catatan == null ? label : '$label ($catatan)',
               style: TextStyle(
                 fontSize: AppTypography.sizeCaption,
                 color: wajib ? AppColors.textPrimary : AppColors.textSecondary,
@@ -776,6 +758,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
   ) {
     final auth = context.watch<AuthController>();
     final isEnabled = booking.agreementChecked;
+    final label = _labelBawahKirim(booking);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -786,16 +769,18 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            _labelTenggatKirim(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: AppTypography.sizeTiny,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
+          if (label != null) ...[
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: AppTypography.sizeTiny,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             width: double.infinity,
             // Tinggi ikut skala teks sistem agar label tidak terpotong.
@@ -828,6 +813,20 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
         ],
       ),
     );
+  }
+
+  /* Label di atas tombol kirim menjawab satu pertanyaan saja: kalau tombol ini
+     masih mati, apa yang kurang? Karena itu isinya bukan tenggat dokumen —
+     pelanggan mode Dengan Sopir tidak mengunggah berkas apa pun — melainkan
+     pemicu yang sebenarnya, yaitu centang persetujuan di atas tombol. Tenggat
+     dokumen baru disebut setelah persetujuan dicentang, dan hanya untuk mode
+     lepas kunci yang memang punya unggahan. */
+  String? _labelBawahKirim(BookingController booking) {
+    if (!booking.agreementChecked) {
+      return 'Centang persetujuan sewa di atas untuk mengaktifkan tombol ini.';
+    }
+    if (booking.withDriver) return null;
+    return _labelTenggatKirim();
   }
 
   /* Tombol kirim menyebut jam pasti, bukan "2 jam" yang harus dihitung sendiri

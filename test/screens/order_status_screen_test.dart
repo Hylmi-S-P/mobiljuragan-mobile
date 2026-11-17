@@ -207,7 +207,7 @@ void main() {
 
       // Memastikan catatan ketiadaan printer telah dihapus dan diganti catatan syarat resmi
       expect(find.textContaining('Tidak ada akses printer'), findsNothing);
-      expect(find.textContaining('Wajib dilengkapi sebelum serah terima unit di lokasi'), findsOneWidget);
+      expect(find.textContaining('E-Ticket aktif setelah semua berkas diverifikasi petugas'), findsOneWidget);
     });
 
     testWidgets('Menampilkan sisa waktu unggah dokumen saat tenggat berjalan', (tester) async {
@@ -240,7 +240,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.textContaining('Waktu dijeda — Menunggu pemeriksaan admin'),
+        find.textContaining('Waktu dijeda: Menunggu pemeriksaan admin'),
         findsOneWidget,
       );
       // Tidak boleh ada hitungan mundur saat jamnya berhenti.
@@ -285,13 +285,39 @@ void main() {
       expect(find.textContaining('Sewa Unit'), findsOneWidget);
       expect(find.textContaining('Layanan Sopir'), findsOneWidget);
       expect(find.text('Total Pembayaran'), findsAtLeastNWidgets(1));
-      expect(find.text('Tutup Rincian'), findsOneWidget);
+      // Satu cara tutup saja: ikon X di judul (drag handle tetap ada).
+      expect(find.text('Tutup Rincian'), findsNothing);
 
-      // Tutup modal
-      await tester.tap(find.text('Tutup Rincian'));
+      // Tutup modal lewat ikon X
+      await tester.tap(find.byIcon(Icons.close).last);
       await tester.pumpAndSettle();
 
       expect(find.text('Rincian Tarif Final'), findsNothing);
+    });
+
+    testWidgets('Pesanan lepas kunci tidak menampilkan baris Layanan Sopir di mana pun', (tester) async {
+      final lepasKunciWaiting = inProgressBooking.copyWith(
+        status: BookingStatus.menungguPembayaran,
+        isFinalTariffConfirmed: true,
+        withDriver: false,
+      );
+
+      await tester.pumpWidget(createTestWidget(booking: lepasKunciWaiting));
+      await tester.pumpAndSettle();
+
+      // Kartu biaya di layar tidak boleh menyebut jasa sopir sama sekali.
+      expect(find.textContaining('Layanan Sopir'), findsNothing);
+      expect(find.text('Gratis'), findsNothing);
+
+      // Begitu pula di sheet Rincian Tarif Final.
+      final rincianTarifFinder = find.text('Lihat Rincian Tarif');
+      if (rincianTarifFinder.evaluate().isNotEmpty) {
+        await tester.tap(rincianTarifFinder);
+        await tester.pumpAndSettle();
+        expect(find.text('Rincian Tarif Final'), findsOneWidget);
+        expect(find.textContaining('Layanan Sopir'), findsNothing);
+        expect(find.text('Gratis'), findsNothing);
+      }
     });
 
     testWidgets('Menciutkan kartu dokumen lepas kunci saat 3 berkas lengkap pada Tahap 3 dan dapat dibuka-tutup', (tester) async {
@@ -413,11 +439,14 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Header badge menampilkan Perlu Revisi
-      expect(find.text('Perlu Revisi'), findsOneWidget);
+      // Banner "Perlu Revisi" satu-satunya penanda status; badge kartu
+      // menghitung berapa berkas yang harus diperbaiki.
+      expect(find.textContaining('Perlu Revisi Dokumen Lepas Kunci'), findsWidgets);
+      expect(find.text('1/3 Perlu Perbaikan'), findsOneWidget);
 
-      // Callout peringatan staf tampil
-      expect(find.textContaining('Catatan Staf:'), findsOneWidget);
+      // Callout peringatan staf tampil sebagai kutipan blok, tanpa tanda kutip
+      expect(find.text('Catatan staf'), findsOneWidget);
+      expect(find.textContaining('"'), findsNothing);
       expect(find.textContaining('Foto SIM buram pada bagian masa berlaku'), findsOneWidget);
 
       // Smart targeting: SIM A targeted, KTP tidak targeted
@@ -425,13 +454,16 @@ void main() {
       expect(find.text('Foto e-KTP terunggah'), findsOneWidget);
 
       // Tombol submit terkunci jika belum ada draft baru dipilih
-      expect(find.text('Pilih Berkas Baru Terlebih Dahulu'), findsOneWidget);
+      expect(find.text('Pilih berkas untuk diunggah'), findsOneWidget);
 
-      // Simulasikan pengguna memilih berkas baru untuk SIM A
+      // Simulasikan pengguna memilih berkas baru untuk SIM A. Berkas SIM dan
+      // surat pernyataan memakai kata kerja yang sama ("Unggah Ulang") karena
+      // aksinya memang sama; baris SIM muncul lebih dulu di kartu dokumen.
       final uploadButton = find.widgetWithText(OutlinedButton, 'Unggah Ulang');
-      await tester.ensureVisible(uploadButton);
+      expect(uploadButton, findsNWidgets(2));
+      await tester.ensureVisible(uploadButton.first);
       await tester.pumpAndSettle();
-      await tester.tap(uploadButton);
+      await tester.tap(uploadButton.first);
       await tester.pumpAndSettle();
 
       // Feedback draft baru dipilih
@@ -472,7 +504,7 @@ void main() {
       // Dua baris ditolak, surat pernyataan tidak ikut ditandai.
       expect(find.text('Ditolak • Perlu foto ulang'), findsNWidgets(2));
       expect(find.text('surat_ttd_basah.jpg • Menunggu verifikasi staf.'), findsOneWidget);
-      expect(find.textContaining('Catatan Staf:'), findsOneWidget);
+      expect(find.text('Catatan staf'), findsOneWidget);
     });
   });
 }

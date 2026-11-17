@@ -125,12 +125,13 @@ void main() {
       expect(PaymentMethod.fromString('QRIS'), equals(PaymentMethod.qris));
       expect(PaymentMethod.fromString('BANK_TRANSFER'), equals(PaymentMethod.bankTransfer));
       expect(PaymentMethod.fromString('CASH'), equals(PaymentMethod.cash));
-      expect(PaymentMethod.fromString('COD'), equals(PaymentMethod.cash));
       expect(PaymentMethod.fromString(null), equals(PaymentMethod.qris));
 
       expect(PaymentMethod.qris.label, equals('QRIS Dinamis'));
       expect(PaymentMethod.bankTransfer.label, equals('Transfer Bank'));
-      expect(PaymentMethod.cash.label, contains('COD'));
+      // Pembayaran tunai tidak lagi ditawarkan ke pelanggan; label sisa data
+      // lama tidak boleh menyebut COD lagi.
+      expect(PaymentMethod.cash.label, isNot(contains('COD')));
     });
 
     test('PaymentStatus fromString dan label sesuai konvensi', () {

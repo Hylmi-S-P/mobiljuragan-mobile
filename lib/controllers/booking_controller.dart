@@ -24,6 +24,11 @@ class BookingController extends ChangeNotifier {
   int _durationDays = 2;
   bool _withDriver = false;
   String _pickupLocation = 'Bandara Mopah Merauke';
+  /* Alamat titik serah terima/jemput yang sedang dipilih. Diisi dari data titik
+     resmi saat pelanggan memilih, dan sengaja tidak dikonstankan di layar
+     ringkasan: titik yang dipilih bisa bandara, pelabuhan, atau hasil ketukan
+     peta, jadi alamat kantor tidak boleh dipakai untuk semuanya. */
+  String _pickupAddress = '';
   double? _pickupLatitude = -8.5202;
   double? _pickupLongitude = 140.4180;
   String _customerNote = '';
@@ -205,6 +210,7 @@ class BookingController extends ChangeNotifier {
   int get durationDays => _durationDays;
   bool get withDriver => _withDriver;
   String get pickupLocation => _pickupLocation;
+  String get pickupAddress => _pickupAddress;
   double? get pickupLatitude => _pickupLatitude;
   double? get pickupLongitude => _pickupLongitude;
   String get customerNote => _customerNote;
@@ -290,8 +296,14 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setPickupLocation(String location, [double? lat, double? lng]) {
+  void setPickupLocation(
+    String location, [
+    double? lat,
+    double? lng,
+    String? address,
+  ]) {
     _pickupLocation = location;
+    _pickupAddress = address ?? '';
     if (lat != null && lng != null) {
       _pickupLatitude = lat;
       _pickupLongitude = lng;
@@ -601,6 +613,7 @@ class BookingController extends ChangeNotifier {
     _durationDays = 2;
     _withDriver = false;
     _pickupLocation = 'Bandara Mopah Merauke';
+    _pickupAddress = '';
     _pickupLatitude = -8.5202;
     _pickupLongitude = 140.4180;
     _customerNote = '';

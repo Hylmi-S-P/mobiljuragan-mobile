@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
+import '../core/util/format_tanggal.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_app_bar.dart';
@@ -33,16 +34,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   late DateTime _selectedDate;
   
   String _selectedTime = '09.00 WIT';
-  String _timeDescription = 'Pagi hari';
+  String _timeDescription = 'Pagi';
   int _durationDays = 2;
   bool _isSelectingEndDate = false; // Siklus 2 ketukan: false = pilih mulai, true = pilih selesai
 
-  final List<String> _monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
+  final List<String> _monthNames = namaBulan;
 
-  final List<String> _dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  final List<String> _dayNames = namaHariSingkat;
 
   @override
   void initState() {
@@ -455,13 +453,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
   String _getTimeDescription(int hour) {
     if (hour >= 6 && hour < 11) {
-      return 'Pagi hari';
+      return 'Pagi';
     } else if (hour >= 11 && hour < 15) {
-      return 'Siang hari';
+      return 'Siang';
     } else if (hour >= 15 && hour < 18) {
-      return 'Sore hari';
+      return 'Sore';
     } else {
-      return 'Malam hari';
+      return 'Malam';
     }
   }
 
@@ -909,7 +907,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           Expanded(
             child: Text(
               isDriver
-                  ? 'Layanan sopir aktif 12 jam per hari (mulai pukul $_selectedTime). Sopir standby setiap hari sesuai jadwal di Merauke.'
+                  ? 'Sopir bertugas 12 jam sejak pukul $_selectedTime dan standby setiap hari di Merauke.'
                   : 'Hitungan sewa berlaku 24 jam penuh per hari sejak serah terima unit armada di Merauke.',
               style: const TextStyle(
                 fontSize: AppTypography.sizeCaption,

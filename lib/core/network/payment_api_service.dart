@@ -8,7 +8,7 @@ class PaymentApiService {
 
   PaymentApiService([ApiClient? client]) : _client = client ?? ApiClient();
 
-  /// Membuat tagihan pembayaran baru (QRIS Dinamis, Transfer Bank, atau Tunai COD)
+  /// Membuat tagihan pembayaran baru (QRIS Dinamis atau Transfer Bank)
   Future<PaymentModel> createPayment({
     required String bookingId,
     PaymentMethod method = PaymentMethod.qris,

@@ -102,7 +102,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
       setState(() {
         _isSubmitting = false;
         _errorMessage =
-            'Tiket belum terkirim karena koneksi ke server gagal. Isian Anda masih tersimpan di formulir ini — periksa jaringan lalu kirim ulang.';
+            'Tiket belum terkirim karena koneksi ke server gagal. Isian Anda masih tersimpan di formulir ini. Periksa jaringan lalu kirim ulang.';
       });
       return;
     }
@@ -183,7 +183,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                 validator: (value) {
                   final judul = value?.trim() ?? '';
                   if (judul.isEmpty) return 'Judul belum diisi.';
-                  if (judul.length < 5) return 'Judul terlalu pendek — tulis minimal 5 karakter.';
+                  if (judul.length < 5) return 'Judul terlalu pendek. Tulis minimal 5 karakter.';
                   return null;
                 },
               ),
@@ -214,7 +214,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                   final detail = value?.trim() ?? '';
                   if (detail.isEmpty) return 'Detail belum diisi.';
                   if (detail.length < _minDescriptionLength) {
-                    return 'Detail terlalu pendek — tulis minimal $_minDescriptionLength karakter.';
+                    return 'Detail terlalu pendek. Tulis minimal $_minDescriptionLength karakter.';
                   }
                   return null;
                 },
