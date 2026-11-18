@@ -127,8 +127,9 @@ class FakeSecureStorageService extends SecureStorageService {
 
 void main() {
   group('AuthRepository & AuthApiService Customer OTP Tests', () {
-    test('sanitizePhoneNumber membersihkan spasi dan tanda minus', () {
-      expect(AuthApiService.sanitizePhoneNumber('+62 812-4800-2910'), equals('+6281248002910'));
+    test('sanitizePhoneNumber membersihkan spasi, tanda minus, dan menormalkan awalan +62 ke 08', () {
+      expect(AuthApiService.sanitizePhoneNumber('+62 812-4800-2910'), equals('081248002910'));
+      expect(AuthApiService.sanitizePhoneNumber('+62 0812-4800-2910'), equals('081248002910'));
       expect(AuthApiService.sanitizePhoneNumber('0812 4800 2910'), equals('081248002910'));
       expect(AuthApiService.sanitizePhoneNumber('0812-4800-2910'), equals('081248002910'));
     });
@@ -145,7 +146,7 @@ void main() {
 
       expect(res['status'], equals('success'));
       expect(fakeApi.requestOtpCount, equals(1));
-      expect(fakeApi.lastRequestedPhone, equals('+6281248002910'));
+      expect(fakeApi.lastRequestedPhone, equals('081248002910'));
       expect(fakeApi.lastNiat, equals(NiatOtp.login));
     });
 

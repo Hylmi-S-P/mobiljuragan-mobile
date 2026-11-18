@@ -105,7 +105,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     final auth = context.read<AuthController>();
-    final rawPhone = _phoneController.text.trim();
+    var rawPhone = _phoneController.text.trim();
+    if (!rawPhone.startsWith('+62')) {
+      rawPhone = rawPhone.replaceFirst(RegExp(r'^0+'), '');
+    }
     final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
 
     // Simpan data pendaftaran sementara (termasuk kata sandi) di memori.

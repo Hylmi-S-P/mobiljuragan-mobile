@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
+import '../../data/remote/auth_api_service.dart' show NiatOtp;
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
+import 'forgot_password_screen.dart';
 import 'login_password_screen.dart';
 import 'otp_verification_screen.dart';
 import 'register_screen.dart';
@@ -128,7 +130,32 @@ class LoginMethodScreen extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ForgotPasswordScreen(
+                          phoneNumber: phoneNumber,
+                          onSuccess: onSuccess,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Lupa kata sandi?',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBody,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryTeal,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               Center(
                 child: TextButton(
                   onPressed: () {
@@ -158,7 +185,8 @@ class LoginMethodScreen extends StatelessWidget {
 
   Future<void> _kirimOtp(BuildContext context) async {
     final auth = context.read<AuthController>();
-    final terkirim = await auth.sendOtp(phoneNumber);
+    auth.clearPendingRegistration();
+    final terkirim = await auth.sendOtp(phoneNumber, niat: NiatOtp.login);
 
     if (!context.mounted) return;
 

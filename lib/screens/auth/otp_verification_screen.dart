@@ -78,15 +78,24 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return '$minutes:$seconds';
   }
 
-  void _handleResendOtp() {
+  Future<void> _handleResendOtp() async {
     if (_resendSeconds > 0) return;
     _startCountdownTimer();
-    context.read<AuthController>().sendOtp(widget.phoneNumber);
+    final auth = context.read<AuthController>();
+    final terkirim = await auth.sendOtp(
+      widget.phoneNumber,
+      niat: auth.activeOtpIntent,
+    );
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Kode OTP baru telah dikirimkan ke WhatsApp ${widget.phoneNumber}.'),
-        backgroundColor: AppColors.primaryTeal,
+        content: Text(
+          terkirim
+              ? 'Kode OTP baru telah dikirimkan ke WhatsApp ${widget.phoneNumber}.'
+              : (auth.errorMessage ?? 'Gagal mengirim ulang kode OTP. Silakan coba lagi.'),
+        ),
+        backgroundColor: terkirim ? AppColors.primaryTeal : const Color(0xFFDC2626),
       ),
     );
   }

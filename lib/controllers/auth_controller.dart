@@ -41,6 +41,7 @@ class AuthController extends ChangeNotifier {
    * ditulis ke secure storage maupun SharedPreferences.
    */
   Map<String, String>? _pendingRegistration;
+  NiatOtp _activeOtpIntent = NiatOtp.login;
 
   AuthController({
     this.repository,
@@ -55,6 +56,7 @@ class AuthController extends ChangeNotifier {
   bool get hasLoginError => _hasLoginError;
   String? get errorMessage => _errorMessage;
   Map<String, String>? get pendingRegistration => _pendingRegistration;
+  NiatOtp get activeOtpIntent => _activeOtpIntent;
   bool get hasSecureToken => _hasSecureToken;
   bool get isMenyimpanProfil => _isMenyimpanProfil;
   bool get isLoadingOtp => _isLoadingOtp;
@@ -126,7 +128,17 @@ class AuthController extends ChangeNotifier {
       'gender': gender,
       'password': password,
     };
+    _activeOtpIntent = NiatOtp.register;
     _phoneNumber = phone;
+    _hasLoginError = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Membersihkan sisa state pendaftaran tertunda saat pengguna beralih ke alur login.
+  void clearPendingRegistration() {
+    _pendingRegistration = null;
+    _activeOtpIntent = NiatOtp.login;
     _hasLoginError = false;
     _errorMessage = null;
     notifyListeners();
@@ -142,9 +154,16 @@ class AuthController extends ChangeNotifier {
     _phoneNumber = phone;
     _hasLoginError = false;
     _errorMessage = null;
+
+    if (niat == NiatOtp.login) {
+      _pendingRegistration = null;
+      _activeOtpIntent = NiatOtp.login;
+    } else if (niat == NiatOtp.register) {
+      _activeOtpIntent = NiatOtp.register;
+    }
     notifyListeners();
 
-    final niatEfektif = niat ?? (_pendingRegistration != null ? NiatOtp.register : NiatOtp.login);
+    final niatEfektif = niat ?? _activeOtpIntent;
 
     final repo = repository;
     if (repo == null) {
@@ -245,7 +264,7 @@ class AuthController extends ChangeNotifier {
   /// Keputusan sepenuhnya milik server. Tidak ada kode ajaib yang diterima di
   /// perangkat: dulu jalur itu melahirkan akun yang tidak ada di database.
   Future<bool> verifyOtp(String code) async {
-    if (_pendingRegistration != null) {
+    if (_activeOtpIntent == NiatOtp.register && _pendingRegistration != null) {
       return verifyRegisterOtp(code);
     }
 

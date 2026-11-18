@@ -14,9 +14,20 @@ class AuthApiService {
 
   AuthApiService([ApiClient? client]) : _client = client ?? ApiClient();
 
-  /// Membersihkan format nomor telepon agar sesuai regex backend.
+  /// Membersihkan format nomor telepon agar sesuai regex backend, termasuk
+  /// menormalkan awalan `+620` / `620` menjadi `08...`.
   static String sanitizePhoneNumber(String raw) {
-    return raw.replaceAll(RegExp(r'[\s\-]'), '');
+    var cleaned = raw.replaceAll(RegExp(r'[\s\-]'), '');
+    if (cleaned.startsWith('+620')) {
+      cleaned = '0${cleaned.substring(4)}';
+    } else if (cleaned.startsWith('620')) {
+      cleaned = '0${cleaned.substring(3)}';
+    } else if (cleaned.startsWith('+62')) {
+      cleaned = '0${cleaned.substring(3)}';
+    } else if (cleaned.startsWith('62')) {
+      cleaned = '0${cleaned.substring(2)}';
+    }
+    return cleaned;
   }
 
   /// Meminta kode verifikasi untuk nomor tertentu.

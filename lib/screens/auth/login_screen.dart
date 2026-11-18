@@ -35,8 +35,13 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final rawPhone = _phoneController.text.trim();
+    var rawPhone = _phoneController.text.trim();
+    if (!rawPhone.startsWith('+62')) {
+      rawPhone = rawPhone.replaceFirst(RegExp(r'^0+'), '');
+    }
     final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
+
+    context.read<AuthController>().clearPendingRegistration();
 
     /* Nomor dulu, lalu pengguna memilih caranya. Kode verifikasi **tidak**
        dikirim di sini: layar berikutnya menawarkan dua jalur (kode WhatsApp atau
