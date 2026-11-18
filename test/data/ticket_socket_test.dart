@@ -16,14 +16,14 @@ class _PenyimpananPalsu extends SecureStorageService {
   Future<String?> getAccessToken() async => token;
 }
 
-/// Server WebSocket kecil yang meniru backend: menerima langganan, lalu
-/// mengirim peristiwa yang sudah disiapkan.
+/// Server SSE kecil yang meniru endpoint `GET /api/v1/tickets/:id/events`:
+/// menerima langganan dengan header Bearer, lalu mendorong peristiwa SSE.
 class _ServerUji {
   _ServerUji(this._server);
 
   final HttpServer _server;
-  final List<Map<String, dynamic>> diterima = [];
-  WebSocket? _soket;
+  final List<Map<String, String>> permintaanDiterima = [];
+  HttpResponse? _aliranAktif;
 
   static Future<_ServerUji> mulai() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -32,31 +32,50 @@ class _ServerUji {
     return uji;
   }
 
-  String get alamat => 'http://127.0.0.1:${_server.port}';
+  String get alamat => 'http://127.0.0.1:${_server.port}/api/v1';
 
   Future<void> _layani() async {
     await for (final permintaan in _server) {
-      final soket = await WebSocketTransformer.upgrade(permintaan);
-      _soket = soket;
-      soket.listen((mentah) {
-        diterima.add(jsonDecode(mentah as String) as Map<String, dynamic>);
+      permintaanDiterima.add({
+        'method': permintaan.method,
+        'path': permintaan.uri.path,
+        'auth': permintaan.headers.value(HttpHeaders.authorizationHeader) ?? '',
+        'accept': permintaan.headers.value(HttpHeaders.acceptHeader) ?? '',
       });
+
+      final res = permintaan.response;
+      res.statusCode = HttpStatus.ok;
+      res.bufferOutput = false;
+      res.headers.set(
+        HttpHeaders.contentTypeHeader,
+        'text/event-stream; charset=utf-8',
+      );
+      res.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
+      _aliranAktif = res;
+      res.write('event: siap\ndata: {"jenis":"siap"}\n\n');
     }
   }
 
   void kirim(Map<String, dynamic> isi) {
-    _soket?.add(jsonEncode(isi));
+    final res = _aliranAktif;
+    if (res == null) return;
+    final jenis = isi['jenis'] ?? 'pesan';
+    res.write('event: $jenis\n');
+    res.write('data: ${jsonEncode(isi)}\n\n');
   }
 
   Future<void> tutup() async {
-    await _soket?.close();
+    try {
+      await _aliranAktif?.close();
+    } catch (_) {}
     await _server.close(force: true);
   }
 }
 
 void main() {
-  group('TicketSocket', () {
-    test('mengirim langganan dan meneruskan peristiwa pesan', () async {
+  group('TicketSocket (SSE)', () {
+    test('membuka aliran SSE dengan token Bearer dan meneruskan peristiwa pesan',
+        () async {
       final server = await _ServerUji.mulai();
       addTearDown(server.tutup);
 
@@ -69,14 +88,16 @@ void main() {
 
       await soket.mulai(ticketId: 'tiket-1', onEvent: peristiwa.add);
 
-      /* Tunggu langganan terkirim sebelum server membalas. */
-      for (var i = 0; i < 50 && server.diterima.isEmpty; i++) {
+      for (var i = 0; i < 50 && server.permintaanDiterima.isEmpty; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
-      expect(server.diterima.first['aksi'], 'langganan');
-      expect(server.diterima.first['ticketId'], 'tiket-1');
+      expect(server.permintaanDiterima.first['method'], 'GET');
+      expect(
+        server.permintaanDiterima.first['path'],
+        '/api/v1/tickets/tiket-1/events',
+      );
+      expect(server.permintaanDiterima.first['auth'], 'Bearer token-uji');
 
-      server.kirim({'jenis': 'siap', 'ticketId': 'tiket-1'});
       server.kirim({
         'jenis': 'pesan',
         'ticketId': 'tiket-1',
@@ -84,7 +105,9 @@ void main() {
         'jumlahPesan': 3,
       });
 
-      for (var i = 0; i < 50 && peristiwa.isEmpty; i++) {
+      for (var i = 0; i < 50 &&
+              !peristiwa.any((p) => p.jenis == 'pesan');
+          i++) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
 
@@ -105,7 +128,7 @@ void main() {
 
       await soket.mulai(ticketId: 'tiket-1', onEvent: peristiwa.add);
 
-      for (var i = 0; i < 50 && server.diterima.isEmpty; i++) {
+      for (var i = 0; i < 50 && server.permintaanDiterima.isEmpty; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
 
@@ -113,7 +136,9 @@ void main() {
       server.kirim({'jenis': 'pesan', 'ticketId': 'tiket-1', 'sequence': 5});
       server.kirim({'jenis': 'pesan', 'ticketId': 'tiket-1', 'sequence': 4});
 
-      for (var i = 0; i < 50 && peristiwa.isEmpty; i++) {
+      for (var i = 0; i < 50 &&
+              !peristiwa.any((p) => p.jenis == 'pesan');
+          i++) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
       /* Beri waktu peristiwa ganda sempat diproses kalau dedup gagal. */

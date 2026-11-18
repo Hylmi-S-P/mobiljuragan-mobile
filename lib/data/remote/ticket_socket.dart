@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
 
 import '../../core/constants/api_constants.dart';
 import '../local/secure/secure_storage_service.dart';
 
-/// Peristiwa yang datang dari saluran tiket.
+/// Peristiwa yang datang dari saluran tiket (SSE).
 ///
 /// Bentuknya sengaja dibuat sederhana: hanya jenis dan isi mentah. Pemetaan ke
 /// model dilakukan pemanggil, supaya layar tetap yang memutuskan apa arti sebuah
@@ -29,31 +30,34 @@ class TicketEvent {
   String? get pesan => data['pesan'] as String?;
 }
 
-/// Pendengar peristiwa tiket lewat WebSocket.
+/// Pendengar peristiwa tiket real-time lewat Server-Sent Events (SSE).
 ///
-/// Menggantikan saluran SSE yang memeriksa database setiap dua detik. Di sini
-/// server mendorong peristiwa saat perubahan terjadi, jadi tidak ada yang perlu
-/// ditanyakan berulang dan biaya server tidak tumbuh sebanding jumlah penonton.
+/// Menyambung ke endpoint `GET /api/v1/tickets/:id/events` yang didorong langsung
+/// oleh `EventEmitter` di backend (`ticketEvents.ts`) setiap kali pesan masuk,
+/// status berubah, atau terjadi eskalasi ke staf operasional.
 ///
-/// Satu sambungan melayani satu tiket. Aplikasi pelanggan memang hanya membuka
-/// satu percakapan pada satu waktu, dan memisahkannya membuat siklus hidup
+/// Satu sambungan melayani satu tiket. Memisahkannya membuat siklus hidup
 /// sambungan sama dengan siklus hidup layar.
 class TicketSocket {
-  TicketSocket({SecureStorageService? secureStorage, this.alamatDasar})
-      : _secureStorage = secureStorage ?? SecureStorageService();
+  TicketSocket({
+    SecureStorageService? secureStorage,
+    this.alamatDasar,
+    http.Client Function()? clientFactory,
+  }) : _secureStorage = secureStorage ?? SecureStorageService(),
+       _clientFactory = clientFactory ?? http.Client.new;
 
   final SecureStorageService _secureStorage;
+  final http.Client Function() _clientFactory;
 
-  /// Alamat soket. Bila null, diturunkan dari [ApiConstants.baseUrl].
+  /// Alamat dasar API. Bila null, diturunkan dari [ApiConstants.baseUrl].
   ///
   /// Diberi jalan masuk supaya pengujian bisa menunjuk server lokal tanpa
   /// mengubah konstanta aplikasi.
   final String? alamatDasar;
 
-  WebSocketChannel? _kanal;
-  StreamSubscription<dynamic>? _langganan;
+  http.Client? _klien;
+  StreamSubscription<String>? _langganan;
   Timer? _penyambungUlang;
-  Timer? _detak;
   bool _dihentikan = false;
   int _percobaan = 0;
 
@@ -70,20 +74,19 @@ class TicketSocket {
   static const int _jedaDasarMs = 2000;
   static const int _jedaMaksimalMs = 30000;
 
-  /// Jeda kirim detak. Server memutus soket yang tidak menjawab ping protokol,
-  /// dan sebagian proxy memutus koneksi yang diam lebih lama dari ini.
-  static const int _jedaDetakMs = 25000;
-
-  /// Alamat soket diturunkan dari alamat API supaya hanya ada satu sumber.
-  String get _alamat {
-    final dasar = alamatDasar ?? ApiConstants.baseUrl;
-    final ws = dasar.startsWith('https://')
-        ? dasar.replaceFirst('https://', 'wss://')
-        : dasar.replaceFirst('http://', 'ws://');
-    return '$ws/ws/tickets';
+  /// Alamat endpoint SSE untuk satu tiket.
+  Uri _alamatTiket(String ticketId) {
+    final mentah = (alamatDasar ?? ApiConstants.baseUrl).replaceAll(
+      RegExp(r'/+$'),
+      '',
+    );
+    final basis = mentah.endsWith('/api/v1') ? mentah : '$mentah/api/v1';
+    return Uri.parse(
+      '$basis${ApiConstants.ticketsEndpoint}/${Uri.encodeComponent(ticketId)}/events',
+    );
   }
 
-  /// Mulai mendengarkan satu tiket.
+  /// Mulai mendengarkan satu tiket lewat aliran SSE.
   ///
   /// [onEvent] dipanggil untuk setiap peristiwa. [onError] dipanggil sekali per
   /// kegagalan sambung, bukan untuk setiap percobaan ulang, supaya layar tidak
@@ -113,72 +116,138 @@ class TicketSocket {
         return;
       }
 
-      final alamat = Uri.parse('$_alamat?token=${Uri.encodeComponent(token)}');
-      final kanal = WebSocketChannel.connect(alamat);
-      _kanal = kanal;
+      _klien?.close();
+      final klien = _clientFactory();
+      _klien = klien;
 
-      await kanal.ready;
+      final permintaan = http.Request('GET', _alamatTiket(ticketId))
+        ..headers[HttpHeaders.authorizationHeader] = 'Bearer $token'
+        ..headers[HttpHeaders.acceptHeader] = 'text/event-stream'
+        ..headers[HttpHeaders.cacheControlHeader] = 'no-cache';
+
+      final respons = await klien.send(permintaan);
 
       if (_dihentikan) {
-        await kanal.sink.close();
+        klien.close();
+        return;
+      }
+
+      if (respons.statusCode != 200) {
+        klien.close();
+        onError?.call('Saluran peristiwa menolak permintaan.');
+        if (respons.statusCode >= 500) {
+          _jadwalkanSambungUlang(
+            ticketId: ticketId,
+            onEvent: onEvent,
+            onError: onError,
+          );
+        }
         return;
       }
 
       _percobaan = 0;
 
-      kanal.sink.add(jsonEncode({'aksi': 'langganan', 'ticketId': ticketId}));
+      String? namaEvent;
+      final barisData = <String>[];
 
-      _detak?.cancel();
-      _detak = Timer.periodic(const Duration(milliseconds: _jedaDetakMs), (_) {
-        if (_dihentikan) return;
-        _kanal?.sink.add(jsonEncode({'aksi': 'detak'}));
-      });
+      void prosesBlok() {
+        if (barisData.isEmpty) {
+          namaEvent = null;
+          return;
+        }
+        final mentah = barisData.join('\n').trim();
+        final eventTertunda = namaEvent;
+        barisData.clear();
+        namaEvent = null;
 
-      _langganan = kanal.stream.listen(
-        (mentah) {
-          if (mentah is! String) return;
+        if (mentah.isEmpty) return;
 
-          Map<String, dynamic> isi;
-          try {
-            final terurai = jsonDecode(mentah);
-            if (terurai is! Map<String, dynamic>) return;
-            isi = terurai;
-          } catch (_) {
-            /* Satu peristiwa rusak tidak boleh menghentikan sambungan. */
-            return;
+        Map<String, dynamic> isi;
+        try {
+          final terurai = jsonDecode(mentah);
+          if (terurai is! Map<String, dynamic>) return;
+          isi = terurai;
+        } catch (_) {
+          /* Satu peristiwa rusak tidak boleh menghentikan sambungan. */
+          return;
+        }
+
+        final jenis = isi['jenis'] as String? ?? eventTertunda ?? 'pesan';
+
+        if (jenis == 'galat') {
+          onError?.call(
+            isi['pesan'] as String? ?? 'Saluran peristiwa menolak permintaan.',
+          );
+          return;
+        }
+
+        if (jenis == 'pesan') {
+          final sequence = isi['sequence'];
+          if (sequence is int) {
+            if (sequence <= _sequenceTerakhir) return;
+            _sequenceTerakhir = sequence;
           }
+        }
 
-          final jenis = isi['jenis'] as String? ?? 'pesan';
+        onEvent(TicketEvent(jenis: jenis, data: isi));
+      }
 
-          if (jenis == 'galat') {
-            onError?.call(isi['pesan'] as String? ?? 'Saluran peristiwa menolak permintaan.');
-            return;
-          }
+      _langganan = respons.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(
+            (baris) {
+              if (_dihentikan) return;
 
-          if (jenis == 'pesan') {
-            final sequence = isi['sequence'];
-            if (sequence is int) {
-              if (sequence <= _sequenceTerakhir) return;
-              _sequenceTerakhir = sequence;
-            }
-          }
+              if (baris.isEmpty) {
+                prosesBlok();
+                return;
+              }
 
-          onEvent(TicketEvent(jenis: jenis, data: isi));
-        },
-        onError: (Object _) {
-          onError?.call('Saluran peristiwa terputus. Mencoba menyambung lagi.');
-          _jadwalkanSambungUlang(ticketId: ticketId, onEvent: onEvent, onError: onError);
-        },
-        onDone: () {
-          /* Server menutup sambungan saat tiket final atau saat proses berhenti.
-             Keduanya bukan kesalahan, jadi disambung lagi tanpa pesan galat. */
-          _jadwalkanSambungUlang(ticketId: ticketId, onEvent: onEvent, onError: onError);
-        },
-        cancelOnError: true,
-      );
+              // Komentar detak jantung SSE (`: detak`) diabaikan.
+              if (baris.startsWith(':')) {
+                return;
+              }
+
+              if (baris.startsWith('event:')) {
+                namaEvent = baris.substring(6).trim();
+                return;
+              }
+
+              if (baris.startsWith('data:')) {
+                barisData.add(baris.substring(5).trimLeft());
+              }
+            },
+            onError: (Object _) {
+              if (_dihentikan) return;
+              onError?.call('Saluran peristiwa terputus. Mencoba menyambung lagi.');
+              _jadwalkanSambungUlang(
+                ticketId: ticketId,
+                onEvent: onEvent,
+                onError: onError,
+              );
+            },
+            onDone: () {
+              if (_dihentikan) return;
+              prosesBlok();
+              /* Server menutup sambungan saat batas umur aliran tercapai atau
+                 saat proses berhenti; sambung ulang dijadwalkan tanpa pesan galat. */
+              _jadwalkanSambungUlang(
+                ticketId: ticketId,
+                onEvent: onEvent,
+                onError: onError,
+              );
+            },
+            cancelOnError: true,
+          );
     } catch (_) {
+      if (_dihentikan) return;
       onError?.call('Tidak bisa menyambung ke saluran peristiwa.');
-      _jadwalkanSambungUlang(ticketId: ticketId, onEvent: onEvent, onError: onError);
+      _jadwalkanSambungUlang(
+        ticketId: ticketId,
+        onEvent: onEvent,
+        onError: onError,
+      );
     }
   }
 
@@ -189,8 +258,10 @@ class TicketSocket {
   }) {
     if (_dihentikan) return;
 
-    _detak?.cancel();
-    _detak = null;
+    _langganan?.cancel();
+    _langganan = null;
+    _klien?.close();
+    _klien = null;
     _penyambungUlang?.cancel();
     _percobaan += 1;
 
@@ -213,11 +284,9 @@ class TicketSocket {
     _dihentikan = true;
     _penyambungUlang?.cancel();
     _penyambungUlang = null;
-    _detak?.cancel();
-    _detak = null;
     _langganan?.cancel();
     _langganan = null;
-    _kanal?.sink.close();
-    _kanal = null;
+    _klien?.close();
+    _klien = null;
   }
 }
