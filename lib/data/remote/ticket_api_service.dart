@@ -112,6 +112,9 @@ class TicketApiService {
       requiresAuth: true,
     );
     if (response is Map) {
+      if (response.containsKey('handledBy')) {
+        return response['handledBy'] == 'HUMAN';
+      }
       final data = response['data'];
       if (data is Map) {
         return data['handledBy'] == 'HUMAN';

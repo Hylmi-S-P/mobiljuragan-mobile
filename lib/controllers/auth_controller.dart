@@ -74,6 +74,7 @@ class AuthController extends ChangeNotifier {
         final restoredUser = await repo.restoreSession();
         if (restoredUser != null) {
           _currentUser = restoredUser;
+          _profilUpdatedAt = restoredUser.updatedAt;
           _isLoggedIn = true;
           notifyListeners();
           return;
@@ -232,6 +233,7 @@ class AuthController extends ChangeNotifier {
 
       if (user != null) {
         _currentUser = user;
+        _profilUpdatedAt = user.updatedAt;
         _isLoggedIn = true;
         _hasLoginError = false;
         _errorMessage = null;
@@ -284,6 +286,7 @@ class AuthController extends ChangeNotifier {
 
       if (user != null) {
         _currentUser = user;
+        _profilUpdatedAt = user.updatedAt;
         _isLoggedIn = true;
         _hasLoginError = false;
         _errorMessage = null;
@@ -372,6 +375,7 @@ class AuthController extends ChangeNotifier {
         expectedUpdatedAt: _profilUpdatedAt,
       );
       _currentUser = diperbarui;
+      _profilUpdatedAt = diperbarui.updatedAt;
       _hasLoginError = false;
       _errorMessage = null;
       return null;
@@ -437,6 +441,7 @@ class AuthController extends ChangeNotifier {
       final user = await repo.restoreSession();
       if (user != null) {
         _currentUser = user;
+        _profilUpdatedAt = user.updatedAt;
         _isLoggedIn = true;
         _hasSecureToken = true;
       } else {

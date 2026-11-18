@@ -22,6 +22,9 @@ class UserModel {
   /// kode OTP.
   final DateTime? passwordUpdatedAt;
 
+  /// Stempel waktu pembaruan terakhir profil dari server (untuk konkurensi optimistik `PATCH /me`).
+  final String? updatedAt;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -34,6 +37,7 @@ class UserModel {
     this.isVerified = true,
     this.phoneVerifiedAt,
     this.passwordUpdatedAt,
+    this.updatedAt,
   });
 
   /// Apakah akun ini sudah punya kata sandi.

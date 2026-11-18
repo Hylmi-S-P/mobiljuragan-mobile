@@ -177,6 +177,9 @@ class AuthRepository {
       city: pengguna.city,
       avatarInitials: UserModel.computeInitials(namaServer),
       isVerified: pengguna.isVerified,
+      phoneVerifiedAt: pengguna.phoneVerifiedAt,
+      passwordUpdatedAt: pengguna.passwordUpdatedAt,
+      updatedAt: data?['updatedAt']?.toString() ?? pengguna.updatedAt,
     );
 
     await _secureStorage.saveUserIdentity(
@@ -275,6 +278,7 @@ class AuthRepository {
       isVerified: true,
       phoneVerifiedAt: _tanggal(profil['phoneVerifiedAt']),
       passwordUpdatedAt: _tanggal(profil['passwordUpdatedAt']),
+      updatedAt: profil['updatedAt']?.toString(),
     );
   }
 
