@@ -516,7 +516,8 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     BookingController bookingCtrl,
   ) {
     final isWaiting = booking.status == BookingStatus.menungguPembayaran;
-    final isReady = booking.status == BookingStatus.mobilSiapDigunakan;
+    final isReady = booking.status == BookingStatus.pembayaranSelesai ||
+        booking.status == BookingStatus.mobilSiapDigunakan;
 
     if (!isWaiting && !isReady) return const SizedBox.shrink();
 

@@ -476,8 +476,9 @@ class BookingRepository {
         return Map<String, dynamic>.from(booking);
       }
       return res.isEmpty ? null : res;
+    } on ApiException {
+      rethrow;
     } catch (_) {
-      // Offline fallback: tetap aman jika offline
       return null;
     }
   }

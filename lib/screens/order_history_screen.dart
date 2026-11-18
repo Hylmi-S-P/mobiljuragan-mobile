@@ -680,7 +680,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         case BookingStatus.pembayaranSelesai:
           bg = const Color(0xFFECFDF5);
           text = const Color(0xFF047857);
-          label = 'Pembayaran Terkonfirmasi';
+          label = 'Siap Serah Terima';
           icon = Icons.verified_outlined;
           break;
         case BookingStatus.verifikasiKantor:

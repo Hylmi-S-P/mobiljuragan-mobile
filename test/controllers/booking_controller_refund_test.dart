@@ -136,7 +136,7 @@ void main() {
     controller.dispose();
   });
 
-  test('bila server tidak terjangkau, nominal refund tidak dikarang', () async {
+  test('bila server menolak atau tidak terjangkau, status lokal tidak dipaksa dibatalkan', () async {
     final api = FakeApiRefund(galat: Exception('Offline'));
     final repository = BookingRepository(database.bookingDao, api);
     await repository.saveBooking(pesananTerbayar());
@@ -144,14 +144,15 @@ void main() {
     final controller = BookingController(repository: repository);
     await tungguRiwayat(controller);
 
-    await controller.cancelBooking(
+    final galat = await controller.cancelBooking(
       bookingId: 'MJ-REFUND-1',
       reason: 'Tidak jadi sewa',
     );
 
     final hasil = controller.bookingHistory
         .firstWhere((b) => b.id == 'MJ-REFUND-1');
-    expect(hasil.status, equals(BookingStatus.dibatalkan));
+    expect(galat, isNotNull);
+    expect(hasil.status, equals(BookingStatus.pembayaranSelesai));
     expect(hasil.cancellationRefundAmount, isNull);
 
     controller.dispose();

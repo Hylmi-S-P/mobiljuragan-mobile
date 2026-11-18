@@ -100,9 +100,23 @@ void main() {
       // Tombol koordinasi tim lapangan
       expect(find.text('Chat dengan CS'), findsOneWidget);
 
-      // Tombol pembatalan diubah menjadi tautan bantuan elegan, bukan tombol merah mencolok
-      expect(find.text('Butuh bantuan pembatalan atau perubahan jadwal? Ajukan di sini'), findsOneWidget);
+      // Pada tahap Sewa Berjalan (IN_PROGRESS), tombol pembatalan mandiri disembunyikan
+      expect(find.text('Ajukan Pembatalan & Refund'), findsNothing);
       expect(find.text('Batalkan Pesanan Ini'), findsNothing);
+    });
+
+    testWidgets('Merender status Siap Serah Terima dengan E-Ticket dan tombol Ajukan Pembatalan & Refund', (tester) async {
+      final readyBooking = inProgressBooking.copyWith(
+        status: BookingStatus.pembayaranSelesai,
+        paymentStatus: 'PAID',
+      );
+      await tester.pumpWidget(createTestWidget(booking: readyBooking));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Siap Serah Terima'), findsAtLeastNWidgets(1));
+      expect(find.text('E-TICKET RESERVASI MOBILJURAGAN'), findsOneWidget);
+      expect(find.text('Chat dengan CS'), findsOneWidget);
+      expect(find.text('Ajukan Pembatalan & Refund'), findsOneWidget);
     });
 
     testWidgets('Merender ringkasan unit dan tombol batalkan saat status belum lunas / baru diajukan', (tester) async {

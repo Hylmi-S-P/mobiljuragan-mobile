@@ -1978,19 +1978,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               badgeBgColor: step3Active ? AppColors.tealLight : null,
             ),
 
-            // Tahap 4: Sewa Berjalan
+            // Tahap 4: Siap Serah Terima / Sewa Berjalan
             _buildStepRow(
               stepNumber: 4,
-              title: 'Sewa Berjalan',
+              title: status == BookingStatus.pembayaranSelesai
+                  ? 'Siap Serah Terima'
+                  : 'Sewa Berjalan',
               subtitle: step4Done
                   ? 'Perjalanan sewa telah tuntas dilaksanakan'
-                  : (step4Active
-                      ? (isDriver
-                          ? 'Sopir siaga dan perjalanan sewa Anda sedang berjalan'
-                          : 'Unit armada telah diserahterimakan dan masa sewa aktif')
+                  : (status == BookingStatus.pembayaranSelesai
+                        ? 'Pembayaran lunas. Silakan ambil unit di kantor / tunggu penjemputan sopir sesuai jadwal'
+                        : (step4Active
+                              ? (isDriver
+                                    ? 'Sopir siaga dan perjalanan sewa Anda sedang berjalan'
+                                    : 'Unit armada telah diserahterimakan dan masa sewa aktif')
                       : (isDriver
                           ? 'Sopir akan siaga menjemput setelah pembayaran terkonfirmasi'
-                          : 'Kunci dan unit akan diserahkan setelah pembayaran terkonfirmasi')),
+                          : 'Kunci dan unit akan diserahkan setelah pembayaran terkonfirmasi'))),
               isDone: step4Done,
               isActive: step4Active,
               isLast: false,
@@ -4962,7 +4966,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
                               final finalReason = isOtherSelected && customReasonController.text.trim().isNotEmpty
                                   ? customReasonController.text.trim()
                                   : selectedReason;
@@ -4980,10 +4984,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                 }
                               }
 
+                              final controller = context.read<BookingController>();
+                              final messenger = ScaffoldMessenger.of(context);
+                              VehicleController? vehicleController;
+                              try {
+                                vehicleController = context.read<VehicleController>();
+                              } catch (_) {}
+
                               Navigator.pop(sheetContext);
 
-                              final controller = context.read<BookingController>();
-                              controller.cancelBooking(
+                              final galatBatal = await controller.cancelBooking(
                                 bookingId: booking.id,
                                 reason: finalReason,
                                 bankName: isPaid ? draftRekening.bankName : null,
@@ -4991,12 +5001,22 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                 accountHolderName: isPaid ? draftRekening.accountHolderName : null,
                               );
 
-                              // Segera sinkronkan katalog armada agar badge ketersediaan langsung kembali Tersedia
-                              try {
-                                context.read<VehicleController>().refreshCatalog(force: true);
-                              } catch (_) {}
+                              if (galatBatal != null) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: const Color(0xFFDC2626),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    content: Text(galatBatal, style: AppTypography.bodyStrong),
+                                  ),
+                                );
+                                return;
+                              }
 
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              // Segera sinkronkan katalog armada agar badge ketersediaan langsung kembali Tersedia
+                              vehicleController?.refreshCatalog(force: true);
+
+                              messenger.showSnackBar(
                                 SnackBar(
                                   backgroundColor: const Color(0xFF16A34A),
                                   behavior: SnackBarBehavior.floating,
@@ -5184,22 +5204,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => _showCancellationBottomSheet(context, booking),
-              icon: const Icon(Icons.help_outline_rounded, size: 16, color: AppColors.textSecondary),
-              label: const Text(
-                'Butuh bantuan pembatalan atau perubahan jadwal? Ajukan di sini',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  color: AppColors.textSecondary,
-                  decoration: TextDecoration.underline,
-                  fontFamily: 'Inter',
+          if (booking.status != BookingStatus.mobilSiapDigunakan) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => _showCancellationBottomSheet(context, booking),
+                icon: const Icon(Icons.help_outline_rounded, size: 16, color: AppColors.textSecondary),
+                label: const Text(
+                  'Ajukan Pembatalan & Refund',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    decoration: TextDecoration.underline,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ] else if (isWaitingPayment) ...[
           // Tahap 3: Menunggu Pembayaran
           // Tombol Bayar Sekarang telah berada langsung di dalam kartu tagihan atas;

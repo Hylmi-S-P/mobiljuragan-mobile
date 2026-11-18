@@ -194,14 +194,18 @@ class BookingModel {
   /// Pemetaan status dari respons backend Prisma ke BookingStatus aplikasi mobile
   static BookingStatus mapBackendStatus(
     String backendStatus,
-    String? tariffStatus,
-  ) {
+    String? tariffStatus, [
+    String? paymentStatus,
+  ]) {
     switch (backendStatus.toUpperCase()) {
       case 'CREATED':
         return BookingStatus.permintaanDiterima;
       case 'PENDING_CONFIRMATION':
         return BookingStatus.menungguTarifFinal;
       case 'CONFIRMED':
+        if (paymentStatus?.toUpperCase() == 'PAID') {
+          return BookingStatus.pembayaranSelesai;
+        }
         return BookingStatus.menungguPembayaran;
       case 'IN_PROGRESS':
         return BookingStatus.mobilSiapDigunakan;
@@ -212,6 +216,9 @@ class BookingModel {
         return BookingStatus.dibatalkan;
       default:
         if (tariffStatus == 'CONFIRMED') {
+          if (paymentStatus?.toUpperCase() == 'PAID') {
+            return BookingStatus.pembayaranSelesai;
+          }
           return BookingStatus.menungguPembayaran;
         }
         return BookingStatus.menungguTarifFinal;
@@ -262,6 +269,9 @@ class BookingModel {
     String? refundAccountNumber;
     String? refundAccountName;
     String? refundState;
+    String? savedPaymentStatus;
+    String? savedDocumentStatus;
+    String? savedDocumentRejectionReason;
 
     if (entry.cancellationJson != null &&
         entry.cancellationJson!.isNotEmpty) {
@@ -279,6 +289,9 @@ class BookingModel {
         refundAccountNumber = decoded['accountNumber']?.toString();
         refundAccountName = decoded['accountName']?.toString();
         refundState = decoded['refundStatus']?.toString();
+        savedPaymentStatus = decoded['paymentStatus']?.toString();
+        savedDocumentStatus = decoded['documentStatus']?.toString();
+        savedDocumentRejectionReason = decoded['documentRejectionReason']?.toString();
       } catch (_) {}
     }
 
@@ -311,6 +324,9 @@ class BookingModel {
       cancellationAccountNumber: refundAccountNumber,
       cancellationAccountName: refundAccountName,
       refundStatus: refundState,
+      paymentStatus: savedPaymentStatus,
+      documentStatus: savedDocumentStatus,
+      documentRejectionReason: savedDocumentRejectionReason,
     );
   }
 
@@ -337,6 +353,10 @@ class BookingModel {
       if (cancellationAccountName != null)
         'accountName': cancellationAccountName,
       if (refundStatus != null) 'refundStatus': refundStatus,
+      if (paymentStatus != null) 'paymentStatus': paymentStatus,
+      if (documentStatus != null) 'documentStatus': documentStatus,
+      if (documentRejectionReason != null)
+        'documentRejectionReason': documentRejectionReason,
     };
     final cancellationDataJson = cancellationData.isEmpty
         ? null
@@ -387,7 +407,15 @@ class BookingModel {
 
     final rawStatus = json['status']?.toString() ?? 'CREATED';
     final tariffStatus = json['tariffStatus']?.toString();
-    final mappedStatus = mapBackendStatus(rawStatus, tariffStatus);
+    final payObj = json['payment'];
+    final String? payStatusFromJson = payObj is Map
+        ? payObj['status']?.toString()
+        : null;
+    final mappedStatus = mapBackendStatus(
+      rawStatus,
+      tariffStatus,
+      payStatusFromJson,
+    );
 
     int? parseNominal(dynamic nilai) {
       if (nilai == null) return null;
@@ -573,7 +601,7 @@ class BookingModel {
       case BookingStatus.menungguPembayaran:
         return 'Menunggu Pembayaran';
       case BookingStatus.pembayaranSelesai:
-        return 'Pembayaran Selesai';
+        return 'Siap Serah Terima';
       case BookingStatus.verifikasiKantor:
         return 'Verifikasi Fisik Kantor';
       case BookingStatus.mobilSiapDigunakan:
@@ -597,7 +625,7 @@ class BookingModel {
       case BookingStatus.menungguPembayaran:
         return 'Rincian tarif resmi final telah diterbitkan. Silakan lakukan pembayaran ke Bank BRI Merauke.';
       case BookingStatus.pembayaranSelesai:
-        return 'Pembayaran sewa telah tervalidasi. Jadwal dan unit telah dikunci sistem.';
+        return 'Pembayaran lunas. Silakan ambil unit di kantor / tunggu penjemputan sopir sesuai jadwal.';
       case BookingStatus.verifikasiKantor:
         return 'Verifikasi fisik KTP asli dan SIM A dilakukan langsung oleh staf kantor saat serah terima unit.';
       case BookingStatus.mobilSiapDigunakan:

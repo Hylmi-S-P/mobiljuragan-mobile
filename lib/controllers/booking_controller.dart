@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../core/config/app_config_store.dart';
+import '../core/network/api_client.dart';
 import '../data/remote/booking_api_service.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
@@ -99,9 +100,23 @@ class BookingController extends ChangeNotifier {
   void _pasangLanggananRiwayat(BookingRepository repo) {
     _bookingsSubscription?.cancel();
     _bookingsSubscription = repo.watchAllBookings().listen((updatedList) {
+      final previousById = {for (final b in _bookingHistory) b.id: b};
+      final mergedList = updatedList.map((entry) {
+        final prev = previousById[entry.id];
+        if (prev == null) return entry;
+        return entry.copyWith(
+          paymentStatus: entry.paymentStatus ?? prev.paymentStatus,
+          documentStatus: entry.documentStatus ?? prev.documentStatus,
+          documentRejectionReason:
+              entry.documentRejectionReason ?? prev.documentRejectionReason,
+          documentDeadline: entry.documentDeadline ?? prev.documentDeadline,
+          paymentReference: entry.paymentReference ?? prev.paymentReference,
+          paidAt: entry.paidAt ?? prev.paidAt,
+        );
+      }).toList();
       _bookingHistory
         ..clear()
-        ..addAll(updatedList);
+        ..addAll(mergedList);
       final actives = _bookingHistory
           .where(
             (b) =>
@@ -438,7 +453,8 @@ class BookingController extends ChangeNotifier {
           'TRX-MBJ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
       final updated = _bookingHistory[index].copyWith(
         paymentMethodType: paymentMethod,
-        status: BookingStatus.mobilSiapDigunakan,
+        status: BookingStatus.menungguPembayaran,
+        paymentStatus: 'PENDING_VERIFICATION',
         paidAt: DateTime.now(),
         paymentReference: ref,
       );
@@ -483,7 +499,7 @@ class BookingController extends ChangeNotifier {
   /// pembatalan oleh pelanggan setelah bayar, penuh bila dibatalkan kantor).
   /// Aplikasi hanya menampilkan angka yang dikirim balik; bila server tidak
   /// terjangkau, pesanan tetap ditandai batal di perangkat tanpa nominal karangan.
-  Future<void> cancelBooking({
+  Future<String?> cancelBooking({
     required String bookingId,
     required String reason,
     String? bankName,
@@ -491,17 +507,28 @@ class BookingController extends ChangeNotifier {
     String? accountHolderName,
   }) async {
     final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
-    if (index == -1) return;
+    if (index == -1) return 'Pesanan tidak ditemukan.';
 
     final target = _bookingHistory[index];
 
-    final hasilServer = await repository?.cancelBookingRemote(
-      bookingId: bookingId,
-      reason: reason,
-      bankName: bankName,
-      accountNumber: accountNumber,
-      accountHolderName: accountHolderName,
-    );
+    Map<String, dynamic>? hasilServer;
+    if (repository != null) {
+      try {
+        hasilServer = await repository!.cancelBookingRemote(
+          bookingId: bookingId,
+          reason: reason,
+          bankName: bankName,
+          accountNumber: accountNumber,
+          accountHolderName: accountHolderName,
+        );
+      } on ApiException catch (e) {
+        return e.message;
+      }
+
+      if (hasilServer == null) {
+        return 'Gagal terhubung ke server. Pembatalan pesanan membutuhkan koneksi ke server.';
+      }
+    }
 
     final BookingModel? dariServer = hasilServer != null
         ? BookingModel.fromJson(hasilServer, target.vehicle)
@@ -531,6 +558,7 @@ class BookingController extends ChangeNotifier {
     }
     await repository?.saveBooking(updated);
     notifyListeners();
+    return null;
   }
 
   /// Membatalkan pesanan aktif secara cepat
