@@ -155,8 +155,9 @@ void main() {
         findsOneWidget,
       );
 
-      // Tombol bawah: Butuh Bantuan? Chat CS MobilJuragan dan Batalkan Pengajuan Sewa Ini
-      expect(find.text('Butuh Bantuan? Chat CS MobilJuragan'), findsOneWidget);
+      // Tombol bawah: Chat CS disembunyikan sebelum pembayaran PAID; hanya Batalkan Pengajuan Sewa Ini yang tampil
+      expect(find.text('Butuh Bantuan? Chat CS MobilJuragan'), findsNothing);
+      expect(find.text('Chat dengan CS'), findsNothing);
       expect(find.text('Batalkan Pengajuan Sewa Ini'), findsOneWidget);
       expect(find.text('Periksa Status Terbaru'), findsNothing);
       expect(find.text('Kembali ke Beranda'), findsNothing);

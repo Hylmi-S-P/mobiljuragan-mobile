@@ -2159,8 +2159,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             ),
           ),
           const SizedBox(height: 10),
-          // Wrap: tautan "Buka Chat CS" turun ke baris berikutnya saat ukuran
-          // teks sistem diperbesar, bukan menimpa teks jam standby.
+          // Wrap: tautan "Buka Chat CS" hanya ditampilkan setelah pembayaran lunas
+          // karena tiket bantuan khusus pesanan baru dibuka sistem saat PAID.
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -2183,28 +2183,29 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   ),
                 ],
               ),
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ChatSupportScreen(booking: booking),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(4),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Text(
-                    'Buka Chat CS',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryTeal,
-                      fontFamily: 'Inter',
+              if (booking.isPaidOnline)
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ChatSupportScreen(booking: booking),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      'Buka Chat CS',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryTeal,
+                        fontFamily: 'Inter',
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -4579,7 +4580,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ChatSupportScreen(booking: booking),
+                  builder: (_) => const ChatSupportScreen(),
                 ),
               );
             },
@@ -5201,35 +5202,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           ),
         ] else if (isWaitingPayment) ...[
           // Tahap 3: Menunggu Pembayaran
-          // Tombol Bayar Sekarang telah berada langsung di dalam kartu tagihan atas
-          SizedBox(
-            width: double.infinity,
-            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatSupportScreen(booking: booking),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.support_agent_rounded, size: 18, color: AppColors.primaryTeal),
-              label: const Text(
-                'Butuh Bantuan? Chat CS MobilJuragan',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryTeal,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.primaryTeal),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
+          // Tombol Bayar Sekarang telah berada langsung di dalam kartu tagihan atas;
+          // tombol Chat CS khusus pesanan disembunyikan sebelum pembayaran terverifikasi lunas (PAID).
           Center(
             child: TextButton(
               onPressed: () => _showCancellationBottomSheet(context, booking),
@@ -5246,34 +5220,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           ),
         ] else ...[
           // Tahap 1 & 2: Permintaan Masuk / Menunggu Konfirmasi Tarif
-          SizedBox(
-            width: double.infinity,
-            height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatSupportScreen(booking: booking),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.support_agent_rounded, size: 18, color: AppColors.primaryTeal),
-              label: const Text(
-                'Butuh Bantuan? Chat CS MobilJuragan',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryTeal,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.primaryTeal),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
+          // Tombol Chat CS khusus pesanan disembunyikan sebelum pembayaran terverifikasi lunas (PAID).
           Center(
             child: TextButton(
               onPressed: () => _showCancellationBottomSheet(context, booking),
