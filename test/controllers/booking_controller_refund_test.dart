@@ -132,7 +132,6 @@ void main() {
     expect(hasil.status, equals(BookingStatus.dibatalkan));
     // 85% dari 900.000 adalah 765.000; server mengembalikan 850.000.
     expect(hasil.cancellationRefundAmount, equals(850000));
-    expect(hasil.cancellationRefundRate, closeTo(850000 / 900000, 0.0001));
 
     controller.dispose();
   });

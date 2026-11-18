@@ -4245,8 +4245,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   }
 
   Widget _buildCancelledBannerCard(BookingModel booking) {
-    final hasRefund = booking.cancellationRefundAmount != null &&
-        booking.cancellationRefundAmount! > 0;
+    final hasRefund = booking.refundStatus != null ||
+        (booking.cancellationRefundAmount ?? 0) > 0;
+    final refundAmount = booking.cancellationRefundAmount ?? 0;
     final cancelledAtText = booking.cancelledAt != null
         ? '${booking.cancelledAt!.day.toString().padLeft(2, '0')}/${booking.cancelledAt!.month.toString().padLeft(2, '0')}/${booking.cancelledAt!.year}, ${booking.cancelledAt!.hour.toString().padLeft(2, '0')}.${booking.cancelledAt!.minute.toString().padLeft(2, '0')} WIT'
         : 'Waktu tidak tercatat';
@@ -4464,7 +4465,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         style: TextStyle(fontSize: AppTypography.sizeCaption, color: Color(0xFFDC2626), fontFamily: 'Inter'),
                       ),
                       Text(
-                        '-Rp ${_formatRupiah(booking.totalCost - booking.cancellationRefundAmount!)}',
+                        '-Rp ${_formatRupiah((booking.totalCost - refundAmount).clamp(0, booking.totalCost))}',
                         style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, color: Color(0xFFDC2626), fontFamily: 'Inter'),
                       ),
                     ],
@@ -4483,7 +4484,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, color: Color(0xFF166534), fontFamily: 'Inter'),
                       ),
                       Text(
-                        'Rp ${_formatRupiah(booking.cancellationRefundAmount!)}',
+                        'Rp ${_formatRupiah(refundAmount)}',
                         style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontWeight: FontWeight.w800, color: Color(0xFF15803D), fontFamily: 'Inter'),
                       ),
                     ],
@@ -4609,7 +4610,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       barisStatusRefund(context, booking);
 
   void _showCancellationBottomSheet(BuildContext context, BookingModel booking) {
-    final isPaid = booking.status == BookingStatus.pembayaranSelesai ||
+    final isPaid = booking.paymentStatus == 'PAID' ||
+        booking.paymentStatus == 'PENDING_VERIFICATION' ||
+        _payment?.status == PaymentStatus.paid ||
+        _payment?.status == PaymentStatus.pendingVerification ||
+        booking.status == BookingStatus.pembayaranSelesai ||
         booking.status == BookingStatus.verifikasiKantor ||
         booking.status == BookingStatus.mobilSiapDigunakan;
 
@@ -4737,7 +4742,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
                     // Transparansi ketentuan pembatalan
                     if (isPaid) ...[
-                      // Transparansi Kebijakan Refund 85% jika sudah bayar
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(

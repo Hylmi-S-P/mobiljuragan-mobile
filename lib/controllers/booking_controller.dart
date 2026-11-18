@@ -502,39 +502,27 @@ class BookingController extends ChangeNotifier {
       accountNumber: accountNumber,
       accountHolderName: accountHolderName,
     );
-    final refund = hasilServer?['refund'];
-    final int? refundNominal = refund is Map
-        ? (refund['nominal'] is num
-              ? (refund['nominal'] as num).toInt()
-              : int.tryParse('${refund['nominal'] ?? ''}'))
-        : null;
-    final int? totalDibayarServer = refund is Map
-        ? (refund['totalDibayar'] is num
-              ? (refund['totalDibayar'] as num).toInt()
-              : int.tryParse('${refund['totalDibayar'] ?? ''}'))
-        : null;
-    final String? refundStatusServer = refund is Map
-        ? refund['status']?.toString()
-        : null;
 
-    // Rasio hanya dipakai untuk label ringkas; angkanya tetap dari server.
-    final double? refundRate =
-        (refundNominal != null &&
-            totalDibayarServer != null &&
-            totalDibayarServer > 0)
-        ? refundNominal / totalDibayarServer
+    final BookingModel? dariServer = hasilServer != null
+        ? BookingModel.fromJson(hasilServer, target.vehicle)
         : null;
+    final adaCatatanRefund = dariServer?.refundStatus != null ||
+        dariServer?.cancellationRefundAmount != null;
 
     final updated = target.copyWith(
       status: BookingStatus.dibatalkan,
-      cancellationReason: reason,
-      cancelledAt: DateTime.now(),
-      cancellationRefundRate: refundRate,
-      cancellationRefundAmount: refundNominal,
-      cancellationBank: refundNominal != null ? bankName : null,
-      cancellationAccountNumber: refundNominal != null ? accountNumber : null,
-      cancellationAccountName: refundNominal != null ? accountHolderName : null,
-      refundStatus: refundStatusServer,
+      cancellationReason: dariServer?.cancellationReason ?? reason,
+      cancelledAt: dariServer?.cancelledAt ?? DateTime.now(),
+      cancellationRefundAmount: dariServer?.cancellationRefundAmount,
+      cancellationBank: dariServer?.cancellationBank ??
+          (adaCatatanRefund ? bankName : null),
+      cancellationAccountNumber: dariServer?.cancellationAccountNumber ??
+          (adaCatatanRefund ? accountNumber : null),
+      cancellationAccountName: dariServer?.cancellationAccountName ??
+          (adaCatatanRefund ? accountHolderName : null),
+      refundStatus: dariServer?.refundStatus,
+      quotedAmount: dariServer?.quotedAmount ?? target.quotedAmount,
+      finalAmount: dariServer?.finalAmount ?? target.finalAmount,
     );
 
     _bookingHistory[index] = updated;

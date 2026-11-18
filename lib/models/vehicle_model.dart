@@ -53,6 +53,9 @@ class VehicleModel {
   /// Penanda unit sedang terkunci karena dipakai pesanan aktif
   bool get isBooked => availability == VehicleAvailability.disewa;
 
+  /// Penanda unit sedang dalam pemeriksaan pasca-sewa (maksimal 6 jam)
+  bool get isInService => availability == VehicleAvailability.pemeriksaan;
+
   /// Konversi dari entitas tabel Drift (Vehicle) ke domain model VehicleModel
   factory VehicleModel.fromDrift(Vehicle entry) {
     return VehicleModel(

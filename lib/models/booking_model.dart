@@ -55,8 +55,8 @@ class BookingFeeAdjustment {
     final arah = json['arah']?.toString();
     final nominalMentah = json['nominal'] ?? json['amount'];
     final nominal = (nominalMentah is num)
-        ? nominalMentah.toInt()
-        : int.tryParse(nominalMentah?.toString() ?? '0') ?? 0;
+        ? nominalMentah.round()
+        : num.tryParse(nominalMentah?.toString().trim() ?? '0')?.round() ?? 0;
 
     return BookingFeeAdjustment(
       title: json['deskripsi']?.toString() ?? json['title']?.toString() ?? '',
@@ -131,7 +131,6 @@ class BookingModel {
   final bool isFinalTariffConfirmed;
   final String? cancellationReason;
   final DateTime? cancelledAt;
-  final double? cancellationRefundRate;
   final int? cancellationRefundAmount;
   final String? cancellationBank;
   final String? cancellationAccountNumber;
@@ -178,7 +177,6 @@ class BookingModel {
     this.isFinalTariffConfirmed = false,
     this.cancellationReason,
     this.cancelledAt,
-    this.cancellationRefundRate,
     this.cancellationRefundAmount,
     this.cancellationBank,
     this.cancellationAccountNumber,
@@ -260,7 +258,6 @@ class BookingModel {
     String? cancelReason;
     DateTime? cancelledAt;
     int? refundNominal;
-    double? refundRate;
     String? refundBank;
     String? refundAccountNumber;
     String? refundAccountName;
@@ -276,11 +273,8 @@ class BookingModel {
           decoded['cancelledAt']?.toString() ?? '',
         )?.toLocal();
         refundNominal = decoded['refundNominal'] is num
-            ? (decoded['refundNominal'] as num).toInt()
-            : int.tryParse('${decoded['refundNominal'] ?? ''}');
-        refundRate = decoded['refundRate'] is num
-            ? (decoded['refundRate'] as num).toDouble()
-            : double.tryParse('${decoded['refundRate'] ?? ''}');
+            ? (decoded['refundNominal'] as num).round()
+            : num.tryParse('${decoded['refundNominal'] ?? ''}'.trim())?.round();
         refundBank = decoded['bank']?.toString();
         refundAccountNumber = decoded['accountNumber']?.toString();
         refundAccountName = decoded['accountName']?.toString();
@@ -313,7 +307,6 @@ class BookingModel {
       cancellationReason: cancelReason,
       cancelledAt: cancelledAt,
       cancellationRefundAmount: refundNominal,
-      cancellationRefundRate: refundRate,
       cancellationBank: refundBank,
       cancellationAccountNumber: refundAccountNumber,
       cancellationAccountName: refundAccountName,
@@ -338,7 +331,6 @@ class BookingModel {
         'cancelledAt': cancelledAt!.toUtc().toIso8601String(),
       if (cancellationRefundAmount != null)
         'refundNominal': cancellationRefundAmount,
-      if (cancellationRefundRate != null) 'refundRate': cancellationRefundRate,
       if (cancellationBank != null) 'bank': cancellationBank,
       if (cancellationAccountNumber != null)
         'accountNumber': cancellationAccountNumber,
@@ -397,29 +389,14 @@ class BookingModel {
     final tariffStatus = json['tariffStatus']?.toString();
     final mappedStatus = mapBackendStatus(rawStatus, tariffStatus);
 
-    final rawQuoted = json['quotedAmount'];
-    int? quotedInt;
-    if (rawQuoted != null) {
-      if (rawQuoted is num) {
-        quotedInt = rawQuoted.toInt();
-      } else {
-        quotedInt = int.tryParse(
-          rawQuoted.toString().replaceAll(RegExp(r'[^\d]'), ''),
-        );
-      }
+    int? parseNominal(dynamic nilai) {
+      if (nilai == null) return null;
+      if (nilai is num) return nilai.round();
+      return num.tryParse(nilai.toString().trim())?.round();
     }
 
-    final rawFinal = json['finalAmount'];
-    int? finalInt;
-    if (rawFinal != null) {
-      if (rawFinal is num) {
-        finalInt = rawFinal.toInt();
-      } else {
-        finalInt = int.tryParse(
-          rawFinal.toString().replaceAll(RegExp(r'[^\d]'), ''),
-        );
-      }
-    }
+    final quotedInt = parseNominal(json['quotedAmount']);
+    final finalInt = parseNominal(json['finalAmount']);
 
     final isTariffConfirmed =
         tariffStatus == 'CONFIRMED' ||
@@ -492,12 +469,6 @@ class BookingModel {
         ? Map<String, dynamic>.from(refundJson)
         : null;
 
-    int? angkaRefund(dynamic nilai) {
-      if (nilai == null) return null;
-      if (nilai is num) return nilai.toInt();
-      return int.tryParse(nilai.toString().replaceAll(RegExp(r'[^\d]'), ''));
-    }
-
     String? bersihkanAlasan(String? teks) {
       if (teks == null) return null;
       var hasil = teks.replaceFirst(
@@ -508,14 +479,7 @@ class BookingModel {
       return hasil.isEmpty ? null : hasil;
     }
 
-    final refundNominal = angkaRefund(refund?['nominal']);
-    final refundTotalDibayar = angkaRefund(refund?['totalDibayar']);
-    final refundRate =
-        (refundNominal != null &&
-            refundTotalDibayar != null &&
-            refundTotalDibayar > 0)
-        ? refundNominal / refundTotalDibayar
-        : null;
+    final refundNominal = parseNominal(refund?['nominal']);
     final refundDicatat =
         DateTime.tryParse(
           refund?['dicatatPada']?.toString() ?? '',
@@ -548,7 +512,6 @@ class BookingModel {
       cancellationReason: bersihkanAlasan(refund?['alasan']?.toString()),
       cancelledAt: refundDicatat,
       cancellationRefundAmount: refundNominal,
-      cancellationRefundRate: refundRate,
       cancellationBank: refund?['namaBank']?.toString(),
       cancellationAccountNumber: refund?['nomorRekening']?.toString(),
       cancellationAccountName: refund?['namaPemilik']?.toString(),
@@ -697,7 +660,6 @@ class BookingModel {
     bool? isFinalTariffConfirmed,
     String? cancellationReason,
     DateTime? cancelledAt,
-    double? cancellationRefundRate,
     int? cancellationRefundAmount,
     String? cancellationBank,
     String? cancellationAccountNumber,
@@ -736,8 +698,6 @@ class BookingModel {
           isFinalTariffConfirmed ?? this.isFinalTariffConfirmed,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       cancelledAt: cancelledAt ?? this.cancelledAt,
-      cancellationRefundRate:
-          cancellationRefundRate ?? this.cancellationRefundRate,
       cancellationRefundAmount:
           cancellationRefundAmount ?? this.cancellationRefundAmount,
       cancellationBank: cancellationBank ?? this.cancellationBank,

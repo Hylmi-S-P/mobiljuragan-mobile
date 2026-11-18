@@ -226,6 +226,20 @@ class VehicleDetailScreen extends StatelessWidget {
 
   Widget _buildOccupiedWarningBanner(VehicleModel currentVehicle) {
     final bool isBooked = currentVehicle.isBooked;
+    final bool isInService = currentVehicle.isInService;
+
+    final String bannerTitle = isBooked
+        ? 'Armada Sedang Disewa'
+        : isInService
+            ? 'Armada Dalam Pemeriksaan Pasca-Sewa'
+            : 'Armada Sedang Tidak Tersedia';
+
+    final String bannerMessage = isBooked
+        ? 'Unit ini telah dipesan dan disewa oleh pelanggan lain. Anda tetap dapat mempelajari spesifikasi armada di bawah ini, namun reservasi unit ini sementara dikunci.'
+        : isInService
+            ? 'Unit ini baru kembali dari penyewaan dan sedang menjalani pemeriksaan kelayakan maksimal 6 jam di garasi sebelum dapat dipesan kembali.'
+            : 'Unit ini sementara tidak dapat dipesan. Silakan pilih armada lain yang tersedia pada katalog.';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -248,7 +262,7 @@ class VehicleDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isBooked ? 'Armada Sedang Disewa' : 'Armada Sedang Tidak Tersedia',
+                  bannerTitle,
                   style: const TextStyle(
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w700,
@@ -258,9 +272,7 @@ class VehicleDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isBooked
-                      ? 'Unit ini telah dipesan dan disewa oleh pelanggan lain. Anda tetap dapat mempelajari spesifikasi armada di bawah ini, namun reservasi unit ini sementara dikunci.'
-                      : 'Unit ini sementara tidak dapat dipesan. Silakan pilih armada lain yang tersedia pada katalog.',
+                  bannerMessage,
                   style: const TextStyle(
                     fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
@@ -279,6 +291,9 @@ class VehicleDetailScreen extends StatelessWidget {
 
   Widget _buildStickyCTA(BuildContext context, VehicleModel currentVehicle) {
     final bool canProceed = currentVehicle.isAvailable;
+    final String disabledLabel = currentVehicle.isInService
+        ? 'Sedang Dalam Pemeriksaan'
+        : 'Armada Sedang Tidak Tersedia';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -313,7 +328,7 @@ class VehicleDetailScreen extends StatelessWidget {
               elevation: 0,
             ),
             child: Text(
-              canProceed ? 'Lanjut ke Opsi Rental' : 'Armada Sedang Tidak Tersedia',
+              canProceed ? 'Lanjut ke Opsi Rental' : disabledLabel,
               style: TextStyle(
                 fontSize: AppTypography.sizeBodyLarge,
                 fontWeight: FontWeight.w700,

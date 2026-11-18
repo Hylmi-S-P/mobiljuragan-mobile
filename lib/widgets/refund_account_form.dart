@@ -328,7 +328,9 @@ Widget barisStatusRefund(BuildContext context, BookingModel booking) {
     warna = const Color(0xFF0F766E);
     ikon = Icons.schedule;
   } else if (adaRekening) {
-    teks = 'Menunggu transfer dari kantor.';
+    teks = booking.paymentStatus == 'PENDING_VERIFICATION'
+        ? 'Menunggu verifikasi dana masuk sebelum pengembalian dana diproses kantor.'
+        : 'Menunggu transfer dari kantor.';
     warna = const Color(0xFF0F766E);
     ikon = Icons.schedule;
     labelTombol = 'Ubah Rekening';
@@ -373,6 +375,7 @@ Widget barisStatusRefund(BuildContext context, BookingModel booking) {
           child: OutlinedButton(
             onPressed: () => tampilkanSheetRekeningRefund(context, booking),
             style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
               foregroundColor: AppColors.primaryTeal,
               side: const BorderSide(color: AppColors.primaryTeal),
               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -471,6 +474,7 @@ void tampilkanSheetRekeningRefund(BuildContext context, BookingModel booking) {
                               ? null
                               : () => Navigator.pop(sheetContext),
                           style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
                             foregroundColor: AppColors.textPrimary,
                             side: const BorderSide(color: AppColors.borderSubtle),
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -534,6 +538,7 @@ void tampilkanSheetRekeningRefund(BuildContext context, BookingModel booking) {
                                   );
                                 },
                           style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
                             backgroundColor: AppColors.primaryTeal,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
