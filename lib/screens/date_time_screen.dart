@@ -12,7 +12,9 @@ import '../controllers/booking_controller.dart';
 import '../core/util/format_tanggal.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/standard_bottom_sheet.dart';
 import 'order_review_screen.dart';
 import '../theme/app_typography.dart';
 
@@ -89,7 +91,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: AppSpacing.screenPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -180,45 +182,53 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 children: [
                   InkWell(
                     onTap: _previousMonth,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.borderSubtle, width: 1),
                       ),
                       child: const Icon(
                         Icons.chevron_left,
-                        size: 18,
+                        size: 20,
                         color: AppColors.textPrimary,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    '$monthName $formattedYear',
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeTitle,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+                  Flexible(
+                    child: Text(
+                      '$monthName $formattedYear',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTitle,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   InkWell(
                     onTap: _nextMonth,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.borderSubtle, width: 1),
                       ),
                       child: const Icon(
                         Icons.chevron_right,
-                        size: 18,
+                        size: 20,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -247,13 +257,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: _dayNames.map((day) {
-              return SizedBox(
-                width: 36,
+              return Expanded(
                 child: Center(
                   child: Text(
                     day,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: AppTypography.sizeCaption,
                       fontWeight: FontWeight.w500,
@@ -506,177 +516,112 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       parsed.minute,
     );
 
-    final selected = await showModalBottomSheet<DateTime>(
+    final selected = await StandardBottomSheet.show<DateTime>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (BuildContext sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final currentHour = tempTime.hour;
-            final isOperational = currentHour >= 6 && currentHour <= 22;
+      title: 'Pilih Jam Penjemputan',
+      subtitle: 'Format digital 24 jam (WIT)',
+      icon: Icons.schedule_rounded,
+      child: StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final currentHour = tempTime.hour;
+          final isOperational = currentHour >= 6 && currentHour <= 22;
 
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.cardWhite,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Handle Bar
-                    Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.borderSubtle,
-                        borderRadius: BorderRadius.circular(2),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Digital Wheel Picker
+              Container(
+                height: 180,
+                decoration: BoxDecoration(
+                  color: AppColors.scaffoldBackground,
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  border: Border.all(color: AppColors.borderSubtle),
+                ),
+                child: CupertinoTheme(
+                  data: const CupertinoThemeData(
+                    brightness: Brightness.light,
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryNavy,
+                        fontFamily: 'Inter',
                       ),
                     ),
-                    const SizedBox(height: 14),
-
-                    // Header Bottom Sheet
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Pilih Jam Penjemputan',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeHeading,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Format digital 24 jam (WIT)',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ],
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(sheetContext).pop(),
-                          icon: const Icon(Icons.close, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Digital Wheel Picker
-                    Container(
-                      height: 180,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: CupertinoTheme(
-                        data: const CupertinoThemeData(
-                          brightness: Brightness.light,
-                          textTheme: CupertinoTextThemeData(
-                            dateTimePickerTextStyle: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryNavy,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                        child: CupertinoDatePicker(
-                          mode: CupertinoDatePickerMode.time,
-                          use24hFormat: true,
-                          initialDateTime: tempTime,
-                          onDateTimeChanged: (DateTime newDateTime) {
-                            setSheetState(() {
-                              tempTime = newDateTime;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Status Jam Operasional Info
-                    Row(
-                      children: [
-                        Icon(
-                          isOperational ? Icons.check_circle_outline : Icons.info_outline,
-                          size: 16,
-                          color: isOperational ? const Color(0xFF15803D) : const Color(0xFFDC2626),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            isOperational
-                                ? 'Jam operasional normal Merauke (06.00 - 22.00 WIT)'
-                                : 'Di luar jam operasional (06.00 - 22.00 WIT). Butuh konfirmasi khusus CS.',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              fontWeight: FontWeight.w500,
-                              color: isOperational ? const Color(0xFF15803D) : const Color(0xFFDC2626),
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Tombol Konfirmasi
-                    /* Roda jam bawaan Cupertino tidak bisa dibatasi ke rentang
-                       tertentu, jadi jam di luar operasional tetap bisa digeser.
-                       Yang dilakukan: tombol terapkan dimatikan dan alasannya
-                       ditulis di atasnya, bukan membiarkan pelanggan menekan
-                       lalu ditolak SnackBar. */
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: isOperational
-                            ? () {
-                                Navigator.of(sheetContext).pop(tempTime);
-                              }
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryNavy,
-                          foregroundColor: AppColors.textWhite,
-                          disabledBackgroundColor: AppColors.borderSubtle,
-                          disabledForegroundColor: AppColors.textSecondary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          isOperational
-                              ? 'Terapkan Jam Sewa'
-                              : 'Pilih jam 06.00 - 22.00 WIT',
-                          style: const TextStyle(
-                            fontSize: AppTypography.sizeBodyLarge,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.time,
+                    use24hFormat: true,
+                    initialDateTime: tempTime,
+                    onDateTimeChanged: (DateTime newDateTime) {
+                      setSheetState(() {
+                        tempTime = newDateTime;
+                      });
+                    },
+                  ),
                 ),
               ),
-            );
-          },
-        );
-      },
+              const SizedBox(height: 12),
+
+              // Status Jam Operasional Info
+              Row(
+                children: [
+                  Icon(
+                    isOperational ? Icons.check_circle_outline : Icons.info_outline,
+                    size: 16,
+                    color: isOperational ? AppColors.statusSuccessFg : AppColors.statusDangerFg,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      isOperational
+                          ? 'Jam operasional normal Merauke (06.00 - 22.00 WIT)'
+                          : 'Di luar jam operasional (06.00 - 22.00 WIT). Butuh konfirmasi khusus CS.',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBody,
+                        fontWeight: FontWeight.w500,
+                        color: isOperational ? AppColors.statusSuccessFg : AppColors.statusDangerFg,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Tombol Konfirmasi
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 48),
+                child: ElevatedButton(
+                  onPressed: isOperational
+                      ? () => Navigator.of(sheetContext).pop(tempTime)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    foregroundColor: AppColors.textWhite,
+                    disabledBackgroundColor: AppColors.borderSubtle,
+                    disabledForegroundColor: AppColors.textSecondary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    isOperational
+                        ? 'Terapkan Jam Sewa'
+                        : 'Pilih jam 06.00 - 22.00 WIT',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
 
     if (selected != null) {
@@ -697,7 +642,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Column(
@@ -705,7 +650,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         children: [
           // 1. Jam Mulai Sewa Header
           const Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.access_time_rounded,
@@ -713,13 +657,15 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 color: AppColors.primaryTeal,
               ),
               SizedBox(width: 8),
-              Text(
-                'Jam Mulai Sewa',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+              Flexible(
+                child: Text(
+                  'Jam Mulai Sewa',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ],
@@ -781,12 +727,12 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     ),
                   ),
                   Container(
-                    constraints: const BoxConstraints(minHeight: 36, minWidth: 64),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    constraints: const BoxConstraints(minHeight: 44, minWidth: 64),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.borderSubtle),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                      border: Border.all(color: AppColors.borderMedium),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -896,24 +842,24 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primaryTeal),
+          const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.accent),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               isDriver
-                  ? 'Sopir bertugas 12 jam sejak pukul $_selectedTime dan standby setiap hari di Merauke.'
+                  ? 'Sopir menjemput di lokasi pilihan Anda sesuai jadwal mulai pukul $_selectedTime.'
                   : 'Hitungan sewa berlaku 24 jam penuh per hari sejak serah terima unit armada di Merauke.',
               style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
+                fontSize: AppTypography.sizeBody,
                 fontWeight: FontWeight.w400,
                 color: AppColors.textSecondary,
-                height: 1.4,
+                height: 1.45,
                 fontFamily: 'Inter',
               ),
             ),
@@ -932,7 +878,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: 12),
       decoration: const BoxDecoration(
         color: AppColors.cardWhite,
         border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
@@ -971,47 +917,55 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            SizedBox(
-              height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
-              child: ElevatedButton(
-                onPressed: () {
-                  final parsed = _parseTimeOfDay(_selectedTime);
-                  if (!_isWithinOperationalHours(parsed)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT). Hubungi Chat CS Merauke jika butuh penjemputan khusus.',
+            Flexible(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: ElevatedButton(
+                  onPressed: () {
+                    final parsed = _parseTimeOfDay(_selectedTime);
+                    if (!_isWithinOperationalHours(parsed)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT). Hubungi Chat CS Merauke jika butuh penjemputan khusus.',
+                          ),
+                          backgroundColor: Color(0xFFDC2626),
                         ),
-                        backgroundColor: Color(0xFFDC2626),
+                      );
+                      return;
+                    }
+                    context.read<BookingController>().setSchedule(
+                          date: _selectedDate,
+                          time: _selectedTime,
+                          durationDays: _durationDays,
+                        );
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => OrderReviewScreen(
+                          vehicle: widget.vehicle,
+                        ),
                       ),
                     );
-                    return;
-                  }
-                  context.read<BookingController>().setSchedule(
-                        date: _selectedDate,
-                        time: _selectedTime,
-                        durationDays: _durationDays,
-                      );
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => OrderReviewScreen(
-                        vehicle: widget.vehicle,
-                      ),
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    foregroundColor: AppColors.textWhite,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryNavy,
-                  foregroundColor: AppColors.textWhite,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-                child: const Text(
-                  'Lanjut ke Tinjau Pesanan',
-                  style: AppTypography.cardTitle,
+                  child: const Text(
+                    'Lanjut ke Tinjau Pesanan',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.cardTitle,
+                  ),
                 ),
               ),
             ),

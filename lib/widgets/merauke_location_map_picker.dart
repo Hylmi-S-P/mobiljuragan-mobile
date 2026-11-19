@@ -474,18 +474,18 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                 : null,
             filled: true,
             fillColor: AppColors.surfaceLight,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSubtle),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.borderMedium),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSubtle),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.borderMedium),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.primaryTeal),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
             ),
           ),
         ),
@@ -984,15 +984,16 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryNavy,
                               foregroundColor: Colors.white,
+                              minimumSize: const Size(0, 44),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               elevation: 0,
                             ),
                             child: const Text(
                               'Gunakan Titik Ini',
-                              style: AppTypography.captionBold,
+                              style: AppTypography.bodyStrong,
                             ),
                           ),
                         ],
@@ -1014,30 +1015,32 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
     bool isLoading = false,
   }) {
     return Container(
-      width: 28,
-      height: 28,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 3,
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 4,
             offset: const Offset(0, 1),
           ),
         ],
       ),
       child: IconButton(
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         icon: isLoading
             ? const SizedBox(
-                width: 13,
-                height: 13,
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: AppColors.primaryNavy,
                 ),
               )
-            : Icon(icon, size: 15, color: AppColors.primaryNavy),
+            : Icon(icon, size: 18, color: AppColors.primaryNavy),
         padding: EdgeInsets.zero,
         onPressed: onPressed,
       ),

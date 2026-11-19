@@ -218,7 +218,7 @@ class BookingController extends ChangeNotifier {
     super.dispose();
   }
 
-  // Getters Formulir Pemesanan
+  // Formulir pemesanan
   VehicleModel? get selectedVehicle => _selectedVehicle;
   DateTime get selectedDate => _selectedDate;
   String get selectedTime => _selectedTime;
@@ -231,7 +231,7 @@ class BookingController extends ChangeNotifier {
   String get customerNote => _customerNote;
   bool get agreementChecked => _agreementChecked;
 
-  // Getters Status & Riwayat
+  // Status dan riwayat pesanan
   bool get hasActiveBooking {
     if (_activeBooking != null &&
         _activeBooking!.status != BookingStatus.selesai &&

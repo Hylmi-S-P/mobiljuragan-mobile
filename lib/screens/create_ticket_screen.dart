@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../controllers/support_controller.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
 
 /// Formulir pengajuan tiket bantuan pelanggan.
@@ -119,29 +121,20 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryNavy,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
-          tooltip: 'Kembali',
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Buat Tiket Bantuan',
-          style: TextStyle(
-            fontSize: AppTypography.sizeHeading,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textWhite,
-            fontFamily: 'Inter',
-          ),
-        ),
+      appBar: const CustomAppBar(
+        title: 'Buat Tiket Bantuan',
+        showBackButton: true,
       ),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenH,
+              20,
+              AppSpacing.screenH,
+              24,
+            ),
             children: [
               const Text(
                 'Ceritakan kendala atau pertanyaan Anda. Bisa soal sewa yang sedang berjalan, atau rencana sewa yang belum dipesan.',
@@ -267,7 +260,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
       style: const TextStyle(
         fontSize: AppTypography.sizeBody,
         fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
+        color: AppColors.textSecondary,
         fontFamily: 'Inter',
       ),
     );
@@ -289,7 +282,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
       selectedColor: AppColors.primaryNavy,
       backgroundColor: AppColors.surfaceLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         side: BorderSide(
           color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
         ),
@@ -303,7 +296,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
   }
 
   InputDecoration _inputDecoration({required String hint, required String counter}) {
-    const radius = BorderRadius.all(Radius.circular(8));
+    const radius = BorderRadius.all(Radius.circular(AppRadius.control));
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(
@@ -320,7 +313,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
         fontFamily: 'Inter',
       ),
       filled: true,
-      fillColor: AppColors.cardWhite,
+      fillColor: AppColors.surfaceLight,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: const OutlineInputBorder(
         borderRadius: radius,
@@ -332,7 +325,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
       ),
       focusedBorder: const OutlineInputBorder(
         borderRadius: radius,
-        borderSide: BorderSide(color: AppColors.primaryTeal, width: 1.5),
+        borderSide: BorderSide(color: AppColors.primaryNavy, width: 1.5),
       ),
     );
   }

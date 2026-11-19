@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_spacing.dart';
 
 /// Daftar horizontal yang bisa digeser, dengan gradasi tipis di tepi kanan atau
 /// kiri selama masih ada isi di luar layar.
@@ -9,13 +10,15 @@ class DaftarGeserHorizontal extends StatefulWidget {
   const DaftarGeserHorizontal({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+    this.minHeight = 36,
   });
 
   /// Isi daftar, biasanya berupa [Row] dengan `mainAxisSize.min`.
   final Widget child;
 
   final EdgeInsetsGeometry padding;
+  final double minHeight;
 
   @override
   State<DaftarGeserHorizontal> createState() => _DaftarGeserHorizontalState();
@@ -79,12 +82,15 @@ class _DaftarGeserHorizontalState extends State<DaftarGeserHorizontal> {
         ).createShader(batas);
       },
       blendMode: BlendMode.dstIn,
-      child: SingleChildScrollView(
-        controller: _controller,
-        scrollDirection: Axis.horizontal,
-        padding: widget.padding,
-        clipBehavior: Clip.hardEdge,
-        child: widget.child,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: widget.minHeight),
+        child: SingleChildScrollView(
+          controller: _controller,
+          scrollDirection: Axis.horizontal,
+          padding: widget.padding,
+          clipBehavior: Clip.hardEdge,
+          child: widget.child,
+        ),
       ),
     );
   }

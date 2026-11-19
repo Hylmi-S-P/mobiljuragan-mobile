@@ -5,7 +5,9 @@ import '../controllers/vehicle_controller.dart';
 import '../core/constants/status_labels.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/order_state_banner.dart';
 import '../widgets/spec_card_item.dart';
 import 'rental_options_screen.dart';
 import '../theme/app_typography.dart';
@@ -35,7 +37,7 @@ class VehicleDetailScreen extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: AppSpacing.screenPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -65,34 +67,30 @@ class VehicleDetailScreen extends StatelessWidget {
                                 fontFamily: 'Inter',
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: currentVehicle.isAvailable
-                                    ? AppColors.badgeGreenBg
-                                    : const Color(0xFFFEF3C7),
-                                borderRadius: BorderRadius.circular(4),
-                                border: currentVehicle.isAvailable
-                                    ? null
-                                    : Border.all(
-                                        color: const Color(0xFFFDE68A),
-                                        width: 0.8,
-                                      ),
-                              ),
-                              child: Text(
-                                currentVehicle.isAvailable
-                                    ? 'Tersedia'
-                                    : vehicleAvailabilityLabel(currentVehicle.availability),
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  fontWeight: FontWeight.w600,
-                                  color: currentVehicle.isAvailable
-                                      ? AppColors.badgeGreenText
-                                      : const Color(0xFF92400E),
-                                  fontFamily: 'Inter',
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                StatusBadge(
+                                  tone: currentVehicle.isAvailable
+                                      ? StatusTone.success
+                                      : StatusTone.warning,
+                                  label: currentVehicle.isAvailable
+                                      ? 'Tersedia'
+                                      : vehicleAvailabilityLabel(currentVehicle.availability),
                                 ),
-                              ),
+                                Text(
+                                  'Rp ${_formatRupiah(currentVehicle.pricePerDay)} / hari',
+                                  style: const TextStyle(
+                                    fontSize: AppTypography.sizeAmount,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primaryNavy,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -109,12 +107,12 @@ class VehicleDetailScreen extends StatelessWidget {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: currentVehicle.isFavorite
-                                  ? const Color(0xFFFEF3C7)
+                                  ? AppColors.accentSoft
                                   : AppColors.cardWhite,
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: currentVehicle.isFavorite
-                                    ? const Color(0xFFF59E0B)
+                                    ? AppColors.accentMuted
                                     : AppColors.borderSubtle,
                               ),
                             ),
@@ -123,7 +121,7 @@ class VehicleDetailScreen extends StatelessWidget {
                                   ? Icons.bookmark_rounded
                                   : Icons.bookmark_outline_rounded,
                               color: currentVehicle.isFavorite
-                                  ? const Color(0xFFD97706)
+                                  ? AppColors.primaryNavy
                                   : AppColors.textSecondary,
                               size: 22,
                             ),
@@ -134,7 +132,7 @@ class VehicleDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   if (!currentVehicle.isAvailable) ...[
-                    _buildOccupiedWarningBanner(currentVehicle),
+                    _buildOccupiedWarningBanner(context, currentVehicle),
                     const SizedBox(height: 16),
                   ],
                   _buildVehicleImageCard(currentVehicle),
@@ -157,11 +155,11 @@ class VehicleDetailScreen extends StatelessWidget {
       height: 170,
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         child: GambarKendaraan(
           sumber: currentVehicle.detailImageUrl ?? currentVehicle.imageUrl,
           fit: BoxFit.contain,
@@ -224,7 +222,7 @@ class VehicleDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOccupiedWarningBanner(VehicleModel currentVehicle) {
+  Widget _buildOccupiedWarningBanner(BuildContext context, VehicleModel currentVehicle) {
     final bool isBooked = currentVehicle.isBooked;
     final bool isInService = currentVehicle.isInService;
 
@@ -240,51 +238,29 @@ class VehicleDetailScreen extends StatelessWidget {
             ? 'Unit ini baru kembali dari penyewaan dan sedang menjalani pemeriksaan kelayakan maksimal 6 jam di garasi sebelum dapat dipesan kembali.'
             : 'Unit ini sementara tidak dapat dipesan. Silakan pilih armada lain yang tersedia pada katalog.';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFCD34D), width: 1),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFFB45309),
-            size: 20,
+    return OrderStateBanner(
+      tone: StatusTone.warning,
+      icon: Icons.info_outline_rounded,
+      title: bannerTitle,
+      message: bannerMessage,
+      action: OutlinedButton(
+        onPressed: () => Navigator.of(context).maybePop(),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.statusWarningFg,
+          side: const BorderSide(color: AppColors.statusWarningBorder),
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.control),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  bannerTitle,
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF92400E),
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  bannerMessage,
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF78350F),
-                    fontFamily: 'Inter',
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
+        ),
+        child: const Text(
+          'Lihat Armada Lain',
+          style: TextStyle(
+            fontSize: AppTypography.sizeBody,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Inter',
           ),
-        ],
+        ),
       ),
     );
   }
@@ -296,16 +272,15 @@ class VehicleDetailScreen extends StatelessWidget {
         : 'Armada Sedang Tidak Tersedia';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: 14),
       decoration: const BoxDecoration(
         color: AppColors.cardWhite,
         border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 48),
           child: ElevatedButton(
             onPressed: canProceed
                 ? () {
@@ -320,10 +295,10 @@ class VehicleDetailScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryNavy,
               foregroundColor: AppColors.textWhite,
-              disabledBackgroundColor: const Color(0xFFE2E8F0),
-              disabledForegroundColor: const Color(0xFF94A3B8),
+              disabledBackgroundColor: AppColors.borderSubtle,
+              disabledForegroundColor: AppColors.textMuted,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.control),
               ),
               elevation: 0,
             ),
@@ -333,12 +308,19 @@ class VehicleDetailScreen extends StatelessWidget {
                 fontSize: AppTypography.sizeBodyLarge,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',
-                color: canProceed ? AppColors.textWhite : const Color(0xFF64748B),
+                color: canProceed ? AppColors.textWhite : AppColors.textSecondary,
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  String _formatRupiah(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
     );
   }
 }

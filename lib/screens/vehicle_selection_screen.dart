@@ -5,7 +5,9 @@ import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/daftar_geser_horizontal.dart';
 import '../widgets/vehicle_card_item.dart';
 import 'vehicle_detail_screen.dart';
 import '../theme/app_typography.dart';
@@ -57,97 +59,117 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               onRefresh: () => vehicleController.refreshCatalog(force: true),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.screenV),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Katalog Armada Tersedia',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeHeading,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                            fontFamily: 'Inter',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Katalog Armada Tersedia',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: AppTypography.sizeHeading,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                    fontFamily: 'Inter',
+                                  ),
+                                ),
+                              ),
+                              if (vehicleController.isSyncing)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 8),
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.accent,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                        ),
-                        if (vehicleController.isSyncing)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primaryTeal,
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Bandingkan tipe, kapasitas, dan transmisi armada untuk kenyamanan perjalanan Anda.',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeBody,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Bandingkan tipe, kapasitas, dan transmisi armada untuk kenyamanan perjalanan Anda.',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBody,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
                     _buildCategoryFilterBar(vehicleController),
                     const SizedBox(height: 16),
-                    if (filteredVehicles.isEmpty)
-                      _buildEmptyState(vehicleController)
-                    else ...[
-                      /* Unit yang sedang disewa dipisah dari yang bisa dipesan.
-                         Sebelumnya keduanya bercampur, sehingga pelanggan harus
-                         membuka satu per satu untuk tahu mana yang tersedia. */
-                      if (availableVehicles.isNotEmpty) ...[
-                        _buildSectionLabel('Tersedia (${availableVehicles.length})'),
-                        ...availableVehicles.map(
-                          (vehicle) => VehicleCardItem(
-                            vehicle: vehicle,
-                            isSelected: vehicle.id == _selectedVehicleId,
-                            onTap: () {
-                              setState(() {
-                                _selectedVehicleId = vehicle.id;
-                              });
-                              context.read<BookingController>().selectVehicle(
-                                vehicle,
-                              );
-                            },
-                            onToggleFavorite: () {
-                              vehicleController.toggleFavorite(vehicle.id);
-                            },
-                          ),
-                        ),
-                      ],
-                      if (rentedVehicles.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        _buildSectionLabel('Sedang disewa (${rentedVehicles.length})'),
-                        ...rentedVehicles.map(
-                          (vehicle) => VehicleCardItem(
-                            vehicle: vehicle,
-                            isSelected: vehicle.id == _selectedVehicleId,
-                            onTap: () {
-                              setState(() {
-                                _selectedVehicleId = vehicle.id;
-                              });
-                              context.read<BookingController>().selectVehicle(vehicle);
-                            },
-                            onToggleFavorite: () {
-                              vehicleController.toggleFavorite(vehicle.id);
-                            },
-                          ),
-                        ),
-                      ],
-                    ],
-                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (filteredVehicles.isEmpty)
+                            _buildEmptyState(vehicleController)
+                          else ...[
+                            /* Unit yang sedang disewa dipisah dari yang bisa dipesan.
+                               Sebelumnya keduanya bercampur, sehingga pelanggan harus
+                               membuka satu per satu untuk tahu mana yang tersedia. */
+                            if (availableVehicles.isNotEmpty) ...[
+                              _buildSectionLabel('Tersedia (${availableVehicles.length})'),
+                              ...availableVehicles.map(
+                                (vehicle) => VehicleCardItem(
+                                  vehicle: vehicle,
+                                  isSelected: vehicle.id == _selectedVehicleId,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedVehicleId = vehicle.id;
+                                    });
+                                    context.read<BookingController>().selectVehicle(
+                                      vehicle,
+                                    );
+                                  },
+                                  onToggleFavorite: () {
+                                    vehicleController.toggleFavorite(vehicle.id);
+                                  },
+                                ),
+                              ),
+                            ],
+                            if (rentedVehicles.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              _buildSectionLabel('Sedang disewa (${rentedVehicles.length})'),
+                              ...rentedVehicles.map(
+                                (vehicle) => VehicleCardItem(
+                                  vehicle: vehicle,
+                                  isSelected: vehicle.id == _selectedVehicleId,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedVehicleId = vehicle.id;
+                                    });
+                                    context.read<BookingController>().selectVehicle(vehicle);
+                                  },
+                                  onToggleFavorite: () {
+                                    vehicleController.toggleFavorite(vehicle.id);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -184,93 +206,81 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
   Widget _buildCategoryFilterBar(VehicleController controller) {
     const categories = VehicleController.availableCategories;
 
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final bool isSelected = controller.selectedCategory == category;
-          final bool isFav = category == 'Favorit';
+    return DaftarGeserHorizontal(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < categories.length; index++) ...[
+            if (index > 0) const SizedBox(width: 8),
+            _buildFilterChip(controller, categories[index]),
+          ],
+        ],
+      ),
+    );
+  }
 
-          return InkWell(
-            onTap: () {
-              controller.setCategory(category);
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primaryTeal : AppColors.cardWhite,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.primaryTeal
-                      : AppColors.borderSubtle,
-                  width: 1,
-                ),
+  Widget _buildFilterChip(VehicleController controller, String category) {
+    final bool isSelected = controller.selectedCategory == category;
+    final bool isFav = category == 'Favorit';
+
+    return InkWell(
+      onTap: () => controller.setCategory(category),
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 36),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryNavy : AppColors.cardWhite,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(
+            color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isFav) ...[
+              Icon(
+                isSelected ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                size: 16,
+                color: isSelected ? AppColors.textWhite : AppColors.primaryNavy,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isFav) ...[
-                    Icon(
-                      isSelected
-                          ? Icons.bookmark_rounded
-                          : Icons.bookmark_outline_rounded,
-                      size: 16,
-                      color: isSelected
-                          ? AppColors.textWhite
-                          : const Color(0xFFD97706),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  Text(
-                    category,
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBody,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected
-                          ? AppColors.textWhite
-                          : AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
-                  if (isFav && controller.favoriteCount > 0) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.25)
-                            : const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${controller.favoriteCount}',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeMicro,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFFB45309),
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+              const SizedBox(width: 4),
+            ],
+            Text(
+              category,
+              style: TextStyle(
+                fontSize: AppTypography.sizeBody,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+                fontFamily: 'Inter',
               ),
             ),
-          );
-        },
+            if (isFav && controller.favoriteCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.25)
+                      : AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${controller.favoriteCount}',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeTiny,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : AppColors.primaryNavy,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -293,7 +303,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             isFavoriteFilter ? Icons.bookmark_border_rounded : Icons.car_rental,
             size: 48,
             color: isFavoriteFilter
-                ? const Color(0xFFD97706)
+                ? AppColors.primaryNavy
                 : AppColors.textSecondary,
           ),
           const SizedBox(height: 12),
@@ -354,12 +364,13 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     if (selectedVehicle == null) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
+        border: const Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -367,9 +378,8 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 48),
           child: ElevatedButton(
             onPressed: () {
               context.read<BookingController>().selectVehicle(selectedVehicle);
@@ -383,7 +393,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
               backgroundColor: AppColors.primaryNavy,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppRadius.control),
               ),
               elevation: 0,
             ),

@@ -22,7 +22,7 @@ class AppSettingsService {
     return AppSettingsService(prefs);
   }
 
-  // --- Kategori Filter Armada ---
+  // Kategori filter armada
   String getSelectedCategory() {
     return _prefs.getString(_keySelectedCategory) ?? 'Semua';
   }
@@ -31,7 +31,7 @@ class AppSettingsService {
     return await _prefs.setString(_keySelectedCategory, category);
   }
 
-  // --- Riwayat Pencarian Armada ---
+  // Riwayat pencarian armada
   List<String> getSearchHistory() {
     return _prefs.getStringList(_keySearchHistory) ?? [];
   }
@@ -56,7 +56,7 @@ class AppSettingsService {
     return await _prefs.remove(_keySearchHistory);
   }
 
-  // --- Preferensi Notifikasi ---
+  // Preferensi notifikasi
   bool getNotificationsEnabled() {
     return _prefs.getBool(_keyNotifications) ?? true;
   }
@@ -65,7 +65,7 @@ class AppSettingsService {
     return await _prefs.setBool(_keyNotifications, enabled);
   }
 
-  // --- Penanda Waktu Sinkronisasi Terakhir (UTC Milliseconds) ---
+  // Penanda waktu sinkronisasi terakhir (UTC)
   int? getLastSyncTime() {
     return _prefs.getInt(_keyLastSyncTime);
   }
@@ -74,7 +74,7 @@ class AppSettingsService {
     return await _prefs.setInt(_keyLastSyncTime, timestampMillis);
   }
 
-  // --- Status Onboarding / Pengenalan Aplikasi ---
+  // Status onboarding
   bool isOnboardingCompleted() {
     return _prefs.getBool(_keyOnboardingDone) ?? false;
   }

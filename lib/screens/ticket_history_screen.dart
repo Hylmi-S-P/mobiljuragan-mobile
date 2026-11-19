@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../controllers/support_controller.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/custom_app_bar.dart';
 import 'chat_support_screen.dart';
@@ -54,7 +55,10 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
                 )
               : ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenH,
+                    vertical: 16,
+                  ),
                   itemCount: historyTickets.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
@@ -254,14 +258,19 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
+                Expanded(
+                  child: Text(
+                    'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/booking_controller.dart';
@@ -9,7 +10,10 @@ import '../models/booking_model.dart';
 import '../models/support_ticket_model.dart';
 import 'create_ticket_screen.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/daftar_geser_horizontal.dart';
 
 /// Layanan Live Chat Bantuan Pelanggan terisolasi per sesi pesanan/tiket (AI Assistant, Handoff Staf Operasional & Pembayaran)
 class ChatSupportScreen extends StatefulWidget {
@@ -313,7 +317,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     if (currentBooking != null) {
       screenTitle = currentBooking.vehicle.name;
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke · online'
+          ? 'Staf Operasional Merauke · balas 08.00–17.00 WIT'
           : 'Asisten AI MobilJuragan · membalas otomatis';
     } else if (activeTicket != null) {
       screenTitle = (liveTicket ?? activeTicket).title;
@@ -323,45 +327,42 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         screenSubtitle = 'Tiket selesai · riwayat tersimpan';
       } else {
         screenSubtitle = isHandedOff
-            ? 'Staf Operasional Merauke · online'
+            ? 'Staf Operasional Merauke · balas 08.00–17.00 WIT'
             : 'Asisten AI MobilJuragan · membalas otomatis';
       }
     } else {
       screenTitle = 'Bantuan MobilJuragan';
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke · online'
+          ? 'Staf Operasional Merauke · balas 08.00–17.00 WIT'
           : 'Asisten AI MobilJuragan · membalas otomatis';
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryNavy,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textWhite),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        titleSpacing: 0,
-        title: Row(
+      backgroundColor: AppColors.scaffoldBackground,
+      appBar: CustomAppBar(
+        title: screenTitle,
+        showBackButton: true,
+        titleWidget: Row(
           children: [
-            /* Avatar lawan bicara: penanda "sedang chat dengan siapa" yang lazim
-               di aplikasi pesan. Sebelumnya peran ini dipegang badge di kanan
-               sekaligus subjudul, jadi satu informasi ditulis dua kali. */
+            /* Avatar lawan bicara: penanda "sedang chat dengan siapa". */
             Container(
               width: 34,
               height: 34,
               decoration: BoxDecoration(
                 color: isTicketFinal
                     ? const Color(0xFF334155)
-                    : (isHandedOff ? const Color(0xFF065F46) : const Color(0xFF1E4B63)),
+                    : (isHandedOff
+                          ? const Color(0xFF1E3A5F)
+                          : const Color(0xFF1E4B63)),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Icon(
                   isTicketFinal
                       ? Icons.lock_outline_rounded
-                      : (isHandedOff ? Icons.support_agent_rounded : Icons.smart_toy_outlined),
+                      : (isHandedOff
+                            ? Icons.support_agent_rounded
+                            : Icons.smart_toy_outlined),
                   size: 18,
                   color: isHandedOff || isTicketFinal
                       ? AppColors.textWhite
@@ -394,7 +395,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                         decoration: BoxDecoration(
                           color: isTicketFinal
                               ? const Color(0xFF94A3B8)
-                              : (isHandedOff ? const Color(0xFF22C55E) : const Color(0xFF38BDF8)),
+                              : (isHandedOff
+                                    ? const Color(0xFFCBD5E1)
+                                    : const Color(0xFF38BDF8)),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -424,6 +427,39 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         children: [
           // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
           if (activeTicket != null) _buildTicketSummaryBanner(liveTicket ?? activeTicket),
+
+          if (isHandedOff && !isTicketFinal)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                color: AppColors.statusInfoBg,
+                border: Border(
+                  bottom: BorderSide(color: AppColors.statusInfoBorder),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.support_agent_rounded,
+                    size: 16,
+                    color: AppColors.statusInfoFg,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Ditangani oleh Staf Operasional Merauke',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.statusInfoFg,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
           if (currentBooking != null)
@@ -590,19 +626,57 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  isWaiting
-                      ? 'BRI Merauke: 0321-01-002847-53-1 (a.n MobilJuragan)'
-                      : booking.withDriver
-                      ? 'Sopir siap menjemput Anda di ${booking.pickupLocation}.'
-                      : 'Kunci siap diserahterimakan di ${booking.pickupLocation}.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    color: isWaiting ? const Color(0xFFB45309) : const Color(0xFF15803D),
-                    fontFamily: 'Inter',
+                const SizedBox(height: 4),
+                if (isWaiting)
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'BRI Merauke: 0321-01-002847-53-1 (a.n MobilJuragan)',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBody,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.statusWarningFg,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Salin nomor rekening',
+                        constraints: const BoxConstraints(
+                          minWidth: 44,
+                          minHeight: 44,
+                        ),
+                        onPressed: () {
+                          Clipboard.setData(
+                            const ClipboardData(text: '032101002847531'),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Nomor rekening BRI berhasil disalin'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.copy_rounded,
+                          size: 16,
+                          color: AppColors.statusWarningFg,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    booking.withDriver
+                        ? 'Sopir siap menjemput Anda di ${booking.pickupLocation}.'
+                        : 'Kunci siap diserahterimakan di ${booking.pickupLocation}.',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      color: AppColors.statusSuccessFg,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -610,9 +684,46 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             const SizedBox(width: 8),
             ElevatedButton(
               onPressed: () async {
-                /* Laporan diteruskan ke staf, bukan langsung melunasi pesanan.
-                   Status pembayaran hanya berubah setelah admin memeriksa bukti
-                   transfer di portal. */
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    title: const Text(
+                      'Konfirmasi Sudah Bayar',
+                      style: AppTypography.pageTitle,
+                    ),
+                    content: const Text(
+                      'Pastikan Anda sudah mentransfer sesuai nominal tagihan. Laporan akan diteruskan ke staf untuk verifikasi bukti masuk.',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBody,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('Batal'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryNavy,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Kirim Laporan'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !mounted) return;
+
                 await support.confirmPaymentFromChat(
                   booking: booking,
                   ticketId: _tiketAktif?.id,
@@ -622,27 +733,37 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: support.pesanBelumTerkirim
-                        ? const Color(0xFFB91C1C)
-                        : const Color(0xFF15803D),
+                        ? AppColors.statusDangerFg
+                        : AppColors.statusSuccessFg,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     content: Text(
                       support.pesanBelumTerkirim
                           ? 'Laporan belum terkirim. Periksa koneksi lalu coba lagi.'
                           : 'Laporan sudah dikirim. Staf akan memeriksa pembayaran Anda.',
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: AppTypography.sizeBody),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: AppTypography.sizeBody,
+                      ),
                     ),
                   ),
                 );
                 _scrollToBottom();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF15803D),
+                backgroundColor: AppColors.statusSuccessFg,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                minimumSize: const Size(44, 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                minimumSize: const Size(44, 44),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                ),
               ),
               child: const Text('Sudah Bayar', style: AppTypography.captionBold),
             ),
@@ -778,10 +899,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
     final warnaLatar = isUser
         ? AppColors.primaryNavy
-        : (msg.isAI ? const Color(0xFFF1F5F9) : const Color(0xFFF0FDF4));
+        : (msg.isAI ? AppColors.cardWhite : AppColors.statusInfoBg);
     final warnaGaris = isUser
         ? AppColors.primaryNavy
-        : (msg.isAI ? AppColors.borderSubtle : const Color(0xFFBBF7D0));
+        : (msg.isAI ? AppColors.borderSubtle : AppColors.statusInfoBorder);
 
     return Padding(
       padding: EdgeInsets.only(top: tampilkanKepala ? 10 : 2, bottom: ekorRapat ? 0 : 2),
@@ -934,24 +1055,24 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     BookingModel? booking,
     BookingController bookingCtrl,
   ) {
-    return Container(
-      height: 42,
+    return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
+      child: DaftarGeserHorizontal(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: suggestions.map((suggestion) {
             return Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(
+                right: suggestion == suggestions.last ? 0 : 8,
+              ),
               child: ActionChip(
-                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundColor: AppColors.surfaceLight,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: const BorderSide(color: AppColors.borderSubtle),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 label: Text(
                   suggestion,
                   style: const TextStyle(
@@ -961,34 +1082,11 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     fontFamily: 'Inter',
                   ),
                 ),
-                onPressed: () async {
-                  if (suggestion == 'Konfirmasi Sudah Bayar' && booking != null) {
-                    await controller.confirmPaymentFromChat(
-                      booking: booking,
-                      ticketId: _tiketAktif?.id,
-                    );
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: controller.pesanBelumTerkirim
-                            ? const Color(0xFFB91C1C)
-                            : const Color(0xFF15803D),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        content: Text(
-                          controller.pesanBelumTerkirim
-                              ? 'Laporan belum terkirim. Periksa koneksi lalu coba lagi.'
-                              : 'Laporan sudah dikirim. Staf akan memeriksa pembayaran Anda.',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: AppTypography.sizeBody,
-                          ),
-                        ),
-                      ),
-                    );
-                  } else {
-                    controller.sendUserMessage(text: suggestion, conversationKey: conversationKey);
-                  }
+                onPressed: () {
+                  controller.sendUserMessage(
+                    text: suggestion,
+                    conversationKey: conversationKey,
+                  );
                   _scrollToBottom();
                 },
               ),
@@ -1012,7 +1110,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     final adaTeks = _messageController.text.trim().isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -1047,16 +1145,16 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
                 ),
               ),
             ),

@@ -139,6 +139,10 @@ class BookingModel {
   /* Status pengembalian dana dari server: MENUNGGU / DIPROSES / SELESAI.
      Null berarti pembatalan ini tidak memunculkan baris pengembalian dana. */
   final String? refundStatus;
+  final String? refundProofUrl;
+  final bool danaTerverifikasi;
+  final String? cancelledBy;
+  final bool isRejectedByAdmin;
   final PaymentMethodType? _paymentMethodType;
   final DateTime? paidAt;
   final String? paymentReference;
@@ -182,6 +186,10 @@ class BookingModel {
     this.cancellationAccountNumber,
     this.cancellationAccountName,
     this.refundStatus,
+    this.refundProofUrl,
+    this.danaTerverifikasi = true,
+    this.cancelledBy,
+    this.isRejectedByAdmin = false,
     PaymentMethodType? paymentMethodType = PaymentMethodType.belumDipilih,
     this.paidAt,
     this.paymentReference,
@@ -269,6 +277,10 @@ class BookingModel {
     String? refundAccountNumber;
     String? refundAccountName;
     String? refundState;
+    String? refundProofUrl;
+    bool danaTerverifikasi = true;
+    String? cancelledBy;
+    bool isRejectedByAdmin = false;
     String? savedPaymentStatus;
     String? savedDocumentStatus;
     String? savedDocumentRejectionReason;
@@ -289,6 +301,12 @@ class BookingModel {
         refundAccountNumber = decoded['accountNumber']?.toString();
         refundAccountName = decoded['accountName']?.toString();
         refundState = decoded['refundStatus']?.toString();
+        refundProofUrl = decoded['refundProofUrl']?.toString();
+        if (decoded.containsKey('danaTerverifikasi')) {
+          danaTerverifikasi = decoded['danaTerverifikasi'] == true;
+        }
+        cancelledBy = decoded['cancelledBy']?.toString();
+        isRejectedByAdmin = decoded['isRejectedByAdmin'] == true;
         savedPaymentStatus = decoded['paymentStatus']?.toString();
         savedDocumentStatus = decoded['documentStatus']?.toString();
         savedDocumentRejectionReason = decoded['documentRejectionReason']?.toString();
@@ -324,6 +342,10 @@ class BookingModel {
       cancellationAccountNumber: refundAccountNumber,
       cancellationAccountName: refundAccountName,
       refundStatus: refundState,
+      refundProofUrl: refundProofUrl,
+      danaTerverifikasi: danaTerverifikasi,
+      cancelledBy: cancelledBy,
+      isRejectedByAdmin: isRejectedByAdmin,
       paymentStatus: savedPaymentStatus,
       documentStatus: savedDocumentStatus,
       documentRejectionReason: savedDocumentRejectionReason,
@@ -353,6 +375,10 @@ class BookingModel {
       if (cancellationAccountName != null)
         'accountName': cancellationAccountName,
       if (refundStatus != null) 'refundStatus': refundStatus,
+      if (refundProofUrl != null) 'refundProofUrl': refundProofUrl,
+      if (!danaTerverifikasi) 'danaTerverifikasi': false,
+      if (cancelledBy != null) 'cancelledBy': cancelledBy,
+      if (isRejectedByAdmin) 'isRejectedByAdmin': true,
       if (paymentStatus != null) 'paymentStatus': paymentStatus,
       if (documentStatus != null) 'documentStatus': documentStatus,
       if (documentRejectionReason != null)
@@ -500,18 +526,49 @@ class BookingModel {
     String? bersihkanAlasan(String? teks) {
       if (teks == null) return null;
       var hasil = teks.replaceFirst(
-        RegExp(r'^Dibatalkan oleh pemesan:\s*'),
+        RegExp(
+          r'^(?:Dibatalkan(?:\s+oleh)?\s+(?:pemesan|pelanggan|admin|sistem)|Dibatalkan\s+otomatis(?:\s+oleh\s+sistem)?|Ditolak(?:\s+oleh)?\s+admin)\s*:\s*',
+          caseSensitive: false,
+        ),
         '',
       );
       hasil = hasil.split('Bukti transfer belum diverifikasi').first.trim();
       return hasil.isEmpty ? null : hasil;
     }
 
+    final statusHistoryJson = json['statusHistory'];
+    Map<String, dynamic>? latestHistory;
+    if (statusHistoryJson is List && statusHistoryJson.isNotEmpty) {
+      final first = statusHistoryJson.first;
+      if (first is Map) {
+        latestHistory = Map<String, dynamic>.from(first);
+      }
+    }
+
+    final historyActor = latestHistory?['actor']?.toString().trim();
+    final historyToStatus = latestHistory?['toStatus']?.toString().trim();
+    final historyNote = latestHistory?['note']?.toString();
+    final historyChangedAt = DateTime.tryParse(
+      latestHistory?['changedAt']?.toString() ?? '',
+    )?.toLocal();
+
     final refundNominal = parseNominal(refund?['nominal']);
     final refundDicatat =
         DateTime.tryParse(
           refund?['dicatatPada']?.toString() ?? '',
         )?.toLocal();
+
+    final rawCancelledBy =
+        refund?['dibatalkanOleh']?.toString().trim() ??
+        (mappedStatus == BookingStatus.dibatalkan ? historyActor : null);
+    final bool isRejectedByAdmin =
+        rawStatus.toUpperCase() == 'REJECTED' ||
+        historyToStatus?.toUpperCase() == 'REJECTED';
+    final bool danaTerverifikasi = refund == null
+        ? true
+        : (refund['danaTerverifikasi'] == null
+              ? (payStatus != 'PENDING_VERIFICATION' && payStatus != 'FAILED')
+              : refund['danaTerverifikasi'] == true);
 
     return BookingModel(
       id: rawId,
@@ -537,13 +594,19 @@ class BookingModel {
       documentRejectionReason: docRejectionReason,
       documentDeadline: documentDeadline,
       paymentStatus: payStatus,
-      cancellationReason: bersihkanAlasan(refund?['alasan']?.toString()),
-      cancelledAt: refundDicatat,
+      cancellationReason: bersihkanAlasan(
+        refund?['alasan']?.toString() ?? historyNote,
+      ),
+      cancelledAt: refundDicatat ?? historyChangedAt,
       cancellationRefundAmount: refundNominal,
       cancellationBank: refund?['namaBank']?.toString(),
       cancellationAccountNumber: refund?['nomorRekening']?.toString(),
       cancellationAccountName: refund?['namaPemilik']?.toString(),
       refundStatus: refund?['status']?.toString(),
+      refundProofUrl: refund?['buktiUrl']?.toString(),
+      danaTerverifikasi: danaTerverifikasi,
+      cancelledBy: rawCancelledBy?.isEmpty == true ? null : rawCancelledBy,
+      isRejectedByAdmin: isRejectedByAdmin,
     );
   }
 
@@ -693,6 +756,10 @@ class BookingModel {
     String? cancellationAccountNumber,
     String? cancellationAccountName,
     String? refundStatus,
+    String? refundProofUrl,
+    bool? danaTerverifikasi,
+    String? cancelledBy,
+    bool? isRejectedByAdmin,
     PaymentMethodType? paymentMethodType,
     DateTime? paidAt,
     String? paymentReference,
@@ -734,6 +801,10 @@ class BookingModel {
       cancellationAccountName:
           cancellationAccountName ?? this.cancellationAccountName,
       refundStatus: refundStatus ?? this.refundStatus,
+      refundProofUrl: refundProofUrl ?? this.refundProofUrl,
+      danaTerverifikasi: danaTerverifikasi ?? this.danaTerverifikasi,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      isRejectedByAdmin: isRejectedByAdmin ?? this.isRejectedByAdmin,
       paymentMethodType: paymentMethodType ?? this.paymentMethodType,
       paidAt: paidAt ?? this.paidAt,
       paymentReference: paymentReference ?? this.paymentReference,

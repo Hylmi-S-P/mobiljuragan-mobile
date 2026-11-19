@@ -87,13 +87,13 @@ void main() {
       // E-Ticket Reservasi tampil dengan format resmi
       expect(find.text('E-TICKET RESERVASI MOBILJURAGAN'), findsOneWidget);
 
-      // Stepper menampilkan seluruh tahapan proses pesanan secara terbuka (tanpa toggle riwayat)
+      // Stepper 3 tahap utama tampil terbuka (tanpa toggle riwayat)
       expect(find.text('Tahapan Proses Pesanan'), findsOneWidget);
-      expect(find.text('Permintaan Masuk'), findsOneWidget);
-      expect(find.text('Konfirmasi Tarif & Armada'), findsOneWidget);
+      expect(find.text('Pengajuan & Verifikasi'), findsOneWidget);
       expect(find.text('Pembayaran Diterima'), findsOneWidget);
       expect(find.text('Sewa Berjalan'), findsAtLeastNWidgets(1));
-      expect(find.text('Selesai'), findsOneWidget);
+      expect(find.text('Permintaan Masuk'), findsNothing);
+      expect(find.text('Konfirmasi Tarif & Armada'), findsNothing);
       expect(find.text('Lihat riwayat ▼'), findsNothing);
       expect(find.text('Tutup riwayat ▲'), findsNothing);
 
@@ -131,7 +131,10 @@ void main() {
 
       // Unified Hero Card berada di bagian atas dengan judul peninjauan admin untuk layanan bersupir
       expect(find.text('Pengajuan Sedang Ditinjau Admin'), findsOneWidget);
-      expect(find.text('Formulir pengajuan sewa berhasil dikirim'), findsOneWidget);
+      expect(
+        find.text('Formulir pengajuan sewa berhasil dikirim ke tim kantor'),
+        findsOneWidget,
+      );
 
       // Kartu ringkasan unit tetap muncul saat belum lunas dengan estimasi biaya
       expect(find.text('Estimasi Total Biaya'), findsOneWidget);
@@ -262,7 +265,7 @@ void main() {
       expect(find.textContaining('Sisa waktu unggah dokumen'), findsNothing);
     });
 
-    testWidgets('Menampilkan kode serah terima dan QR code aktif pada E-Ticket saat pembayaran lunas tanpa banner terkunci', (tester) async {
+    testWidgets('Menampilkan kode reservasi asli pada E-Ticket tanpa QR statis dan awalan MBJ-', (tester) async {
       final activeLepasKunciBooking = inProgressBooking.copyWith(
         withDriver: false,
         status: BookingStatus.pembayaranSelesai,
@@ -271,11 +274,16 @@ void main() {
       await tester.pumpWidget(createTestWidget(booking: activeLepasKunciBooking));
       await tester.pumpAndSettle();
 
-      // Memastikan E-Ticket QR Code dan kode serah terima aktif tanpa banner terkunci
+      // Memastikan E-Ticket menampilkan kode reservasi + tombol salin tanpa QR statis / awalan MBJ-
       expect(find.text('Kode Serah Terima Terkunci'), findsNothing);
       expect(find.byIcon(Icons.lock_rounded), findsNothing);
-      expect(find.byIcon(Icons.qr_code_2_rounded), findsOneWidget);
-      expect(find.textContaining('Kode Serah Terima: MBJ-'), findsOneWidget);
+      expect(find.byIcon(Icons.qr_code_2_rounded), findsNothing);
+      expect(find.textContaining('Kode Serah Terima: MBJ-'), findsNothing);
+      expect(
+        find.text('Kode Reservasi: ${activeLepasKunciBooking.id}'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Salin kode reservasi'), findsOneWidget);
     });
 
     testWidgets('Membuka modal Rincian Tarif saat teks Lihat Rincian Tarif pada Sticky Bottom Bar diketuk', (tester) async {

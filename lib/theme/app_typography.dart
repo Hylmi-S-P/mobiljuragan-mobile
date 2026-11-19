@@ -19,9 +19,7 @@ import 'package:flutter/material.dart';
 class AppTypography {
   AppTypography._();
 
-  // ---------------------------------------------------------------------------
-  // Langkah ukuran
-  // ---------------------------------------------------------------------------
+  // Ukuran dasar teks dan kontrol
   // Dipakai langsung bila sebuah widget perlu angka mentah, misalnya saat
   // menghitung ukuran ikon yang harus sepadan dengan teks di sebelahnya.
 
@@ -67,13 +65,11 @@ class AppTypography {
   /// 34 px - inisial logo pada splash screen.
   static const double sizeBrand = 34;
 
-  // ---------------------------------------------------------------------------
-  // Gaya siap pakai
-  // ---------------------------------------------------------------------------
+  // Gaya tipografi siap pakai
   // Semua gaya memakai font Inter. Warna tidak disertakan agar tetap mengikuti
   // tema; tambahkan lewat copyWith bila perlu warna tertentu.
 
-  // --- Badge dan tag ---
+  // Badge dan tag
 
   /// Label sangat kecil di dalam badge, misalnya penanda "GRATIS".
   static const TextStyle badgeMicro = TextStyle(
@@ -96,7 +92,7 @@ class AppTypography {
     fontFamily: 'Inter',
   );
 
-  // --- Keterangan dan metadata ---
+  // Keterangan dan metadata
 
   /// Keterangan pendukung berukuran 10 px.
   static const TextStyle captionTiny = TextStyle(
@@ -133,7 +129,7 @@ class AppTypography {
     fontFamily: 'Inter',
   );
 
-  // --- Teks isi ---
+  // Teks isi
 
   /// Teks isi standar.
   static const TextStyle body = TextStyle(
@@ -184,7 +180,7 @@ class AppTypography {
     fontFamily: 'Inter',
   );
 
-  // --- Judul ---
+  // Judul
 
   /// Judul kartu.
   static const TextStyle cardTitle = TextStyle(
@@ -221,7 +217,7 @@ class AppTypography {
     fontFamily: 'Inter',
   );
 
-  // --- Tombol ---
+  // Tombol
 
   /// Label tombol utama.
   static const TextStyle button = TextStyle(
@@ -244,7 +240,7 @@ class AppTypography {
     fontFamily: 'Inter',
   );
 
-  // --- Angka dan nominal ---
+  // Angka dan nominal
 
   /// Nominal uang yang menonjol.
   static const TextStyle amount = TextStyle(
@@ -281,7 +277,7 @@ class AppTypography {
     fontFamily: 'Inter',
   );
 
-  // --- Khusus ---
+  // Khusus
 
   /// Angka pada pemilih tanggal dan waktu.
   static const TextStyle picker = TextStyle(

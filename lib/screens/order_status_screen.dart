@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/vehicle_controller.dart';
+import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
 import '../core/util/berkas_unduhan.dart';
@@ -19,9 +20,13 @@ import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
 import '../models/payment_model.dart';
 import '../services/notification_service.dart';
+import '../widgets/order_state_banner.dart';
 import '../widgets/refund_account_form.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/standard_bottom_sheet.dart';
+import '../widgets/unified_document_uploader.dart';
 import 'chat_support_screen.dart';
 import 'date_time_screen.dart';
 import 'main_navigation_screen.dart';
@@ -77,6 +82,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   XFile? _draftStatement;
   XFile? _draftKtp;
   XFile? _draftSim;
+  Uint8List? _draftStatementBytes;
+  Uint8List? _draftKtpBytes;
+  Uint8List? _draftSimBytes;
 
   final PaymentApiService _paymentApiService = PaymentApiService();
   PaymentModel? _payment;
@@ -558,7 +566,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(20, 16, 20, isWaitingPayment ? 110 : 24),
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.screenH,
+            16,
+            AppSpacing.screenH,
+            isWaitingPayment ? 110 : 24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -814,7 +827,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 decoration: BoxDecoration(
                   color: AppColors.tealLight,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.primaryTeal.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -825,13 +840,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       color: AppColors.primaryTeal,
                     ),
                     SizedBox(width: 4),
-                    Text(
-                      'Sedang Diverifikasi',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryTeal,
-                        fontFamily: 'Inter',
+                    Flexible(
+                      child: Text(
+                        'Sedang Diverifikasi',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryTeal,
+                          fontFamily: 'Inter',
+                        ),
                       ),
                     ),
                   ],
@@ -943,15 +962,23 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle_rounded, size: 13, color: Color(0xFF15803D)),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            size: 13,
+                            color: AppColors.statusSuccessFg,
+                          ),
                           SizedBox(width: 4),
-                          Text(
-                            'Bukti Terkirim',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF15803D),
-                              fontFamily: 'Inter',
+                          Flexible(
+                            child: Text(
+                              'Bukti Terkirim',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeTiny,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.statusSuccessFg,
+                                fontFamily: 'Inter',
+                              ),
                             ),
                           ),
                         ],
@@ -994,13 +1021,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Lihat Rincian Tarif',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryTeal,
-                              fontFamily: 'Inter',
+                          Flexible(
+                            child: Text(
+                              'Lihat Rincian Tarif',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeCaption,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryTeal,
+                                fontFamily: 'Inter',
+                              ),
                             ),
                           ),
                           SizedBox(width: 2),
@@ -1074,36 +1105,18 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   }
 
   void _showTariffDetailModal(BuildContext context, BookingModel booking) {
-    showModalBottomSheet(
+    StandardBottomSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderSubtle,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
+      child: Builder(
+        builder: (ctx) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
                     'Rincian Tarif Final',
                     style: TextStyle(
                       fontSize: AppTypography.sizeHeading,
@@ -1112,99 +1125,115 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       fontFamily: 'Inter',
                     ),
                   ),
-                  InkWell(
-                    onTap: () => Navigator.pop(ctx),
-                    borderRadius: BorderRadius.circular(20),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.close, size: 20, color: AppColors.textSecondary),
-                    ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  tooltip: 'Tutup',
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
                   ),
-                ],
+                  icon: const Icon(
+                    Icons.close,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Divider(height: 1, color: AppColors.borderSubtle),
+            const SizedBox(height: 14),
+            _buildTariffRow(
+              'Sewa Unit (${booking.durationDays} Hari)',
+              'Rp ${_formatRupiah(booking.vehicleSubtotal)}',
+            ),
+            if (booking.withDriver) ...[
+              const SizedBox(height: 8),
+              _buildTariffRow(
+                'Layanan Sopir (${booking.durationDays} Hari)',
+                'Rp ${_formatRupiah(booking.driverSubtotal)}',
               ),
-              const SizedBox(height: 14),
-              const Divider(height: 1, color: AppColors.borderSubtle),
-              const SizedBox(height: 14),
-              _buildTariffRow('Sewa Unit (${booking.durationDays} Hari)', 'Rp ${_formatRupiah(booking.vehicleSubtotal)}'),
-              if (booking.withDriver) ...[
-                const SizedBox(height: 8),
-                _buildTariffRow(
-                  'Layanan Sopir (${booking.durationDays} Hari)',
-                  'Rp ${_formatRupiah(booking.driverSubtotal)}',
+            ],
+            if (booking.serviceFee > 0) ...[
+              const SizedBox(height: 8),
+              _buildTariffRow(
+                'Biaya Layanan Sistem Operasional',
+                'Rp ${_formatRupiah(booking.serviceFee)}',
+              ),
+            ],
+            _buildTariffGapRow(booking),
+            if (booking.adminAdjustments.isNotEmpty) ...[
+              const Divider(height: 20, color: AppColors.borderSubtle),
+              const Text(
+                'Penyesuaian Biaya Operasional:',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryNavy,
+                  fontFamily: 'Inter',
                 ),
-              ],
-              if (booking.serviceFee > 0) ...[
-                const SizedBox(height: 8),
-                _buildTariffRow('Biaya Layanan Sistem Operasional', 'Rp ${_formatRupiah(booking.serviceFee)}'),
-              ],
-              _buildTariffGapRow(booking),
-              if (booking.adminAdjustments.isNotEmpty) ...[
-                const Divider(height: 20, color: AppColors.borderSubtle),
-                const Text(
-                  'Penyesuaian Biaya Operasional:',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryNavy,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...booking.adminAdjustments.map((adj) {
-                  final isNegative = adj.isDeduction;
-                  final prefix = isNegative ? '-Rp ' : '+Rp ';
-                  final absAmount = adj.amount.abs();
-                  final color = isNegative ? const Color(0xFF059669) : AppColors.primaryNavy;
+              ),
+              const SizedBox(height: 8),
+              ...booking.adminAdjustments.map((adj) {
+                final isNegative = adj.isDeduction;
+                final prefix = isNegative ? '-Rp ' : '+Rp ';
+                final absAmount = adj.amount.abs();
+                final color = isNegative
+                    ? AppColors.statusSuccessFg
+                    : AppColors.primaryNavy;
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              adj.title,
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeBody,
+                                fontWeight: FontWeight.w500,
+                                color: color,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                            if (adj.note != null)
                               Text(
-                                adj.title,
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeBody,
-                                  fontWeight: FontWeight.w500,
-                                  color: color,
+                                adj.note!,
+                                style: const TextStyle(
+                                  fontSize: AppTypography.sizeTiny,
+                                  color: AppColors.textSecondary,
                                   fontFamily: 'Inter',
                                 ),
                               ),
-                              if (adj.note != null)
-                                Text(
-                                  adj.note!,
-                                  style: const TextStyle(
-                                    fontSize: AppTypography.sizeTiny,
-                                    color: AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                            ],
-                          ),
+                          ],
                         ),
-                        Text(
-                          '$prefix${_formatRupiah(absAmount)}',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBody,
-                            fontWeight: FontWeight.w700,
-                            color: color,
-                            fontFamily: 'Inter',
-                          ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$prefix${_formatRupiah(absAmount)}',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                          fontFamily: 'Inter',
                         ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-              const Divider(height: 20, color: AppColors.borderSubtle),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+            const Divider(height: 20, color: AppColors.borderSubtle),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
                     'Total Pembayaran',
                     style: TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
@@ -1213,21 +1242,22 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       fontFamily: 'Inter',
                     ),
                   ),
-                  Text(
-                    'Rp ${_formatRupiah(booking.totalCost)}',
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeHeading,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryNavy,
-                      fontFamily: 'Inter',
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Rp ${_formatRupiah(booking.totalCost)}',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeHeading,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryNavy,
+                    fontFamily: 'Inter',
                   ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1486,8 +1516,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               Expanded(
                 child: Text(
                   isDriver
-                      ? 'Admin sedang memeriksa ketersediaan armada, verifikasi penugasan sopir, dan rincian tarif. Estimasi proses verifikasi berkisar 15 - 30 menit.'
-                      : 'Admin sedang memeriksa ketersediaan armada dan menyusun rincian tarif final. Estimasi proses verifikasi berkisar 15 - 30 menit.',
+                      ? 'Admin sedang memeriksa ketersediaan armada, penugasan sopir, dan rincian tarif.'
+                      : 'Admin sedang memeriksa ketersediaan armada dan menyusun rincian tarif final.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeCaption,
                     fontWeight: FontWeight.w400,
@@ -1555,11 +1585,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            Text(
                               booking.vehicle.name,
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeTitle,
@@ -1568,25 +1602,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                                 fontFamily: 'Inter',
                               ),
                             ),
-                          ),
-                          if (isCancelled)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Reservasi Ditutup',
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeTiny,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
-                                  fontFamily: 'Inter',
+                            if (isCancelled)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceLight,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Reservasi Ditutup',
+                                  style: TextStyle(
+                                    fontSize: AppTypography.sizeTiny,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary,
+                                    fontFamily: 'Inter',
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1861,51 +1898,45 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
-  /// Stepper Mengikuti 5 Tahapan Alur Resmi (Selaras dengan Alur Kanonik Admin & Backend)
+  /// Stepper 3 Tahap Utama (Pengajuan & Verifikasi -> Pembayaran -> Sewa & Selesai)
   Widget _buildFigmaStepper(BookingModel booking) {
     final status = booking.status;
     final isDriver = booking.withDriver;
 
-    // Tahap 1: Permintaan Masuk (CREATED)
-    final step1Done = status != BookingStatus.permintaanDiterima;
-    final step1Active = status == BookingStatus.permintaanDiterima;
-
-    // Tahap 2: Konfirmasi Tarif & Armada (PENDING_CONFIRMATION)
-    final step2Done = booking.isFinalTariffConfirmed ||
+    // Tahap 1: Pengajuan & Verifikasi (CREATED / PENDING_CONFIRMATION)
+    final step1Done =
+        booking.isFinalTariffConfirmed ||
         status == BookingStatus.menungguPembayaran ||
         status == BookingStatus.pembayaranSelesai ||
         status == BookingStatus.verifikasiKantor ||
         status == BookingStatus.mobilSiapDigunakan ||
         status == BookingStatus.selesai;
-    final step2Active = !step2Done &&
-        (status == BookingStatus.pemeriksaanArmada ||
-            status == BookingStatus.menungguTarifFinal);
+    final step1Active = !step1Done;
 
-    // Tahap 3: Menunggu Pembayaran (CONFIRMED)
-    final step3Done = status == BookingStatus.pembayaranSelesai ||
+    // Tahap 2: Pembayaran (CONFIRMED / PENDING_PAYMENT)
+    final step2Done =
+        status == BookingStatus.pembayaranSelesai ||
         status == BookingStatus.verifikasiKantor ||
         status == BookingStatus.mobilSiapDigunakan ||
         status == BookingStatus.selesai;
-    final step3Active = !step3Done &&
+    final step2Active =
+        !step2Done &&
         (status == BookingStatus.menungguPembayaran ||
             booking.isFinalTariffConfirmed);
 
-    // Tahap 4: Sewa Berjalan (IN_PROGRESS)
-    final step4Done = status == BookingStatus.selesai;
-    final step4Active = !step4Done &&
+    // Tahap 3: Siap Serah Terima / Sewa Berjalan / Selesai
+    final step3Done = status == BookingStatus.selesai;
+    final step3Active =
+        !step3Done &&
         (status == BookingStatus.pembayaranSelesai ||
             status == BookingStatus.verifikasiKantor ||
             status == BookingStatus.mobilSiapDigunakan);
-
-    // Tahap 5: Selesai (COMPLETED)
-    final step5Done = status == BookingStatus.selesai;
-    final step5Active = false;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Column(
@@ -1921,98 +1952,73 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             ),
           ),
           const SizedBox(height: 16),
-            // Tahap 1: Permintaan Masuk
-            _buildStepRow(
-              stepNumber: 1,
-              title: 'Permintaan Masuk',
-              subtitle: step1Done
-                  ? 'Data pengajuan telah tercatat di sistem'
-                  : 'Formulir pengajuan sewa berhasil dikirim',
-              isDone: step1Done,
-              isActive: step1Active,
-              isLast: false,
-            ),
-
-            // Tahap 2: Konfirmasi Tarif & Armada
-            _buildStepRow(
-              stepNumber: 2,
-              title: 'Konfirmasi Tarif & Armada',
-              subtitle: step2Done
-                  ? (isDriver
+          _buildStepRow(
+            stepNumber: 1,
+            title: 'Pengajuan & Verifikasi',
+            subtitle: step1Done
+                ? (isDriver
                       ? 'Tarif sewa dan alokasi sopir telah dikonfirmasi admin'
-                      : 'Tarif sewa dan kesiapan armada telah dikonfirmasi admin')
-                  : (step2Active
-                      ? (isDriver
-                          ? 'Pemeriksaan rute perjalanan dan alokasi sopir'
-                          : (_bookingDocument?.status == DocumentStatus.verified
-                              ? 'Dokumen disetujui, menunggu rincian tarif sewa oleh admin'
-                              : 'Pemeriksaan kesiapan unit dan verifikasi 3 dokumen persyaratan'))
+                      : 'Dokumen dan tarif sewa telah dikonfirmasi admin')
+                : (status == BookingStatus.permintaanDiterima
+                      ? 'Formulir pengajuan sewa berhasil dikirim ke tim kantor'
                       : (isDriver
-                          ? 'Menunggu validasi rute perjalanan dan alokasi sopir'
-                          : 'Menunggu giliran pemeriksaan unit dan verifikasi dokumen')),
-              isDone: step2Done,
-              isActive: step2Active,
-              isLast: false,
-            ),
-
-            // Tahap 3: Pembayaran
-            _buildStepRow(
-              stepNumber: 3,
-              title: step3Done ? 'Pembayaran Diterima' : 'Pembayaran',
-              subtitle: step3Done
-                  ? 'Pembayaran telah terverifikasi dan tercatat lunas'
-                  : (step3Active
+                            ? 'Pemeriksaan rute perjalanan dan alokasi sopir'
+                            : (_bookingDocument?.status ==
+                                      DocumentStatus.verified
+                                  ? 'Dokumen disetujui, menunggu rincian tarif final'
+                                  : 'Pemeriksaan kesiapan unit dan verifikasi 3 dokumen'))),
+            isDone: step1Done,
+            isActive: step1Active,
+            isLast: false,
+          ),
+          _buildStepRow(
+            stepNumber: 2,
+            title: step2Done ? 'Pembayaran Diterima' : 'Pembayaran',
+            subtitle: step2Done
+                ? 'Pembayaran telah terverifikasi dan tercatat lunas'
+                : (step2Active
                       ? (isProofUploaded
-                          ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
-                          : 'Batas pelunasan sesuai tagihan yang diterbitkan admin')
+                            ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
+                            : 'Batas pelunasan sesuai tagihan yang diterbitkan admin')
                       : (isDriver
-                          ? 'Menunggu penetapan rincian tarif final'
-                          : 'Menunggu konfirmasi tarif dan verifikasi dokumen')),
-              isDone: step3Done,
-              isActive: step3Active,
-              isLast: false,
-              badgeText: step3Active
-                  ? (isProofUploaded ? 'VERIFIKASI ADMIN' : 'MENUNGGU BAYAR')
-                  : null,
-              badgeColor: step3Active ? AppColors.primaryTeal : null,
-              badgeBgColor: step3Active ? AppColors.tealLight : null,
-            ),
-
-            // Tahap 4: Siap Serah Terima / Sewa Berjalan
-            _buildStepRow(
-              stepNumber: 4,
-              title: status == BookingStatus.pembayaranSelesai
-                  ? 'Siap Serah Terima'
-                  : 'Sewa Berjalan',
-              subtitle: step4Done
-                  ? 'Perjalanan sewa telah tuntas dilaksanakan'
-                  : (status == BookingStatus.pembayaranSelesai
-                        ? 'Pembayaran lunas. Silakan ambil unit di kantor / tunggu penjemputan sopir sesuai jadwal'
-                        : (step4Active
-                              ? (isDriver
-                                    ? 'Sopir siaga dan perjalanan sewa Anda sedang berjalan'
-                                    : 'Unit armada telah diserahterimakan dan masa sewa aktif')
-                      : (isDriver
-                          ? 'Sopir akan siaga menjemput setelah pembayaran terkonfirmasi'
-                          : 'Kunci dan unit akan diserahkan setelah pembayaran terkonfirmasi'))),
-              isDone: step4Done,
-              isActive: step4Active,
-              isLast: false,
-            ),
-
-            // Tahap 5: Selesai
-            _buildStepRow(
-              stepNumber: 5,
-              title: 'Selesai',
-              subtitle: step5Done
-                  ? (isDriver
+                            ? 'Menunggu penetapan rincian tarif final'
+                            : 'Menunggu konfirmasi tarif dan verifikasi dokumen')),
+            isDone: step2Done,
+            isActive: step2Active,
+            isLast: false,
+            badgeText: step2Active
+                ? (isProofUploaded ? 'VERIFIKASI ADMIN' : 'MENUNGGU BAYAR')
+                : null,
+            badgeColor: step2Active ? AppColors.primaryTeal : null,
+            badgeBgColor: step2Active ? AppColors.tealLight : null,
+          ),
+          _buildStepRow(
+            stepNumber: 3,
+            title: status == BookingStatus.selesai
+                ? 'Selesai'
+                : (status == BookingStatus.pembayaranSelesai
+                      ? 'Siap Serah Terima'
+                      : 'Sewa Berjalan'),
+            subtitle: step3Done
+                ? (isDriver
                       ? 'Layanan sopir telah selesai dan armada telah kembali ke kantor'
                       : 'Masa sewa telah selesai dan unit telah kembali ke kantor')
-                  : 'Pemeriksaan akhir kondisi unit dan pengembalian armada',
-              isDone: step5Done,
-              isActive: step5Active,
-              isLast: true,
-            ),
+                : (status == BookingStatus.pembayaranSelesai
+                      ? 'Pembayaran lunas. Silakan ambil unit di kantor atau tunggu penjemputan sopir sesuai jadwal'
+                      : (step3Active
+                            ? (isDriver
+                                  ? 'Sopir siaga dan perjalanan sewa Anda sedang berjalan'
+                                  : 'Unit armada telah diserahterimakan dan masa sewa aktif')
+                            : (isDriver
+                                  ? 'Sopir akan siaga menjemput setelah pembayaran terkonfirmasi'
+                                  : 'Kunci dan unit diserahkan setelah pembayaran terkonfirmasi'))),
+            isDone: step3Done,
+            isActive: step3Active,
+            isLast: true,
+            badgeText: step3Done ? 'SELESAI' : null,
+            badgeColor: step3Done ? AppColors.statusSuccessFg : null,
+            badgeBgColor: step3Done ? AppColors.statusSuccessBg : null,
+          ),
         ],
       ),
     );
@@ -2441,13 +2447,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               children: [
                 Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primaryTeal),
                 SizedBox(width: 8),
-                Text(
-                  'Dokumen Lepas Kunci',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBodyLarge,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
+                Flexible(
+                  child: Text(
+                    'Dokumen Lepas Kunci',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
                   ),
                 ),
               ],
@@ -2529,21 +2537,29 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.verified_user_outlined, size: 18, color: AppColors.primaryTeal),
+                  Icon(
+                    Icons.verified_user_outlined,
+                    size: 18,
+                    color: AppColors.primaryTeal,
+                  ),
                   SizedBox(width: 8),
-                  Text(
-                    'Dokumen Wajib Lepas Kunci',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeBodyLarge,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
+                  Flexible(
+                    child: Text(
+                      'Dokumen Wajib Lepas Kunci',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBodyLarge,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
                     ),
                   ),
                 ],
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 4,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -2689,6 +2705,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             isDraftNew: isDraftKtpNew,
             isRejected: isKtpTargeted && !isDraftKtpNew,
             icon: Icons.badge_outlined,
+            previewBytes: _draftKtpBytes,
+            previewUrl: doc?.ktpUrl,
             onAction: () => _pickDocument('ktp', 'Foto e-KTP Asli'),
           ),
           const SizedBox(height: 10),
@@ -2712,6 +2730,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             isDraftNew: isDraftSimNew,
             isRejected: isSimTargeted && !isDraftSimNew,
             icon: Icons.credit_card_outlined,
+            previewBytes: _draftSimBytes,
+            previewUrl: doc?.simUrl,
             onAction: () => _pickDocument('sim', 'Foto SIM A Aktif'),
           ),
           const SizedBox(height: 10),
@@ -2723,6 +2743,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             isVerified: isVerified,
             isDraftNew: isDraftStatementNew,
             isRejected: isStatementTargeted && !isDraftStatementNew,
+            previewBytes: _draftStatementBytes,
+            previewUrl: doc?.statementLetterUrl,
           ),
           const SizedBox(height: 12),
 
@@ -2771,6 +2793,28 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
+  String? _resolveDocumentPreviewUrl(String? rawUrl) {
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      return null;
+    }
+    final clean = rawUrl?.trim() ?? '';
+    if (clean.isEmpty) return null;
+    return ApiConstants.alamatMedia(clean);
+  }
+
+  DocumentUploadState _resolveDocUploadState({
+    required bool isDraftNew,
+    required bool isRejected,
+    required bool isVerified,
+    required bool isUploaded,
+  }) {
+    if (isDraftNew) return DocumentUploadState.previewSelected;
+    if (isRejected) return DocumentUploadState.rejected;
+    if (isVerified) return DocumentUploadState.approved;
+    if (isUploaded) return DocumentUploadState.waitingVerification;
+    return DocumentUploadState.empty;
+  }
+
   Widget _buildCleanDocRow({
     required String title,
     required String subtitle,
@@ -2781,133 +2825,34 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     bool isDraftNew = false,
     bool isRejected = false,
     String? actionLabel,
+    Uint8List? previewBytes,
+    String? previewUrl,
   }) {
-    const containerBg = Colors.white;
-    Color borderColor;
-    Color iconBg;
-    Color iconColor;
-    Color subtitleColor;
-    FontWeight subtitleWeight = FontWeight.w400;
-    String buttonText;
-    Color buttonTextColor;
-    BorderSide buttonSide;
+    final state = _resolveDocUploadState(
+      isDraftNew: isDraftNew,
+      isRejected: isRejected,
+      isVerified: isVerified,
+      isUploaded: isUploaded,
+    );
+    final label = isDraftNew
+        ? (actionLabel ?? 'Ganti File')
+        : isRejected
+        ? (actionLabel ?? 'Unggah Ulang')
+        : isVerified
+        ? 'Selesai'
+        : isUploaded
+        ? (actionLabel ?? 'Ubah')
+        : (actionLabel ?? 'Unggah');
 
-    if (isDraftNew) {
-      borderColor = const Color(0xFFE2E8F0);
-      iconBg = const Color(0xFFF1F5F9);
-      iconColor = AppColors.primaryTeal;
-      subtitleColor = AppColors.primaryTeal;
-      subtitleWeight = FontWeight.w600;
-      buttonText = actionLabel ?? 'Ganti File';
-      buttonTextColor = const Color(0xFF475569);
-      buttonSide = const BorderSide(color: Color(0xFFCBD5E1));
-    } else if (isRejected) {
-      borderColor = const Color(0xFFFECACA);
-      iconBg = const Color(0xFFFEE2E2);
-      iconColor = const Color(0xFFDC2626);
-      subtitleColor = const Color(0xFFDC2626);
-      subtitleWeight = FontWeight.w600;
-      buttonText = actionLabel ?? 'Unggah Ulang';
-      buttonTextColor = AppColors.primaryNavy;
-      buttonSide = const BorderSide(color: AppColors.primaryNavy, width: 1.1);
-    } else if (isVerified) {
-      borderColor = const Color(0xFFBBF7D0);
-      iconBg = const Color(0xFFDCFCE7);
-      iconColor = const Color(0xFF16A34A);
-      subtitleColor = const Color(0xFF15803D);
-      subtitleWeight = FontWeight.w600;
-      buttonText = 'Selesai';
-      buttonTextColor = const Color(0xFF16A34A);
-      buttonSide = const BorderSide(color: Color(0xFFBBF7D0));
-    } else if (isUploaded) {
-      borderColor = const Color(0xFFE2E8F0);
-      iconBg = const Color(0xFFF1F5F9);
-      iconColor = AppColors.primaryNavy;
-      subtitleColor = AppColors.textSecondary;
-      subtitleWeight = FontWeight.w500;
-      buttonText = actionLabel ?? 'Ubah';
-      buttonTextColor = AppColors.primaryNavy;
-      buttonSide = const BorderSide(color: AppColors.borderMedium);
-    } else {
-      borderColor = AppColors.borderSubtle;
-      iconBg = const Color(0xFFF1F5F9);
-      iconColor = AppColors.textSecondary;
-      subtitleColor = AppColors.textSecondary;
-      buttonText = actionLabel ?? 'Unggah';
-      buttonTextColor = AppColors.primaryNavy;
-      buttonSide = const BorderSide(color: AppColors.borderMedium);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: containerBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: iconColor,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    color: subtitleColor,
-                    fontWeight: subtitleWeight,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: isVerified ? null : onAction,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: buttonTextColor,
-              side: buttonSide,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text(
-              buttonText,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeTiny,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return UnifiedDocumentUploader(
+      title: title,
+      subtitle: subtitle,
+      state: state,
+      icon: icon,
+      actionLabel: label,
+      onAction: isVerified ? null : onAction,
+      previewBytes: previewBytes,
+      previewImageUrl: _resolveDocumentPreviewUrl(previewUrl),
     );
   }
 
@@ -2917,172 +2862,112 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     required bool isVerified,
     bool isDraftNew = false,
     bool isRejected = false,
+    Uint8List? previewBytes,
+    String? previewUrl,
   }) {
-    const containerBg = Colors.white;
-    Color borderColor;
-    Color iconBg;
-    Color iconColor;
-    String statementSubtitle;
-    Color subtitleColor;
-    FontWeight subtitleWeight = FontWeight.w400;
-    String uploadButtonLabel;
-    Color uploadTextColor;
-    BorderSide uploadSide;
+    late final String statementSubtitle;
+    late final String uploadButtonLabel;
+    late final Color uploadTextColor;
+    late final BorderSide uploadSide;
 
     if (isDraftNew) {
-      borderColor = const Color(0xFFE2E8F0);
-      iconBg = const Color(0xFFF1F5F9);
-      iconColor = AppColors.primaryTeal;
       statementSubtitle = '✓ Berkas baru dipilih, siap dikirim';
-      subtitleColor = AppColors.primaryTeal;
-      subtitleWeight = FontWeight.w600;
       uploadButtonLabel = 'Ganti File';
-      uploadTextColor = const Color(0xFF475569);
-      uploadSide = const BorderSide(color: Color(0xFFCBD5E1));
+      uploadTextColor = AppColors.textSecondary;
+      uploadSide = const BorderSide(color: AppColors.borderMedium);
     } else if (isRejected) {
-      borderColor = const Color(0xFFFECACA);
-      iconBg = const Color(0xFFFEE2E2);
-      iconColor = const Color(0xFFDC2626);
       statementSubtitle = 'Ditolak • Perlu tanda tangan ulang dan difoto jelas';
-      subtitleColor = const Color(0xFFDC2626);
-      subtitleWeight = FontWeight.w600;
       uploadButtonLabel = 'Unggah Ulang';
       uploadTextColor = AppColors.primaryNavy;
       uploadSide = const BorderSide(color: AppColors.primaryNavy, width: 1.1);
     } else if (isVerified) {
-      borderColor = const Color(0xFFBBF7D0);
-      iconBg = const Color(0xFFDCFCE7);
-      iconColor = const Color(0xFF16A34A);
       statementSubtitle = 'Surat pernyataan telah diverifikasi staf.';
-      subtitleColor = const Color(0xFF15803D);
-      subtitleWeight = FontWeight.w600;
       uploadButtonLabel = 'Selesai';
-      uploadTextColor = const Color(0xFF16A34A);
-      uploadSide = const BorderSide(color: Color(0xFFBBF7D0));
+      uploadTextColor = AppColors.statusSuccessFg;
+      uploadSide = const BorderSide(color: AppColors.statusSuccessBorder);
     } else if (hasStatement) {
-      borderColor = const Color(0xFFE2E8F0);
-      iconBg = const Color(0xFFF1F5F9);
-      iconColor = AppColors.primaryNavy;
       statementSubtitle = 'surat_ttd_basah.jpg • Menunggu verifikasi staf.';
-      subtitleColor = AppColors.textSecondary;
-      subtitleWeight = FontWeight.w500;
       uploadButtonLabel = 'Unggah Ulang';
       uploadTextColor = AppColors.primaryNavy;
       uploadSide = const BorderSide(color: AppColors.borderMedium);
     } else {
-      borderColor = AppColors.borderSubtle;
-      iconBg = const Color(0xFFF1F5F9);
-      iconColor = AppColors.textSecondary;
-      statementSubtitle = 'Unduh template, cetak, isi & tanda tangan basah, lalu unggah fotonya.';
-      subtitleColor = AppColors.textSecondary;
+      statementSubtitle =
+          'Unduh template, cetak, isi & tanda tangan basah, lalu unggah fotonya.';
       uploadButtonLabel = 'Unggah TTD';
       uploadTextColor = AppColors.primaryNavy;
       uploadSide = const BorderSide(color: AppColors.borderMedium);
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: containerBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final state = _resolveDocUploadState(
+      isDraftNew: isDraftNew,
+      isRejected: isRejected,
+      isVerified: isVerified,
+      isUploaded: hasStatement,
+    );
+
+    return UnifiedDocumentUploader(
+      title: '3. Surat Pernyataan Penyewa',
+      subtitle: statementSubtitle,
+      state: state,
+      icon: Icons.description_outlined,
+      previewBytes: previewBytes,
+      previewImageUrl: _resolveDocumentPreviewUrl(previewUrl),
+      secondaryAction: Row(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.description_outlined,
-                  size: 18,
-                  color: iconColor,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '3. Surat Pernyataan Penyewa',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      statementSubtitle,
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeTiny,
-                        color: subtitleColor,
-                        fontWeight: subtitleWeight,
-                        fontFamily: 'Inter',
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _showStatementTemplateModal(context),
+              icon: const Icon(Icons.download_rounded, size: 15),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Unduh Template',
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ],
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 44),
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.borderMedium),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showStatementTemplateModal(context),
-                  icon: const Icon(Icons.download_rounded, size: 14),
-                  label: const FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'Unduh Template',
-                      maxLines: 1,
-                      style: TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF334155),
-                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: isVerified
+                  ? null
+                  : () => _pickDocument('statement', 'Surat Pernyataan TTD Basah'),
+              icon: const Icon(Icons.upload_rounded, size: 15),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  uploadButtonLabel,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: isVerified
-                      ? null
-                      : () => _pickDocument('statement', 'Surat Pernyataan TTD Basah'),
-                  icon: const Icon(Icons.upload_rounded, size: 14),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      uploadButtonLabel,
-                      maxLines: 1,
-                      style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: uploadTextColor,
-                    side: uploadSide,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 44),
+                foregroundColor: uploadTextColor,
+                side: uploadSide,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -3149,41 +3034,50 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 ),
               ),
               Expanded(child: _buildStatementTemplatePreview()),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textPrimary,
-                          side: const BorderSide(color: AppColors.borderSubtle),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Tutup'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _downloadStatementTemplate();
-                        },
-                        icon: const Icon(Icons.download_rounded, size: 16),
-                        label: const Text('Unduh Template'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryTeal,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                            foregroundColor: AppColors.textPrimary,
+                            side: const BorderSide(color: AppColors.borderSubtle),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Tutup'),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _downloadStatementTemplate();
+                          },
+                          icon: const Icon(Icons.download_rounded, size: 16),
+                          label: const Text('Unduh Template'),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                            backgroundColor: AppColors.primaryTeal,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -3507,14 +3401,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         return;
       }
 
+      Uint8List? pickedBytes;
+      if (!(!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST'))) {
+        try {
+          pickedBytes = await file.readAsBytes();
+        } catch (_) {}
+      }
+
       if (!mounted) return;
       setState(() {
         if (slotType == 'statement') {
           _draftStatement = file;
+          _draftStatementBytes = pickedBytes;
         } else if (slotType == 'ktp') {
           _draftKtp = file;
+          _draftKtpBytes = pickedBytes;
         } else if (slotType == 'sim') {
           _draftSim = file;
+          _draftSimBytes = pickedBytes;
         }
       });
 
@@ -3577,6 +3481,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           _draftStatement = null;
           _draftKtp = null;
           _draftSim = null;
+          _draftStatementBytes = null;
+          _draftKtpBytes = null;
+          _draftSimBytes = null;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3699,56 +3606,71 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
                           title,
                           style: TextStyle(
                             fontSize: AppTypography.sizeBodyLarge,
-                            fontWeight: (isActive || isDone) ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: (isActive || isDone)
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: isActive
                                 ? AppColors.primaryNavy
-                                : (isDone ? AppColors.textPrimary : AppColors.textSecondary),
+                                : (isDone
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary),
                             fontFamily: 'Inter',
                           ),
                         ),
-                      ),
-                      if (isActive && !isDone)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeBgColor ?? AppColors.tealLight,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            badgeText ?? 'PROSES',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeMicro,
-                              fontWeight: FontWeight.w700,
-                              color: badgeColor ?? AppColors.primaryTeal,
-                              fontFamily: 'Inter',
+                        if (isActive && !isDone)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeBgColor ?? AppColors.tealLight,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              badgeText ?? 'PROSES',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeMicro,
+                                fontWeight: FontWeight.w700,
+                                color: badgeColor ?? AppColors.primaryTeal,
+                                fontFamily: 'Inter',
+                              ),
                             ),
                           ),
-                        ),
-                      if (isLast && isDone)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.badgeGreenBg,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'SELESAI',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeMicro,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.badgeGreenText,
-                              fontFamily: 'Inter',
+                        if (isLast && isDone)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeBgColor ?? AppColors.statusSuccessBg,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              badgeText ?? 'SELESAI',
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeMicro,
+                                fontWeight: FontWeight.w700,
+                                color: badgeColor ?? AppColors.statusSuccessFg,
+                                fontFamily: 'Inter',
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -3918,13 +3840,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                booking.id,
-                                style: const TextStyle(
-                                  fontSize: AppTypography.sizeTitle,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  fontFamily: 'Inter',
+                              Flexible(
+                                child: Text(
+                                  booking.id,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: AppTypography.sizeTitle,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    fontFamily: 'Inter',
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -4053,25 +3979,29 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 ),
                 const SizedBox(height: 14),
 
-                // Barcode / Verifikasi Digital Serah Terima
+                // Verifikasi Kode Reservasi Serah Terima (Tanpa QR statis / awalan MBJ-)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: AppColors.surfaceLight,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.qr_code_2_rounded, size: 36, color: AppColors.primaryNavy),
+                      const Icon(
+                        Icons.confirmation_number_outlined,
+                        size: 24,
+                        color: AppColors.primaryNavy,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Kode Serah Terima: MBJ-${booking.id.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase()}',
+                              'Kode Reservasi: ${booking.id}',
                               style: const TextStyle(
                                 fontSize: AppTypography.sizeCaption,
                                 fontWeight: FontWeight.w700,
@@ -4082,15 +4012,37 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                             const SizedBox(height: 2),
                             Text(
                               booking.withDriver
-                                  ? 'Tunjukkan kode QR ini ke petugas atau sopir saat serah terima unit'
-                                  : 'Tunjukkan kode QR ini ke petugas saat pengambilan kunci',
+                                  ? 'Tunjukkan kode reservasi ini ke petugas atau sopir saat serah terima unit'
+                                  : 'Tunjukkan kode reservasi ini ke petugas saat pengambilan kunci',
                               style: const TextStyle(
-                                fontSize: AppTypography.sizeTiny,
+                                fontSize: AppTypography.sizeCaption,
                                 color: AppColors.textSecondary,
                                 fontFamily: 'Inter',
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: 'Salin kode reservasi',
+                        constraints: const BoxConstraints(
+                          minWidth: 44,
+                          minHeight: 44,
+                        ),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: booking.id));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Kode reservasi berhasil disalin'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.copy_rounded,
+                          size: 18,
+                          color: AppColors.primaryNavy,
                         ),
                       ),
                     ],
@@ -4128,14 +4080,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF16A34A).withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: AppColors.statusSuccessBorder, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4146,14 +4091,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 width: 42,
                 height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
+                  color: AppColors.statusSuccessBg,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF86EFAC)),
+                  border: Border.all(color: AppColors.statusSuccessBorder),
                 ),
                 child: const Icon(
                   Icons.verified_rounded,
                   size: 24,
-                  color: Color(0xFF16A34A),
+                  color: AppColors.statusSuccessFg,
                 ),
               ),
               const SizedBox(width: 12),
@@ -4206,17 +4151,21 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Kode reservasi: ${booking.id}',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+              Expanded(
+                child: Text(
+                  'Kode reservasi: ${booking.id}',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
-              InkWell(
-                onTap: () {
+              IconButton(
+                tooltip: 'Salin kode reservasi',
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                onPressed: () {
                   Clipboard.setData(ClipboardData(text: booking.id));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -4225,10 +4174,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(4),
-                child: const Padding(
-                  padding: EdgeInsets.all(2),
-                  child: Icon(Icons.copy_rounded, size: 14, color: AppColors.textSecondary),
+                icon: const Icon(
+                  Icons.copy_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
@@ -4249,19 +4198,68 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     );
   }
 
+  String _alasanBatalBanner(BookingModel booking) {
+    final reason = booking.cancellationReason?.trim();
+    if (reason != null && reason.isNotEmpty) return reason;
+    if (booking.isRejectedByAdmin) {
+      return 'Pengajuan sewa tidak dapat disetujui admin kantor.';
+    }
+    final actor = booking.cancelledBy?.toUpperCase();
+    if (actor == 'ADMIN') return 'Dibatalkan oleh admin kantor.';
+    if (actor == 'SYSTEM') {
+      return 'Dibatalkan otomatis karena batas waktu terlewati.';
+    }
+    return 'Dibatalkan oleh pemesan';
+  }
+
+  Widget _buildCancelledActorBadge(BookingModel booking) {
+    if (booking.isRejectedByAdmin) {
+      return const StatusBadge(
+        label: 'Ditolak Admin',
+        tone: StatusTone.danger,
+        icon: Icons.block_rounded,
+      );
+    }
+    final actor = booking.cancelledBy?.toUpperCase();
+    if (actor == 'ADMIN') {
+      return const StatusBadge(
+        label: 'Dibatalkan Admin',
+        tone: StatusTone.danger,
+        icon: Icons.cancel_outlined,
+      );
+    }
+    if (actor == 'SYSTEM') {
+      return const StatusBadge(
+        label: 'Dibatalkan Otomatis',
+        tone: StatusTone.neutral,
+        icon: Icons.timer_off_outlined,
+      );
+    }
+    return StatusBadge(
+      label: actor == 'CUSTOMER' || actor == 'PELANGGAN'
+          ? 'Dibatalkan Anda'
+          : 'Selesai Ditutup',
+      tone: StatusTone.neutral,
+    );
+  }
+
   Widget _buildCancelledBannerCard(BookingModel booking) {
     final hasRefund = booking.refundStatus != null ||
         (booking.cancellationRefundAmount ?? 0) > 0;
     final refundAmount = booking.cancellationRefundAmount ?? 0;
+    final penaltyAmount = (booking.totalCost - refundAmount).clamp(
+      0,
+      booking.totalCost,
+    );
     final cancelledAtText = booking.cancelledAt != null
         ? '${booking.cancelledAt!.day.toString().padLeft(2, '0')}/${booking.cancelledAt!.month.toString().padLeft(2, '0')}/${booking.cancelledAt!.year}, ${booking.cancelledAt!.hour.toString().padLeft(2, '0')}.${booking.cancelledAt!.minute.toString().padLeft(2, '0')} WIT'
-        : 'Waktu tidak tercatat';
+        : 'Waktu pembatalan tidak tercatat';
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Column(
@@ -4273,14 +4271,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 width: 42,
                 height: (42 * MediaQuery.textScalerOf(context).scale(1)).clamp(42, 84),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: AppColors.borderSubtle),
                 ),
                 child: const Icon(
                   Icons.event_busy_rounded,
                   size: 22,
-                  color: Color(0xFF64748B),
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -4288,50 +4286,43 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 6,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
-                        const Text(
-                          'Reservasi Dibatalkan',
-                          style: TextStyle(
+                        Text(
+                          booking.isRejectedByAdmin
+                              ? 'Pengajuan Ditolak'
+                              : 'Reservasi Dibatalkan',
+                          style: const TextStyle(
                             fontSize: AppTypography.sizeAmount,
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                             fontFamily: 'Inter',
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Selesai Ditutup',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeTiny,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF64748B),
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
+                        _buildCancelledActorBadge(booking),
                       ],
                     ),
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(Icons.schedule, size: 12, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.schedule,
+                          size: 13,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
-                        Text(
-                          cancelledAtText,
-                          style: const TextStyle(
-                            fontSize: AppTypography.sizeCaption,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'Inter',
+                        Expanded(
+                          child: Text(
+                            cancelledAtText,
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
+                            ),
                           ),
                         ),
                       ],
@@ -4347,17 +4338,21 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Kode reservasi: ${booking.id}',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
+              Expanded(
+                child: Text(
+                  'Kode reservasi: ${booking.id}',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
-              InkWell(
-                onTap: () {
+              IconButton(
+                tooltip: 'Salin kode reservasi',
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                onPressed: () {
                   Clipboard.setData(ClipboardData(text: booking.id));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -4366,10 +4361,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(4),
-                child: const Padding(
-                  padding: EdgeInsets.all(2),
-                  child: Icon(Icons.copy_rounded, size: 14, color: AppColors.textSecondary),
+                icon: const Icon(
+                  Icons.copy_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
@@ -4398,7 +4393,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
               Expanded(
                 flex: 3,
                 child: Text(
-                  booking.cancellationReason ?? 'Dibatalkan oleh pemesan',
+                  _alasanBatalBanner(booking),
                   style: const TextStyle(
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w600,
@@ -4413,84 +4408,128 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
           const SizedBox(height: 14),
 
-          // Penyelesaian Finansial (Ledger Box Profesional)
+          // Penyelesaian Finansial (Ledger Box Flat & Rapi)
           if (hasRefund) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderSubtle),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.primaryTeal),
+                      Icon(
+                        Icons.account_balance_wallet_outlined,
+                        size: 16,
+                        color: AppColors.primaryTeal,
+                      ),
                       SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Rincian Pengembalian Dana',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBody,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Total Telah Dibayar',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            color: AppColors.textSecondary,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
                       Text(
-                        'Rincian Pengembalian Dana',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w700,
+                        'Rp ${_formatRupiah(booking.totalCost)}',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                           fontFamily: 'Inter',
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 6,
-                    children: [
-                      const Text(
-                        'Total Telah Dibayar',
-                        style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                      ),
-                      Text(
-                        'Rp ${_formatRupiah(booking.totalCost)}',
-                        style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontFamily: 'Inter'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 6,
-                    children: [
-                      const Text(
-                        'Potongan Pembatalan',
-                        style: TextStyle(fontSize: AppTypography.sizeCaption, color: Color(0xFFDC2626), fontFamily: 'Inter'),
-                      ),
-                      Text(
-                        '-Rp ${_formatRupiah((booking.totalCost - refundAmount).clamp(0, booking.totalCost))}',
-                        style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, color: Color(0xFFDC2626), fontFamily: 'Inter'),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Potongan Pembatalan',
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeCaption,
+                            color: AppColors.statusDangerFg,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
+                      ),
+                      Text(
+                        penaltyAmount == 0
+                            ? 'Rp 0 (Dikembalikan Penuh)'
+                            : '-Rp ${_formatRupiah(penaltyAmount)}',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w600,
+                          color: penaltyAmount == 0
+                              ? AppColors.statusSuccessFg
+                              : AppColors.statusDangerFg,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   const Divider(height: 1, color: AppColors.borderSubtle),
-                  const SizedBox(height: 6),
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 6,
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Dana Dikembalikan',
-                        style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, color: Color(0xFF166534), fontFamily: 'Inter'),
+                      Expanded(
+                        child: Text(
+                          !booking.danaTerverifikasi
+                              ? 'Estimasi Pengembalian (menunggu verifikasi dana)'
+                              : (booking.refundStatus?.toUpperCase() == 'SELESAI'
+                                    ? 'Dana Dikembalikan'
+                                    : 'Dana Akan Dikembalikan'),
+                          style: TextStyle(
+                            fontSize: AppTypography.sizeBody,
+                            fontWeight: FontWeight.w700,
+                            color: booking.danaTerverifikasi
+                                ? AppColors.statusSuccessFg
+                                : AppColors.statusWarningFg,
+                            fontFamily: 'Inter',
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         'Rp ${_formatRupiah(refundAmount)}',
-                        style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontWeight: FontWeight.w800, color: Color(0xFF15803D), fontFamily: 'Inter'),
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBodyLarge,
+                          fontWeight: FontWeight.w800,
+                          color: booking.danaTerverifikasi
+                              ? AppColors.statusSuccessFg
+                              : AppColors.statusWarningFg,
+                          fontFamily: 'Inter',
+                        ),
                       ),
                     ],
                   ),
@@ -4653,183 +4692,155 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       'Alasan lainnya',
     ];
 
-    showModalBottomSheet(
+    final isUnverifiedPayment =
+        booking.paymentStatus == 'PENDING_VERIFICATION' ||
+        _payment?.status == PaymentStatus.pendingVerification ||
+        !booking.danaTerverifikasi;
+
+    StandardBottomSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isOtherSelected = selectedReason == 'Alasan lainnya';
+      title: isPaid ? 'Ajukan Pembatalan & Refund' : 'Batalkan Pesanan',
+      subtitle: 'Kode reservasi: ${booking.id}',
+      icon: Icons.receipt_long_outlined,
+      child: StatefulBuilder(
+        builder: (sheetContext, setModalState) {
+          final isOtherSelected = selectedReason == 'Alasan lainnya';
 
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                // `padding.bottom` adalah area aman perangkat (gesture bar),
-                // sedangkan `viewInsets.bottom` tinggi papan tik.
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom +
-                    MediaQuery.of(sheetContext).padding.bottom +
-                    20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.borderSubtle,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Transparansi ketentuan pembatalan
+              if (isPaid) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: AppColors.primaryTeal,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Ketentuan Pengembalian Dana',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeBody,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.receipt_long_outlined,
-                            color: AppColors.primaryNavy,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isPaid ? 'Ajukan Pembatalan & Refund' : 'Batalkan Pesanan',
-                                style: const TextStyle(
-                                  fontSize: AppTypography.sizeHeading,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Kode reservasi: ${booking.id}',
-                                style: const TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  color: AppColors.textSecondary,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          tooltip: 'Tutup',
-                          icon: const Icon(Icons.close_rounded, size: 20),
+                      const SizedBox(height: 6),
+                      Text(
+                        isUnverifiedPayment
+                            ? 'Bukti pembayaran Anda masih menunggu verifikasi admin. Pengembalian dana akan diproses setelah dana masuk dikonfirmasi, dipotong biaya pembatalan Rp 50.000.'
+                            : 'Pengembalian dana dipotong biaya pembatalan tetap sebesar Rp 50.000 dari total pembayaran yang masuk.',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeCaption,
                           color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                          height: 1.35,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1, color: AppColors.borderSubtle),
-                    const SizedBox(height: 14),
-
-                    // Transparansi ketentuan pembatalan
-                    if (isPaid) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.borderSubtle),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.info_outline, size: 16, color: AppColors.primaryTeal),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Ketentuan Pengembalian Dana',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeBody,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total Pembayaran:',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
                             ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Pengembalian dana dipotong biaya pembatalan tetap sebesar Rp 50.000 dari total pembayaran yang masuk.',
+                          ),
+                          Text(
+                            'Rp ${_formatRupiah(booking.totalCost)}',
+                            style: AppTypography.captionStrong,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Biaya Pembatalan:',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              color: AppColors.statusDangerFg,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                          Text(
+                            '-Rp ${_formatRupiah(penaltyAmount)}',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.statusDangerFg,
+                              fontFamily: 'Inter',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Divider(height: 1, color: AppColors.borderSubtle),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              isUnverifiedPayment
+                                  ? 'Estimasi Dana Dikembalikan:'
+                                  : 'Dana Dikembalikan:',
                               style: TextStyle(
-                                fontSize: AppTypography.sizeCaption,
-                                color: AppColors.textSecondary,
+                                fontSize: AppTypography.sizeBody,
+                                fontWeight: FontWeight.w700,
+                                color: isUnverifiedPayment
+                                    ? AppColors.statusWarningFg
+                                    : AppColors.statusSuccessFg,
                                 fontFamily: 'Inter',
-                                height: 1.3,
                               ),
                             ),
-                            const SizedBox(height: 10),
-                              Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 6,
-                              children: [
-                                const Text('Total Pembayaran:', style: TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary, fontFamily: 'Inter')),
-                                Text('Rp ${_formatRupiah(booking.totalCost)}', style: AppTypography.captionStrong),
-                              ],
+                          ),
+                          Text(
+                            'Rp ${_formatRupiah(refundAmount)}',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeBodyLarge,
+                              fontWeight: FontWeight.w800,
+                              color: isUnverifiedPayment
+                                  ? AppColors.statusWarningFg
+                                  : AppColors.statusSuccessFg,
+                              fontFamily: 'Inter',
                             ),
-                            const SizedBox(height: 4),
-                              Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 6,
-                              children: [
-                                const Text('Biaya Pembatalan:', style: TextStyle(fontSize: AppTypography.sizeCaption, color: Color(0xFFDC2626), fontFamily: 'Inter')),
-                                Text('-Rp ${_formatRupiah(penaltyAmount)}', style: const TextStyle(fontSize: AppTypography.sizeCaption, fontWeight: FontWeight.w600, color: Color(0xFFDC2626), fontFamily: 'Inter')),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            const Divider(height: 1, color: AppColors.borderSubtle),
-                            const SizedBox(height: 6),
-                              Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                runSpacing: 6,
-                              children: [
-                                const Text('Dana Dikembalikan:', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700, color: Color(0xFF166534), fontFamily: 'Inter')),
-                                Text('Rp ${_formatRupiah(refundAmount)}', style: const TextStyle(fontSize: AppTypography.sizeBodyLarge, fontWeight: FontWeight.w800, color: Color(0xFF166534), fontFamily: 'Inter')),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-
-                      RefundAccountForm(
-                        initialHolderName: namaAkun,
-                        onChanged: (draft) {
-                          setModalState(() => draftRekening = draft);
-                        },
-                      ),
-                      const SizedBox(height: 16),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                RefundAccountForm(
+                  initialHolderName: namaAkun,
+                  onChanged: (draft) {
+                    setModalState(() => draftRekening = draft);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
 
                     // Akibat pembatalan untuk pesanan yang belum dibayar. Tanpa
                     // penjelasan ini pelanggan mengira pembatalan tidak
@@ -4952,10 +4963,15 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(sheetContext),
                             style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(44),
                               foregroundColor: AppColors.textPrimary,
-                              side: const BorderSide(color: AppColors.borderSubtle),
+                              side: const BorderSide(
+                                color: AppColors.borderSubtle,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: const Text(
                               'Tetap Lanjutkan',
@@ -5031,10 +5047,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                               );
                             },
                             style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(44),
                               backgroundColor: const Color(0xFFDC2626),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               elevation: 0,
                             ),
                             child: Text(
@@ -5045,13 +5064,10 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -6471,11 +6487,12 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                         ),
                       );
                     },
-                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    icon: const Icon(Icons.copy_rounded, size: 16),
                     label: const Text('Salin', style: TextStyle(fontSize: AppTypography.sizeBody, fontWeight: FontWeight.w700)),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryTeal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      foregroundColor: AppColors.accent,
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
                   ),
                 ],
@@ -6546,20 +6563,20 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
               color: AppColors.textMuted,
               fontFamily: 'Inter',
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: AppColors.surfaceLight,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSubtle),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              borderSide: const BorderSide(color: AppColors.borderMedium),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.borderSubtle),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              borderSide: const BorderSide(color: AppColors.borderMedium),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.primaryNavy),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.5),
             ),
           ),
         ),
@@ -6572,8 +6589,8 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                 ? 'Unggah bukti pembayaran untuk melanjutkan.'
                 : 'Isi nama pengirim untuk melanjutkan.',
             style: const TextStyle(
-              fontSize: AppTypography.sizeMicro,
-              color: AppColors.textMuted,
+              fontSize: AppTypography.sizeBody,
+              color: AppColors.textSecondary,
               fontFamily: 'Inter',
             ),
           ),
@@ -6587,147 +6604,32 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   bool get _isProofFormComplete =>
       _proofFileName != null && _senderNameController.text.trim().isNotEmpty;
 
-  /// Kotak pemilih berkas. Sebelum berkas dipilih hanya berisi ajakan singkat;
-  /// setelah dipilih menampilkan pratinjau, nama, dan ukuran sebenarnya.
+  /// Kotak pemilih berkas menggunakan UnifiedDocumentUploader agar seragam
+  /// dengan seluruh unggahan dokumen lain di aplikasi.
   Widget _buildProofPicker(bool isQris) {
     final hasFile = _proofFileName != null;
+    final sizeInfo = _proofSizeBytes != null
+        ? '${_formatFileSize(_proofSizeBytes!)} · siap dikirim'
+        : 'Siap dikirim';
 
-    return InkWell(
-      onTap: () => _pickPaymentProof(isQris),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: hasFile ? const Color(0xFFF0FDFA) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasFile ? AppColors.primaryTeal : const Color(0xFFCBD5E1),
-            width: hasFile ? 1 : 1.2,
-          ),
-        ),
-        child: Row(
-          children: [
-            if (hasFile) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: _buildProofThumbnail(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _proofFileName!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _proofSizeBytes != null
-                          ? '${_formatFileSize(_proofSizeBytes!)} · siap dikirim'
-                          : 'Siap dikirim',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeMicro,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Ketuk untuk mengganti',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeMicro,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryTeal,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: 'Hapus berkas',
-                onPressed: () {
-                  setState(() {
-                    _proofFileName = null;
-                    _proofBase64 = null;
-                    _proofSizeBytes = null;
-                  });
-                },
-                icon: const Icon(Icons.close_rounded, size: 18),
-                color: AppColors.textSecondary,
-                visualDensity: VisualDensity.compact,
-              ),
-            ] else ...[
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Icon(
-                  Icons.add_photo_alternate_outlined,
-                  size: 20,
-                  color: AppColors.primaryNavy,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Unggah bukti pembayaran',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Foto atau tangkapan layar · JPG/PNG · maks 5 MB',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeMicro,
-                        color: AppColors.textSecondary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
-            ],
-          ],
-        ),
-      ),
+    return UnifiedDocumentUploader(
+      title: hasFile ? _proofFileName! : 'Unggah bukti pembayaran',
+      subtitle: hasFile ? sizeInfo : 'Foto atau tangkapan layar · JPG/PNG · maks 5 MB',
+      state: hasFile ? DocumentUploadState.previewSelected : DocumentUploadState.empty,
+      icon: hasFile ? Icons.receipt_long_rounded : Icons.add_photo_alternate_outlined,
+      previewBytes: hasFile ? _proofPreviewBytes : null,
+      actionLabel: hasFile ? 'Ganti' : 'Unggah',
+      onAction: () => _pickPaymentProof(isQris),
+      onRemove: hasFile
+          ? () {
+              setState(() {
+                _proofFileName = null;
+                _proofBase64 = null;
+                _proofSizeBytes = null;
+              });
+            }
+          : null,
     );
-  }
-
-  Widget _buildProofThumbnail() {
-    final bytes = _proofPreviewBytes;
-    if (bytes == null) {
-      return Container(
-        color: Colors.white,
-        child: const Icon(Icons.receipt_long_rounded, size: 22, color: AppColors.primaryTeal),
-      );
-    }
-    return Image.memory(bytes, fit: BoxFit.cover);
   }
 
   /// Isi berkas bukti untuk pratinjau; null kalau data tidak bisa didekode.

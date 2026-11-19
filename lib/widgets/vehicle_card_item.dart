@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../core/constants/status_labels.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'gambar_kendaraan.dart';
+import 'order_state_banner.dart';
 
 /// Kartu pilihan kendaraan di katalog dengan state seleksi aktif dan tombol favorit interaktif
 class VehicleCardItem extends StatelessWidget {
@@ -26,18 +28,18 @@ class VehicleCardItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: isSelected ? AppColors.primaryTeal : AppColors.borderSubtle,
+          color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
           width: isSelected ? 1.8 : 1,
         ),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -81,7 +83,7 @@ class VehicleCardItem extends StatelessWidget {
                                         ? Icons.bookmark_rounded
                                         : Icons.bookmark_outline_rounded,
                                     color: vehicle.isFavorite
-                                        ? const Color(0xFFD97706) // Amber hangat
+                                        ? AppColors.primaryNavy
                                         : AppColors.textSecondary,
                                     size: 22,
                                   ),
@@ -103,47 +105,35 @@ class VehicleCardItem extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Row(
+                      StatusBadge(
+                        tone: vehicle.isAvailable ? StatusTone.success : StatusTone.warning,
+                        label: vehicle.isAvailable
+                            ? 'Tersedia'
+                            : vehicleAvailabilityLabel(vehicle.availability),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: vehicle.isAvailable
-                                  ? AppColors.badgeGreenBg
-                                  : const Color(0xFFFEF3C7),
-                              borderRadius: BorderRadius.circular(4),
-                              border: vehicle.isAvailable
-                                  ? null
-                                  : Border.all(
-                                      color: const Color(0xFFFDE68A),
-                                      width: 0.8,
-                                    ),
+                          Text(
+                            'Rp ${_formatRupiah(vehicle.pricePerDay)}',
+                            style: const TextStyle(
+                              fontSize: AppTypography.sizeBodyLarge,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryNavy,
+                              fontFamily: 'Inter',
                             ),
-                            child: Text(
-                              vehicle.isAvailable
-                                  ? 'Tersedia'
-                                  : vehicleAvailabilityLabel(vehicle.availability),
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeMicro,
-                                fontWeight: FontWeight.w600,
-                                color: vehicle.isAvailable
-                                    ? AppColors.badgeGreenText
-                                    : const Color(0xFF92400E),
-                                fontFamily: 'Inter',
-                              ),
+                          ),
+                          const Text(
+                            ' / hari',
+                            style: TextStyle(
+                              fontSize: AppTypography.sizeCaption,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'Inter',
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Rp ${_formatRupiah(vehicle.pricePerDay)} / hari',
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryNavy,
-                          fontFamily: 'Inter',
-                        ),
                       ),
                     ],
                   ),

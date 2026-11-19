@@ -7,6 +7,7 @@ import '../controllers/vehicle_controller.dart';
 import '../models/booking_model.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import 'order_status_screen.dart';
 import 'profile_screen.dart';
 import 'vehicle_detail_screen.dart';
@@ -25,8 +26,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedOptionIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     final vehicleController = context.watch<VehicleController>();
@@ -38,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.scaffoldBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: AppSpacing.screenPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -115,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: isLoggedIn
-                      ? AppColors.primaryTeal
+                      ? AppColors.primaryNavy
                       : AppColors.surfaceLight,
                   shape: BoxShape.circle,
                   border: isLoggedIn
@@ -218,15 +217,15 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.tealLight,
+                color: AppColors.accentSoft,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text(
-                'TERPOPULER DI MERAUKE',
+                'TERPOPULER DI MOBILJURAGAN',
                 style: TextStyle(
                   fontSize: AppTypography.sizeTiny,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.primaryTeal,
+                  color: AppColors.accent,
                   fontFamily: 'Inter',
                 ),
               ),
@@ -271,55 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                _buildOptionChip(index: 0, label: 'Lepas Kunci'),
-                const SizedBox(width: 10),
-                _buildOptionChip(index: 1, label: 'Dengan Sopir'),
-              ],
-            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOptionChip({required int index, required String label}) {
-    final bool isSelected = _selectedOptionIndex == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedOptionIndex = index;
-          });
-          final booking = context.read<BookingController>();
-          booking.toggleDriver(index == 1);
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primaryTeal : AppColors.cardWhite,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected
-                  ? AppColors.primaryTeal
-                  : AppColors.borderSubtle,
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -363,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: AppTypography.sizeBody,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primaryTeal,
+                    color: AppColors.primaryNavy,
                     fontFamily: 'Inter',
                   ),
                 ),
@@ -391,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: hasActive
                     ? (activeOrder.status == BookingStatus.mobilSiapDigunakan
                           ? const Color(0xFF16A34A)
-                          : AppColors.primaryTeal)
+                          : AppColors.primaryNavy)
                     : AppColors.borderSubtle,
                 width: hasActive ? 1.5 : 1,
               ),
@@ -476,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 activeOrder.status ==
                                     BookingStatus.mobilSiapDigunakan
                                 ? const Color(0xFF15803D)
-                                : AppColors.primaryTeal,
+                                : AppColors.primaryNavy,
                             fontFamily: 'Inter',
                           ),
                         ),
@@ -564,9 +515,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPrimaryCTA() {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 48),
       child: ElevatedButton(
         onPressed: () {
           if (widget.onNavigateToPesan != null) {

@@ -67,7 +67,7 @@ class CustomBottomNavBar extends StatelessWidget {
     required IconData activeIcon,
   }) {
     final bool isActive = currentIndex == index;
-    final Color itemColor = isActive ? AppColors.primaryTeal : AppColors.textSecondary;
+    final Color itemColor = isActive ? AppColors.primaryNavy : AppColors.textSecondary;
 
     return Expanded(
       child: InkWell(
@@ -98,7 +98,7 @@ class CustomBottomNavBar extends StatelessWidget {
               width: 28,
               height: 2.5,
               decoration: BoxDecoration(
-                color: isActive ? AppColors.primaryTeal : Colors.transparent,
+                color: isActive ? AppColors.primaryNavy : Colors.transparent,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

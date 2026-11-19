@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../controllers/support_controller.dart';
 import '../models/faq_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/daftar_geser_horizontal.dart';
 import 'chat_support_screen.dart';
 import 'create_ticket_screen.dart';
 import 'ticket_history_screen.dart';
@@ -12,7 +14,9 @@ import '../theme/app_typography.dart';
 
 /// Halaman Pusat Bantuan Pelanggan dan Layanan Operasional Merauke (Frame 09)
 class HelpCenterScreen extends StatefulWidget {
-  const HelpCenterScreen({super.key});
+  final bool showBackButton;
+
+  const HelpCenterScreen({super.key, this.showBackButton = false});
 
   @override
   State<HelpCenterScreen> createState() => _HelpCenterScreenState();
@@ -21,7 +25,7 @@ class HelpCenterScreen extends StatefulWidget {
 class _HelpCenterScreenState extends State<HelpCenterScreen>
     with WidgetsBindingObserver {
   String _selectedCategory = 'Semua';
-  int? _expandedFaqIndex;
+  String? _expandedFaqId;
   Timer? _ticketsPollingTimer;
 
   /*
@@ -107,10 +111,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
-      appBar: const CustomAppBar(
-        title: 'MobilJuragan',
-        stepSubtitle: 'Pusat Bantuan Merauke',
-        showBackButton: false,
+      appBar: CustomAppBar(
+        title: 'Pusat Bantuan',
+        stepSubtitle: 'Merauke • Layanan 24 jam',
+        showBackButton: widget.showBackButton,
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -124,21 +128,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
           color: AppColors.primaryNavy,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenH,
+              vertical: 16,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Section
-                const Text(
-                  'Pusat Bantuan',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeDisplay,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 4),
                 const Text(
                   'Solusi kendala sewa armada dan layanan operasional Merauke.',
                   style: TextStyle(
@@ -153,36 +149,39 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
                 _buildFaqSection(faqs, categories),
                 const SizedBox(height: 24),
 
-              // Seksi 2: Tiket Bantuan Saya
-              _buildUserTicketsSection(support),
-              const SizedBox(height: 24),
+                // Seksi 2: Tiket Bantuan Saya
+                _buildUserTicketsSection(support),
+                const SizedBox(height: 24),
 
-              // Seksi 3: Saluran Bantuan
-              _buildSupportChannelsSection(),
-              const SizedBox(height: 20),
-            ],
+                // Seksi 3: Saluran Bantuan
+                _buildSupportChannelsSection(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildCategoryChips(List<String> categories) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return DaftarGeserHorizontal(
+      padding: EdgeInsets.zero,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: categories.map((cat) {
           final isSelected = _selectedCategory == cat;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(right: cat == categories.last ? 0 : 8),
             child: ChoiceChip(
               label: Text(
                 cat,
                 style: TextStyle(
                   fontSize: AppTypography.sizeCaption,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
+                  color: isSelected
+                      ? AppColors.textWhite
+                      : AppColors.textPrimary,
                   fontFamily: 'Inter',
                 ),
               ),
@@ -190,9 +189,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
               selectedColor: AppColors.primaryNavy,
               backgroundColor: AppColors.cardWhite,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
-                  color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
+                  color: isSelected
+                      ? AppColors.primaryNavy
+                      : AppColors.borderSubtle,
                 ),
               ),
               showCheckmark: false,
@@ -200,7 +201,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
                 if (val) {
                   setState(() {
                     _selectedCategory = cat;
-                    _expandedFaqIndex = null;
+                    _expandedFaqId = null;
                   });
                 }
               },
@@ -332,25 +333,21 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
               ),
             ),
             const SizedBox(width: 14),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Buat Tiket Bantuan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBodyLarge,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Buat Tiket Bantuan',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                  const SizedBox(height: 3),
-                  const Text(
+                  SizedBox(height: 3),
+                  Text(
                     'Sampaikan pertanyaan atau kendala sewa armada untuk ditangani',
                     style: TextStyle(
                       fontSize: AppTypography.sizeCaption,
@@ -433,12 +430,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
               separatorBuilder: (_, _) => const Divider(color: AppColors.borderSubtle, height: 1),
               itemBuilder: (context, index) {
                 final faq = faqs[index];
-                final isExpanded = _expandedFaqIndex == index;
+                final faqKey = faq.id.isNotEmpty ? faq.id : faq.question;
+                final isExpanded = _expandedFaqId == faqKey;
 
                 return InkWell(
                   onTap: () {
                     setState(() {
-                      _expandedFaqIndex = isExpanded ? null : index;
+                      _expandedFaqId = isExpanded ? null : faqKey;
                     });
                   },
                   child: Padding(
@@ -469,18 +467,14 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
                         ),
                         if (isExpanded) ...[
                           const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2, right: 8),
                             child: Text(
                               faq.answer,
                               style: const TextStyle(
-                                fontSize: AppTypography.sizeCaption,
+                                fontSize: AppTypography.sizeBody,
                                 height: 1.45,
-                                color: AppColors.textPrimary,
+                                color: AppColors.textSecondary,
                                 fontFamily: 'Inter',
                               ),
                             ),
@@ -508,66 +502,80 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Tiket Bantuan Saya',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTitle,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                if (activeTickets.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(10),
+        SizedBox(
+          width: double.infinity,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  const Text(
+                    'Tiket Bantuan Saya',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeTitle,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
                     ),
-                    child: Text(
-                      '${activeTickets.length} Berjalan',
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeTiny,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFB45309),
-                        fontFamily: 'Inter',
+                  ),
+                  if (activeTickets.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.statusWarningBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${activeTickets.length} Berjalan',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeTiny,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.statusWarningFg,
+                          fontFamily: 'Inter',
+                        ),
                       ),
                     ),
-                  ),
                 ],
-              ],
-            ),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const TicketHistoryScreen()),
-                ).then((_) {
-                  if (mounted) {
-                    context.read<SupportController>().fetchTickets();
-                  }
-                });
-              },
-              child: const Text(
-                'Riwayat Tiket ›',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primaryTeal,
-                  fontFamily: 'Inter',
+              ),
+              InkWell(
+                onTap: () {
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (_) => const TicketHistoryScreen(),
+                        ),
+                      )
+                      .then((_) {
+                        if (mounted) {
+                          context.read<SupportController>().fetchTickets();
+                        }
+                      });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Text(
+                    'Riwayat Tiket ›',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeBody,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryTeal,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 10),
 

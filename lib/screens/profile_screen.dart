@@ -4,8 +4,10 @@ import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../models/user_model.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import 'profile/ubah_kata_sandi_sheet.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/standard_bottom_sheet.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'help_center_screen.dart';
@@ -31,7 +33,10 @@ class ProfileScreen extends StatelessWidget {
         showBackButton: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.screenH,
+          vertical: 16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -57,19 +62,8 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 24),
             if (isLoggedIn) ...[
               _buildLogoutButton(context, auth),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
             ],
-            const Center(
-              child: Text(
-                'MobilJuragan Mobile | Versi 1.0.0 (Merauke Edition)',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -224,38 +218,16 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeHeading,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.badgeGreenBg,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'TERVERIFIKASI',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeMicro,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.badgeGreenText,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeHeading,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -292,15 +264,19 @@ class ProfileScreen extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _buildStatItem('Sewa Aktif', '$activeCount', isHighlighted: activeCount > 0),
+          child: _buildStatItem(
+            'Sewa Berjalan',
+            '$activeCount',
+            isHighlighted: activeCount > 0,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildStatItem('Selesai', '$completedCount'),
+          child: _buildStatItem('Riwayat Selesai', '$completedCount'),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildStatItem('Total Sewa', '$totalCount'),
+          child: _buildStatItem('Total Transaksi', '$totalCount'),
         ),
       ],
     );
@@ -328,6 +304,9 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: AppTypography.sizeCaption,
               fontWeight: FontWeight.w500,
@@ -415,7 +394,9 @@ class ProfileScreen extends StatelessWidget {
               title: 'Pusat Bantuan & Layanan CS',
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const HelpCenterScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const HelpCenterScreen(showBackButton: true),
+                  ),
                 );
               },
             ),
@@ -484,19 +465,32 @@ class ProfileScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Konfirmasi Keluar',
           style: AppTypography.pageTitle,
         ),
         content: const Text(
           'Apakah Anda yakin ingin keluar dari akun MobilJuragan di perangkat ini?',
-          style: TextStyle(fontSize: AppTypography.sizeBodyLarge, color: AppColors.textSecondary, fontFamily: 'Inter'),
+          style: TextStyle(
+            fontSize: AppTypography.sizeBodyLarge,
+            color: AppColors.textSecondary,
+            fontFamily: 'Inter',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+              ),
+            ),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -507,9 +501,13 @@ class ProfileScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 44),
               backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+              ),
+              elevation: 0,
             ),
             child: const Text('Keluar'),
           ),
@@ -534,222 +532,187 @@ class ProfileScreen extends StatelessWidget {
         ? user.gender!
         : 'Laki-laki';
 
-    showModalBottomSheet(
+    StandardBottomSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.cardWhite,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      title: 'Perbarui Data Profil',
+      subtitle:
+          'Perubahan nama dan kontak akan digunakan pada tanda terima sewa resmi.',
+      icon: Icons.edit_note_outlined,
+      child: StatefulBuilder(
+        builder: (sheetCtx, setModalState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Nama Lengkap',
+                filled: true,
+                fillColor: AppColors.surfaceLight,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  borderSide: const BorderSide(
+                    color: AppColors.primaryNavy,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneController,
+              readOnly: true,
+              enabled: false,
+              decoration: InputDecoration(
+                labelText: 'Nomor WhatsApp (tidak dapat diubah di sini)',
+                prefixText: '+62 ',
+                filled: true,
+                fillColor: AppColors.surfaceLight,
+                helperText: 'Hubungi admin bila nomor Anda berubah.',
+                helperStyle: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Jenis Kelamin',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
               children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderSubtle,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Perbarui Data Profil',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeAmount,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Perubahan nama dan kontak akan digunakan pada tanda terima sewa resmi.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                /* Nomor telepon hanya ditampilkan, tidak bisa diubah di sini.
-                 *
-                 * Mengganti nomor berarti mengganti identitas akun, dan itu harus
-                 * dibuktikan lewat kode verifikasi ke nomor baru — bukan sekadar
-                 * mengetik ulang di formulir. Sebelumnya kolom ini bisa diubah
-                 * bebas, yang bertentangan dengan aturan "nomor = identitas". */
-                TextField(
-                  controller: phoneController,
-                  readOnly: true,
-                  enabled: false,
-                  decoration: InputDecoration(
-                    labelText: 'Nomor WhatsApp (tidak dapat diubah di sini)',
-                    prefixText: '+62 ',
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
-                    helperText: 'Hubungi admin bila nomor Anda berubah.',
-                    helperStyle: const TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Jenis Kelamin',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          setModalState(() {
-                            selectedGender = 'Laki-laki';
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: selectedGender == 'Laki-laki'
-                                ? AppColors.primaryNavy
-                                : AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: selectedGender == 'Laki-laki'
-                                  ? AppColors.primaryNavy
-                                  : AppColors.borderSubtle,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Laki-laki',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBody,
-                              fontWeight: FontWeight.w600,
-                              color: selectedGender == 'Laki-laki'
-                                  ? Colors.white
-                                  : AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          setModalState(() {
-                            selectedGender = 'Perempuan';
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: selectedGender == 'Perempuan'
-                                ? AppColors.primaryNavy
-                                : AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: selectedGender == 'Perempuan'
-                                  ? AppColors.primaryNavy
-                                  : AppColors.borderSubtle,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Perempuan',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBody,
-                              fontWeight: FontWeight.w600,
-                              color: selectedGender == 'Perempuan'
-                                  ? Colors.white
-                                  : AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      /* Nama disimpan ke server lebih dulu. Baru setelah server
-                         menerima, layar ditutup dan pengguna diberi tahu.
-                         Sebelumnya nilai ini hanya ditulis di perangkat, sehingga
-                         aplikasi dan database bisa menampilkan nama berbeda. */
-                      final galat = await auth.ubahNama(nameController.text);
-                      if (!context.mounted) return;
-
-                      if (galat != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(galat),
-                            backgroundColor: AppColors.statusCancelled,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        return;
-                      }
-
-                      Navigator.pop(sheetCtx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Nama berhasil diperbarui dan tersimpan di server.'),
-                          backgroundColor: Color(0xFF16A34A),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setModalState(() {
+                        selectedGender = 'Laki-laki';
+                      });
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: selectedGender == 'Laki-laki'
+                            ? AppColors.primaryNavy
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                        border: Border.all(
+                          color: selectedGender == 'Laki-laki'
+                              ? AppColors.primaryNavy
+                              : AppColors.borderSubtle,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Laki-laki',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          fontWeight: FontWeight.w600,
+                          color: selectedGender == 'Laki-laki'
+                              ? Colors.white
+                              : AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
                     ),
-                    child: const Text('Simpan Perubahan'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setModalState(() {
+                        selectedGender = 'Perempuan';
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: selectedGender == 'Perempuan'
+                            ? AppColors.primaryNavy
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                        border: Border.all(
+                          color: selectedGender == 'Perempuan'
+                              ? AppColors.primaryNavy
+                              : AppColors.borderSubtle,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Perempuan',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          fontWeight: FontWeight.w600,
+                          color: selectedGender == 'Perempuan'
+                              ? Colors.white
+                              : AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final galat = await auth.ubahNama(nameController.text);
+                  if (!context.mounted) return;
+
+                  if (galat != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(galat),
+                        backgroundColor: AppColors.statusCancelled,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Nama berhasil diperbarui dan tersimpan di server.',
+                      ),
+                      backgroundColor: Color(0xFF16A34A),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text('Simpan Perubahan'),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -766,52 +729,58 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showTermsModal(BuildContext context) {
-    showModalBottomSheet(
+    StandardBottomSheet.show<void>(
       context: context,
-      backgroundColor: AppColors.cardWhite,
-      // Konten boleh digulir: pada layar pendek atau ukuran teks besar,
-      // ketentuan panjang tidak lagi terpotong di luar layar.
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (modalCtx) => SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ketentuan Sewa Unit Merauke',
-                  style: AppTypography.pageTitle,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  '1. Pelanggan wajib menunjukkan dokumen fisik asli KTP dan SIM A saat serah terima armada di kantor MobilJuragan Merauke.\n\n'
-                  '2. Penggunaan kendaraan meliputi area Kota Merauke dan sekitarnya sesuai kesepakatan rute.\n\n'
-                  '3. Bahan bakar dikembalikan sesuai posisi awal serah terima armada.',
-                  style: TextStyle(fontSize: AppTypography.sizeBody, height: 1.5, color: AppColors.textSecondary, fontFamily: 'Inter'),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  // Tinggi ikut skala teks sistem agar label tidak terpotong.
-                  height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(44, 88),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(modalCtx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text('Saya Mengerti'),
-                  ),
-                ),
-              ],
+      title: 'Ketentuan Sewa Unit Merauke',
+      icon: Icons.description_outlined,
+      child: Builder(
+        builder: (modalCtx) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '1. Pelanggan wajib menunjukkan dokumen fisik asli KTP dan SIM A saat serah terima armada di kantor MobilJuragan Merauke.\n\n'
+              '2. Penggunaan kendaraan meliputi area Kota Merauke dan sekitarnya sesuai kesepakatan rute.\n\n'
+              '3. Bahan bakar dikembalikan sesuai posisi awal serah terima armada.',
+              style: TextStyle(
+                fontSize: AppTypography.sizeBody,
+                height: 1.5,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.borderSubtle),
+            const SizedBox(height: 12),
+            const Text(
+              'MobilJuragan Mobile · Versi 1.0.1 (Merauke Edition)',
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                color: AppColors.textSecondary,
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(
+                44,
+                88,
+              ),
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(modalCtx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text('Saya Mengerti'),
+              ),
+            ),
+          ],
         ),
       ),
     );

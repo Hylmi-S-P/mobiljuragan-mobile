@@ -55,7 +55,7 @@ class VehicleController extends ChangeNotifier {
     }
   }
 
-  /// Getter untuk seluruh armada
+  /// Daftar seluruh unit armada
   List<VehicleModel> get vehicles => _vehicles;
 
   /// Jumlah total unit armada
