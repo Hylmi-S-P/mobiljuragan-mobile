@@ -59,6 +59,13 @@ class BookingController extends ChangeNotifier {
   /// setelah login karena sinkronisasi hanya berjalan saat aplikasi dibuka.
   String? _sessionUserId;
 
+  /// Penanda urutan pemanggilan [syncIfSessionChanged].
+  ///
+  /// Setiap pemanggilan menaikkan angka ini. Setelah `await`, pemanggilan yang
+  /// angkanya sudah tidak berlaku berhenti tanpa menulis apa pun: hasil sinkron
+  /// sesi lama tidak boleh menimpa data sesi yang lebih baru.
+  int _sessionGen = 0;
+
   /// Akun yang datanya sedang ditampilkan layar ini.
   ///
   /// Dipakai layar pesanan untuk memastikan notifikasi status hanya muncul
@@ -69,6 +76,7 @@ class BookingController extends ChangeNotifier {
   Future<void> syncIfSessionChanged(String? userId) async {
     if (userId == _sessionUserId) return;
     _sessionUserId = userId;
+    final gen = ++_sessionGen;
 
     /* Saat sesi berakhir, isian wizard yang sedang dikerjakan dibuang dari
        memori. Isian itu memuat alamat jemput, titik koordinat, dan catatan
@@ -85,12 +93,18 @@ class BookingController extends ChangeNotifier {
     }
 
     await repo.refreshSession();
+    if (gen != _sessionGen) return;
+
     if (userId != null) {
       await repo.purgeOtherAccounts();
+      if (gen != _sessionGen) return;
     }
     await repo.syncAllBookingsFromRemote();
+    if (gen != _sessionGen) return;
 
     final tersimpan = await repo.getAllBookings();
+    if (gen != _sessionGen) return;
+
     _bookingHistory
       ..clear()
       ..addAll(tersimpan);
@@ -381,30 +395,18 @@ class BookingController extends ChangeNotifier {
     }
 
     final repo = repository;
-    if (repo != null) {
-      final remoteBooking = await repo.createBookingRemote(
-        vehicle: vehicle,
-        startDate: _selectedDate,
-        startTime: _selectedTime,
-        durationDays: _durationDays,
-        withDriver: _withDriver,
-        pickupLocation: _pickupLocation,
-        pickupLatitude: _pickupLatitude,
-        pickupLongitude: _pickupLongitude,
-        note: _customerNote.isNotEmpty ? _customerNote : null,
+    if (repo == null) {
+      /* Tanpa repository tidak ada jalur ke server, jadi pesanan tidak bisa
+         dibuat. Dulu bagian ini mengarang kode pesanan `MBJ-2026-xxxx` dan
+         memasukkannya ke riwayat seolah-olah pesanan sudah tercatat; kode itu
+         tidak pernah ada di server sehingga tidak bisa dibayar maupun
+         dibatalkan. Sekarang kegagalannya dilaporkan apa adanya. */
+      throw ApiException(
+        'Penyimpanan pesanan belum siap. Silakan buka ulang aplikasi.',
       );
-
-      _bookingHistory.removeWhere((b) => b.id == remoteBooking.id);
-      _bookingHistory.insert(0, remoteBooking);
-      _activeBooking = remoteBooking;
-      notifyListeners();
-      return remoteBooking;
     }
 
-    final newOrderCode =
-        'MBJ-2026-${(43 + _bookingHistory.length).toString().padLeft(4, '0')}';
-    final fallbackBooking = BookingModel(
-      id: newOrderCode,
+    final remoteBooking = await repo.createBookingRemote(
       vehicle: vehicle,
       startDate: _selectedDate,
       startTime: _selectedTime,
@@ -414,18 +416,13 @@ class BookingController extends ChangeNotifier {
       pickupLatitude: _pickupLatitude,
       pickupLongitude: _pickupLongitude,
       note: _customerNote.isNotEmpty ? _customerNote : null,
-      status: BookingStatus.menungguTarifFinal,
-      createdAt: DateTime.now(),
-      dailyRate: vehicle.pricePerDay,
-      serviceFee: standardServiceFee,
-      adminAdjustments: const [],
-      isFinalTariffConfirmed: false,
     );
 
-    _bookingHistory.insert(0, fallbackBooking);
-    _activeBooking = fallbackBooking;
+    _bookingHistory.removeWhere((b) => b.id == remoteBooking.id);
+    _bookingHistory.insert(0, remoteBooking);
+    _activeBooking = remoteBooking;
     notifyListeners();
-    return fallbackBooking;
+    return remoteBooking;
   }
 
   /// Sinkronisasi status pesanan aktif dari backend REST API
@@ -476,15 +473,15 @@ class BookingController extends ChangeNotifier {
   }) {
     final index = _bookingHistory.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
-      final ref =
-          referenceCode ??
-          'TRX-MBJ-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      /* Nomor referensi hanya diisi kalau server memang mengirimkannya.
+         Sebelumnya aplikasi mengarang `TRX-MBJ-xxxxxxx` sendiri, sehingga
+         pelanggan melihat nomor transaksi yang tidak pernah dikenal backend. */
       final updated = _bookingHistory[index].copyWith(
         paymentMethodType: paymentMethod,
         status: BookingStatus.menungguPembayaran,
         paymentStatus: 'PENDING_VERIFICATION',
         paidAt: DateTime.now(),
-        paymentReference: ref,
+        paymentReference: referenceCode,
       );
       _bookingHistory[index] = updated;
       if (_activeBooking?.id == bookingId) {
@@ -498,21 +495,6 @@ class BookingController extends ChangeNotifier {
   /// Alias metode konfirmasi pemesanan untuk kompatibilitas alur terdahulu
   void confirmBooking() {
     submitBooking();
-  }
-
-  /// Mengubah status pesanan aktif untuk simulasi demonstrasi pengujian (Demo Tester UAS)
-  void updateActiveBookingStatus(BookingStatus newStatus) {
-    if (_activeBooking == null) return;
-    final updated = _activeBooking!.copyWith(status: newStatus);
-    _activeBooking = updated;
-
-    final index = _bookingHistory.indexWhere((b) => b.id == updated.id);
-    if (index != -1) {
-      _bookingHistory[index] = updated;
-    }
-    repository?.saveBooking(updated);
-
-    notifyListeners();
   }
 
   /// Memilih pesanan tertentu dari riwayat untuk dilihat detail statusnya

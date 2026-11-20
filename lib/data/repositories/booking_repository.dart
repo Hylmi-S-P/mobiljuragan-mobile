@@ -66,9 +66,14 @@ class BookingRepository {
     return rows.where((row) => row.userId == owner).toList();
   }
 
-  /// Menempelkan kepemilikan pada companion sebelum ditulis.
-  BookingsCompanion _owned(BookingsCompanion companion) {
-    final owner = _userId;
+  /// Menempelkan kepemilikan milik [owner] yang ditangkap di awal operasi.
+  ///
+  /// Dipakai setelah `await` jaringan: memakai `_userId` yang bisa berubah di
+  /// tengah jalan akan mencap data akun lama sebagai milik akun baru.
+  BookingsCompanion _ownedFor(
+    BookingsCompanion companion,
+    String? owner,
+  ) {
     if (owner == null) return companion;
     return companion.copyWith(userId: Value(owner));
   }
@@ -156,7 +161,10 @@ class BookingRepository {
   ]) async {
     if (vehicleMap == null) await _muatPetaKendaraan();
     final map = vehicleMap ?? _defaultVehicleMap;
-    final driftList = _ownedRows(await _bookingDao.getAllBookings(userId: _userId));
+    final owner = _userId;
+    final driftList = _ownedRows(
+      await _bookingDao.getAllBookings(userId: owner),
+    );
     return driftList
         .map((entry) {
           final vehicle = _resolveVehicle(
@@ -212,7 +220,14 @@ class BookingRepository {
     }
   }
 
-  /// Mengirim pesanan baru ke backend REST API dan menyimpannya secara atomik ke Drift SQLite
+  /// Mengirim pesanan baru ke backend REST API dan menyimpannya secara atomik ke Drift SQLite.
+  ///
+  /// Tidak ada lagi pesanan karangan saat jaringan gagal. Dulu, kalau koneksi
+  /// terputus, aplikasi membuat kode `MBJ-2026-xxxxx` sendiri dan menyimpannya
+  /// seolah-olah pesanan itu sudah masuk. Pesanan seperti itu tidak pernah ada
+  /// di server, sehingga tidak bisa dibayar, dibatalkan, maupun disinkronkan,
+  /// dan pelanggan mengira pesanannya sudah tercatat padahal tidak. Sekarang
+  /// kegagalan dilaporkan apa adanya dan pelanggan bisa mencoba lagi.
   Future<BookingModel> createBookingRemote({
     required VehicleModel vehicle,
     required DateTime startDate,
@@ -224,6 +239,8 @@ class BookingRepository {
     double? pickupLongitude,
     String? note,
   }) async {
+    final owner = await refreshSession();
+
     /* Jam yang dipilih pelanggan ikut dikirim. Sebelumnya hanya tanggalnya yang
        dipakai, sehingga pesanan selalu tercatat mulai tengah malam dan jam yang
        tampil di layar tinjauan tidak pernah berlaku. */
@@ -232,68 +249,48 @@ class BookingRepository {
       Duration(days: durationDays > 0 ? durationDays : 1),
     );
 
-    try {
-      final res = await _apiService.createBooking(
-        vehicleId: vehicle.id,
-        startDateTime: mulai,
-        endDateTime: end,
-        withDriver: withDriver,
-        pickupLocation: pickupLocation,
-        customerRequest: note,
-      );
-
-      if (res.isNotEmpty && (res['bookingCode'] != null || res['id'] != null)) {
-        final vehicleJson = res['vehicle'] is Map
-            ? Map<String, dynamic>.from(res['vehicle'] as Map)
-            : null;
-        final resolvedVehicle = vehicleJson != null
-            ? (_resolveVehicle(
-                    vehicleJson: vehicleJson,
-                    vehicleId: vehicle.id,
-                  ) ??
-                  vehicle)
-            : vehicle;
-
-        final remoteModel = BookingModel.fromJson(res, resolvedVehicle)
-            .copyWith(
-              startTime: startTime,
-              pickupLatitude: pickupLatitude,
-              pickupLongitude: pickupLongitude,
-            );
-        await _bookingDao.insertOrUpdateBooking(_owned(remoteModel.toCompanion()));
-        return remoteModel;
-      }
-    } on ApiException {
-      // Kesalahan spesifik dari backend (seperti 409 armada bentrok jadwal, validasi, dsb.)
-      // Jangan disembunyikan sebagai fallback offline dummy agar pelanggan mengetahui alasan penolakan
-      rethrow;
-    } catch (_) {
-      // Fallback offline-first hanya jika benar-benar kegagalan jaringan tak terjangkau
-    }
-
-    final fallbackCode =
-        'MBJ-2026-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-    final fallbackModel = BookingModel(
-      id: fallbackCode,
-      vehicle: vehicle,
-      startDate: startDate,
-      startTime: startTime,
-      durationDays: durationDays,
+    final res = await _apiService.createBooking(
+      vehicleId: vehicle.id,
+      startDateTime: mulai,
+      endDateTime: end,
       withDriver: withDriver,
       pickupLocation: pickupLocation,
-      pickupLatitude: pickupLatitude,
-      pickupLongitude: pickupLongitude,
-      note: note,
-      status: BookingStatus.menungguTarifFinal,
-      createdAt: DateTime.now(),
-      dailyRate: vehicle.pricePerDay,
-      serviceFee: 0,
-      adminAdjustments: const [],
-      isFinalTariffConfirmed: false,
+      customerRequest: note,
     );
 
-    await _bookingDao.insertOrUpdateBooking(_owned(fallbackModel.toCompanion()));
-    return fallbackModel;
+    if (res.isEmpty || (res['bookingCode'] == null && res['id'] == null)) {
+      throw ApiException(
+        'Server tidak mengembalikan kode pesanan. Silakan coba lagi.',
+      );
+    }
+
+    /* Sesi bisa berganti selama permintaan berjalan (pengguna menekan keluar
+       atau masuk dengan akun lain). Baris hasil permintaan akun lama tidak boleh
+       dicap sebagai milik akun yang baru. */
+    final ownerSekarang = _userId;
+    if (ownerSekarang != owner) {
+      throw ApiException(
+        'Sesi berubah saat pesanan dikirim. Silakan periksa riwayat pesanan.',
+      );
+    }
+
+    final vehicleJson = res['vehicle'] is Map
+        ? Map<String, dynamic>.from(res['vehicle'] as Map)
+        : null;
+    final resolvedVehicle = vehicleJson != null
+        ? (_resolveVehicle(vehicleJson: vehicleJson, vehicleId: vehicle.id) ??
+              vehicle)
+        : vehicle;
+
+    final remoteModel = BookingModel.fromJson(res, resolvedVehicle).copyWith(
+      startTime: startTime,
+      pickupLatitude: pickupLatitude,
+      pickupLongitude: pickupLongitude,
+    );
+    await _bookingDao.insertOrUpdateBooking(
+      _ownedFor(remoteModel.toCompanion(), owner),
+    );
+    return remoteModel;
   }
 
   /// Sinkronisasi status pesanan dan rincian penyesuaian biaya dari backend ke SQLite lokal
@@ -301,9 +298,14 @@ class BookingRepository {
     String bookingId, {
     Map<String, VehicleModel>? vehicleMap,
   }) async {
+    final owner = await refreshSession();
     final map = vehicleMap ?? _defaultVehicleMap;
     try {
       final res = await _apiService.fetchBookingDetail(bookingId);
+
+      // Pemilik berganti selama menunggu jawaban: hasilnya bukan untuk akun ini.
+      if (_userId != owner) return null;
+
       if (res.isNotEmpty) {
         final vehicleJson = res['vehicle'] is Map
             ? Map<String, dynamic>.from(res['vehicle'] as Map)
@@ -319,7 +321,9 @@ class BookingRepository {
 
         if (vehicle == null) return null;
         final updatedModel = BookingModel.fromJson(res, vehicle);
-        await _bookingDao.insertOrUpdateBooking(_owned(updatedModel.toCompanion()));
+        await _bookingDao.insertOrUpdateBooking(
+          _ownedFor(updatedModel.toCompanion(), owner),
+        );
         return updatedModel;
       }
     } catch (_) {}
@@ -331,10 +335,14 @@ class BookingRepository {
     Map<String, VehicleModel>? vehicleMap,
   ]) async {
     final map = vehicleMap ?? _defaultVehicleMap;
+    final owner = await refreshSession();
     try {
-      await refreshSession();
-      final owner = _userId;
       final list = await _apiService.fetchBookings();
+
+      /* Pemilik berganti selama pengambilan data. Melanjutkan berarti menulis
+         riwayat akun lama dengan cap akun baru, atau menghapus riwayat akun baru
+         karena dianggap bukan milik sesi ini. */
+      if (_userId != owner) return [];
 
       /* Mode tamu tidak punya riwayat di server. Jangan menyentuh cache: yang
          ada di perangkat mungkin milik akun yang sesinya belum terbaca. */
@@ -364,7 +372,9 @@ class BookingRepository {
         );
         if (vehicle == null) continue;
         final model = BookingModel.fromJson(json, vehicle);
-        await _bookingDao.insertOrUpdateBooking(_owned(model.toCompanion()));
+        await _bookingDao.insertOrUpdateBooking(
+          _ownedFor(model.toCompanion(), owner),
+        );
         idsDariServer.add(model.id);
         synced.add(model);
       }
@@ -378,7 +388,7 @@ class BookingRepository {
          pesanan milik akun yang sudah tidak ada. */
       final kode = e.statusCode;
       if (kode == 401 || kode == 403 || kode == 404) {
-        final owner = _userId;
+        if (_userId != owner) return [];
         if (owner != null) {
           await _bookingDao.deleteBookingsOwnedBy(owner);
         } else {
@@ -389,9 +399,19 @@ class BookingRepository {
     return [];
   }
 
-  /// Menghapus seluruh data pemesanan lokal di Drift
+  /// Menghapus seluruh baris pesanan tanpa memandang pemilik.
+  ///
+  /// Hanya untuk pembersihan menyeluruh satu perangkat. Jalur logout memakai
+  /// [wipeOwnedRows] supaya riwayat akun lain di perangkat yang sama tetap utuh.
   Future<void> clearLocalBookings() async {
     await _bookingDao.clearAllBookings();
+  }
+
+  /// Menghapus baris pesanan milik satu akun saja.
+  ///
+  /// Dipakai saat logout: hanya riwayat akun yang keluar yang dibuang.
+  Future<int> wipeOwnedRows(String? userId) async {
+    return _bookingDao.wipeOwnedRows(userId);
   }
 
   /// Membuang cache milik akun lain setelah login berhasil.
@@ -409,13 +429,31 @@ class BookingRepository {
   }
 
   /// Menyimpan pesanan atau pembaruan status ke dalam SQLite lokal (Offline-First)
-  /// Hanya mengirimkan createBooking ke remote jika pesanan belum ada di database lokal,
-  /// guna mencegah duplikasi pesanan saat pembaruan status (seperti pembatalan).
+  ///
+  /// Hanya mengirimkan createBooking ke remote jika pesanan belum ada di
+  /// database lokal, guna mencegah duplikasi pesanan saat pembaruan status
+  /// (seperti pembatalan).
+  ///
+  /// Baris yang kolom JSON-nya sudah rusak tidak ditulis ulang. Model hasil
+  /// [BookingModel.fromDrift] membawa [BookingModel.rawCorrupted]; kalau
+  /// ditandai, penulisan dilewati sama sekali supaya isi mentah yang masih
+  /// tersimpan tidak berubah menjadi data kosong.
   Future<void> saveBooking(BookingModel booking) async {
-    final existing = await _bookingDao.getBookingById(booking.id);
-    await _bookingDao.insertOrUpdateBooking(_owned(booking.toCompanion()));
+    final owner = await refreshSession();
+
+    if (booking.rawCorrupted) return;
+
+    final existing = await _bookingDao.getBookingById(
+      booking.id,
+      userId: owner,
+    );
+
+    await _bookingDao.insertOrUpdateBooking(
+      _ownedFor(booking.toCompanion(), owner),
+    );
 
     if (existing == null) {
+      if (_userId != owner) return;
       try {
         final start = booking.startDate;
         final end = start.add(
@@ -437,7 +475,7 @@ class BookingRepository {
            dikirim ulang saat online. */
         final kode = e.statusCode;
         if (kode != null && kode >= 400 && kode < 500) {
-          await _bookingDao.deleteBookingById(booking.id);
+          await _bookingDao.deleteBookingById(booking.id, userId: owner);
         }
       } catch (_) {
         // Offline-first fallback: pesanan tetap tersimpan di database SQLite lokal
@@ -445,9 +483,13 @@ class BookingRepository {
     }
   }
 
-  /// Memperbarui status pesanan secara spesifik di Drift
+  /// Memperbarui status pesanan secara spesifik di Drift.
+  ///
+  /// Pemilik disebut eksplisit supaya kode pesanan milik akun lain tidak ikut
+  /// berubah saat sinkronisasi.
   Future<void> updateBookingStatus(String id, BookingStatus newStatus) async {
-    await _bookingDao.updateBookingStatus(id, newStatus.name);
+    final owner = await refreshSession();
+    await _bookingDao.updateBookingStatus(id, newStatus.name, userId: owner);
   }
 
   /// Mengirimkan pembatalan pesanan ke backend API.

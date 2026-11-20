@@ -5,6 +5,7 @@ part of 'vehicle_dao.dart';
 // ignore_for_file: type=lint
 mixin _$VehicleDaoMixin on DatabaseAccessor<AppDatabase> {
   $VehiclesTable get vehicles => attachedDatabase.vehicles;
+  $FavoritesTable get favorites => attachedDatabase.favorites;
   VehicleDaoManager get managers => VehicleDaoManager(this);
 }
 
@@ -13,4 +14,6 @@ class VehicleDaoManager {
   VehicleDaoManager(this._db);
   $$VehiclesTableTableManager get vehicles =>
       $$VehiclesTableTableManager(_db.attachedDatabase, _db.vehicles);
+  $$FavoritesTableTableManager get favorites =>
+      $$FavoritesTableTableManager(_db.attachedDatabase, _db.favorites);
 }

@@ -132,7 +132,15 @@ class AuthController extends ChangeNotifier {
         _hasSecureToken = hasToken;
 
         if (hasToken && repo != null) {
-          final restoredUser = await repo.restoreSession();
+          /* Saat perangkat sedang offline, sesi dipulihkan dari salinan
+             identitas lokal. Dulu galat jaringan merambat keluar dari sini dan
+             blok finally hanya menyelesaikan status boot, sehingga `_isLoggedIn`
+             tetap false: pengguna dengan token sah terjebak sebagai tamu dan
+             tidak bisa membaca riwayat pesanannya sendiri sampai jaringan
+             kembali. Sesi tetap dibuang hanya ketika server benar-benar menolak
+             tokennya (401/403), yang ditangani `restoreSession()` dengan
+             mengembalikan null. */
+          final restoredUser = await repo.restoreSession(izinkanModeOffline: true);
           if (restoredUser != null) {
             _currentUser = restoredUser;
             _profilUpdatedAt = restoredUser.updatedAt;
@@ -498,11 +506,14 @@ class AuthController extends ChangeNotifier {
     }
 
     /* Cache pesanan lokal. Server tetap sumber kebenaran; cache hanya salinan
-       untuk pemakaian offline, jadi seluruh isinya dibuang saat keluar akun. */
+       untuk pemakaian offline, jadi seluruh isinya dibuang saat keluar akun.
+       Penghapusan dibatasi pada baris milik akun yang keluar: tabel yang sama
+       dipakai bersama tamu dan akun lain di perangkat ini, dan dulu seluruh
+       tabel dikosongkan sehingga riwayat akun lain ikut lenyap. */
     final bookingRepo = bookingRepository;
     if (bookingRepo != null) {
       try {
-        await bookingRepo.clearLocalBookings();
+        await bookingRepo.wipeOwnedRows(await bookingRepo.refreshSession());
       } catch (_) {
         // Cache pesanan gagal dihapus. Token dihapus pada langkah terakhir,
         // sehingga jurnal pembersihan yang memastikan percobaan ulang.

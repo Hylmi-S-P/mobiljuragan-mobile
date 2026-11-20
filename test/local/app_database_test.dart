@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobiljuragan_mobile/data/local/database/app_database.dart';
+import 'package:mobiljuragan_mobile/data/local/database/daos/vehicle_dao.dart';
 
 void main() {
   late AppDatabase database;
@@ -60,10 +61,14 @@ void main() {
       final count = await database.vehicleDao.countVehicles();
       expect(count, equals(2));
 
-      final avanza = await database.vehicleDao.getVehicleById('avanza-test');
+      final avanza = await database.vehicleDao.getVehicleById(
+        'avanza-test',
+        userId: null,
+      );
       expect(avanza, isNotNull);
-      expect(avanza!.name, equals('Avanza Test Unit'));
-      expect(avanza.lastFetched, equals(nowMillis));
+      expect(avanza!.vehicle.name, equals('Avanza Test Unit'));
+      expect(avanza.vehicle.lastFetched, equals(nowMillis));
+      expect(avanza.isFavorite, isFalse);
     });
 
     test('Stream reaktif (.watch()) mengeluarkan data baru seketika saat toggleFavorite', () async {
@@ -89,19 +94,29 @@ void main() {
       ]);
 
       // Dengarkan stream watchFavoriteVehicles
-      final favoriteStream = database.vehicleDao.watchFavoriteVehicles();
+      final favoriteStream = database.vehicleDao.watchFavoriteVehicles(
+        userId: null,
+      );
 
       expect(
         favoriteStream,
         emitsInOrder([
           isEmpty, // Awalnya belum ada yang favorit
-          predicate<List<Vehicle>>((list) => list.length == 1 && list.first.id == 'hilux-test'),
+          predicate<List<VehicleWithFavorite>>(
+            (list) =>
+                list.length == 1 &&
+                list.first.vehicle.id == 'hilux-test' &&
+                list.first.isFavorite,
+          ),
         ]),
       );
 
       // Beri sedikit jeda mikro lalu panggil toggleFavorite
       await Future.delayed(const Duration(milliseconds: 50));
-      final newStatus = await database.vehicleDao.toggleFavorite('hilux-test');
+      final newStatus = await database.vehicleDao.toggleFavorite(
+        'hilux-test',
+        userId: null,
+      );
       expect(newStatus, isTrue);
     });
 
@@ -132,7 +147,11 @@ void main() {
       expect(count, equals(1));
 
       // Update status
-      await database.bookingDao.updateBookingStatus('MKQ-TEST-001', 'selesai');
+      await database.bookingDao.updateBookingStatus(
+        'MKQ-TEST-001',
+        'selesai',
+        userId: null,
+      );
       final all = await database.bookingDao.getAllBookings();
       expect(all.first.status, equals('selesai'));
     });

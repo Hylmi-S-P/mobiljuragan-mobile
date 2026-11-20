@@ -12,6 +12,10 @@ part 'booking_dao.g.dart';
 /// beberapa akun, dan baris milik akun lain tidak boleh pernah ikut terkirim ke
 /// lapisan tampilan. `userId == null` berarti mode tamu — hanya baris tanpa
 /// pemilik yang boleh terlihat.
+///
+/// Sifat yang sama berlaku untuk pembacaan satu baris, pembaruan status, dan
+/// penghapusan: semuanya wajib menyebut pemilik. Tanpa itu, sebuah kode pesanan
+/// yang kebetulan sama di dua akun bisa saling menimpa.
 @DriftAccessor(tables: [Bookings])
 class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
   BookingDao(super.db);
@@ -25,6 +29,11 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
       return query..where((tbl) => tbl.userId.isNull());
     }
     return query..where((tbl) => tbl.userId.equals(userId));
+  }
+
+  /// Syarat pemilik untuk pembaruan dan penghapusan.
+  Expression<bool> _pemilik(String? userId, $BookingsTable tbl) {
+    return userId == null ? tbl.userId.isNull() : tbl.userId.equals(userId);
   }
 
   /// Stream reaktif seluruh riwayat pemesanan pelanggan
@@ -42,9 +51,14 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
     return _milik(query, userId).watch();
   }
 
-  /// Stream reaktif untuk satu detail pemesanan berdasarkan kode pesanan
-  Stream<Booking?> watchBookingById(String id) {
-    return (select(bookings)..where((tbl) => tbl.id.equals(id))).watchSingleOrNull();
+  /// Stream reaktif untuk satu detail pemesanan berdasarkan kode pesanan.
+  ///
+  /// Pemilik wajib disebut supaya kode pesanan yang sama milik akun lain tidak
+  /// pernah bocor ke layar akun yang sedang masuk.
+  Stream<Booking?> watchBookingById(String id, {required String? userId}) {
+    final query = select(bookings)
+      ..where((tbl) => tbl.id.equals(id) & _pemilik(userId, tbl));
+    return query.watchSingleOrNull();
   }
 
   /// Mengambil seluruh riwayat pemesanan milik satu akun
@@ -54,9 +68,29 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
     return _milik(query, userId).get();
   }
 
-  /// Mengambil satu data pemesanan berdasarkan ID atau kode pesanan
-  Future<Booking?> getBookingById(String id) {
-    return (select(bookings)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  /// Mengambil satu data pemesanan berdasarkan ID atau kode pesanan.
+  ///
+  /// Pemilik wajib disebut, sama seperti [watchBookingById].
+  Future<Booking?> getBookingById(String id, {required String? userId}) {
+    final query = select(bookings)
+      ..where((tbl) => tbl.id.equals(id) & _pemilik(userId, tbl));
+    return query.getSingleOrNull();
+  }
+
+  /// Mengambil pemilik dari sebuah kode pesanan tanpa membaca isi barisnya.
+  ///
+  /// Dipakai untuk mendeteksi tabrakan kode pesanan antar akun: kalau baris
+  /// dengan kode yang sama ternyata milik akun lain, penulisan harus dibatalkan
+  /// alih-alih menimpa riwayat orang lain. `null` berarti baris tanpa pemilik
+  /// (mode tamu) atau baris tidak ditemukan — pemanggil membedakannya lewat
+  /// [countBookings] bila perlu.
+  Future<String?> getOwnerOfBooking(String id) async {
+    final query = selectOnly(bookings)
+      ..addColumns([bookings.userId])
+      ..where(bookings.id.equals(id))
+      ..limit(1);
+    final row = await query.getSingleOrNull();
+    return row?.read(bookings.userId);
   }
 
   /// Menghitung jumlah pesanan yang tersimpan milik satu akun
@@ -86,18 +120,35 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
     await into(bookings).insertOnConflictUpdate(entry);
   }
 
-  /// Memperbarui status pemesanan
-  Future<void> updateBookingStatus(String id, String newStatus) async {
-    await (update(bookings)..where((tbl) => tbl.id.equals(id))).write(
-      BookingsCompanion(
-        status: Value(newStatus),
-      ),
-    );
+  /// Memperbarui status pemesanan milik satu akun.
+  ///
+  /// Pemilik wajib disebut supaya status pesanan akun lain tidak ikut berubah
+  /// saat dua akun memakai kode pesanan yang sama.
+  Future<void> updateBookingStatus(
+    String id,
+    String newStatus, {
+    required String? userId,
+  }) async {
+    final query = update(bookings)
+      ..where((tbl) => tbl.id.equals(id) & _pemilik(userId, tbl));
+    await query.write(BookingsCompanion(status: Value(newStatus)));
   }
 
-  /// Menghapus seluruh data pemesanan lokal
+  /// Menghapus seluruh data pemesanan lokal.
+  ///
+  /// Hanya dipakai untuk pembersihan menyeluruh satu perangkat. Jalur logout
+  /// biasa memakai [wipeOwnedRows] agar riwayat akun lain tetap utuh.
   Future<int> clearAllBookings() async {
     return delete(bookings).go();
+  }
+
+  /// Menghapus baris milik satu akun saja.
+  ///
+  /// Inilah jalur yang dipakai saat logout: baris milik akun yang keluar
+  /// dihapus, sedangkan baris akun lain (dan baris tamu) dibiarkan. `userId ==
+  /// null` menghapus baris tamu saja.
+  Future<int> wipeOwnedRows(String? userId) async {
+    return (delete(bookings)..where((tbl) => _pemilik(userId, tbl))).go();
   }
 
   /// Menghapus cache milik akun lain (termasuk baris lama tanpa pemilik).
@@ -119,13 +170,15 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
     return (delete(bookings)..where((tbl) => tbl.userId.isNotNull())).go();
   }
 
-  /// Menghapus satu baris pesanan.
+  /// Menghapus satu baris pesanan milik satu akun.
   ///
   /// Dipakai saat server menolak pembuatan pesanan: baris lokal yang tidak
   /// pernah ada di server akan menjadi "pesanan hantu" yang tidak bisa
   /// dibatalkan maupun dibayar.
-  Future<int> deleteBookingById(String id) async {
-    return (delete(bookings)..where((tbl) => tbl.id.equals(id))).go();
+  Future<int> deleteBookingById(String id, {required String? userId}) async {
+    return (delete(bookings)
+          ..where((tbl) => tbl.id.equals(id) & _pemilik(userId, tbl)))
+        .go();
   }
 
   /// Menghapus seluruh baris milik satu akun.

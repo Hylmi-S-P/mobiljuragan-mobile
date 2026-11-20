@@ -43,6 +43,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   bool _memuatTiket = false;
   String? _galatTiket;
 
+  /// Penanda bahwa widget sudah dilepas.
+  ///
+  /// Dipakai bersama `mounted` pada penjaga setelah `await` supaya jawaban
+  /// jaringan yang datang terlambat tidak menyentuh state layar yang sudah
+  /// ditutup.
+  bool _disposed = false;
+
   /// Tiket yang sedang dibuka, dari mana pun asalnya.
   SupportTicketModel? get _tiketAktif => widget.ticket ?? _tiketPesanan;
 
@@ -106,7 +113,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   void _sambungkanTiket(SupportTicketModel tiket) {
     final support = context.read<SupportController>();
     support.muatRiwayatTiket(ticketId: tiket.id).then((_) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       final currentMsgs = support.getMessages(conversationKey);
       final hasAi = currentMsgs.any((m) => m.isAI);
       if (!hasAi && !support.isAiHandoffToAdminFor(conversationKey)) {
@@ -122,7 +129,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     support.dengarkanTiket(
       ticketId: tiket.id,
       onPesanBaru: () {
-        if (!mounted) return;
+        if (!mounted || _disposed) return;
         support.muatRiwayatTiket(ticketId: tiket.id);
         _scrollToBottom();
       },
@@ -130,7 +137,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
          saat layar ini sedang terbuka. Tanpa penanganan di sini, kotak
          isian tetap terbuka sampai layar dimuat ulang manual. */
       onStatusBerubah: (status) {
-        if (!mounted) return;
+        if (!mounted || _disposed) return;
         if (SupportTicketModel.isStatusClosed(status)) {
           support.tandaiTiketTertutup(conversationKey);
         }
@@ -154,7 +161,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       bookingId: booking.id,
     );
 
-    if (!mounted) return;
+    if (!mounted || _disposed) return;
 
     if (tiket == null) {
       setState(() {
@@ -176,6 +183,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   @override
   void dispose() {
+    _disposed = true;
     /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
          sambungan tetap hidup di latar belakang dan terus memakai baterai
          serta kuota. */
@@ -734,7 +742,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                   ticketId: _tiketAktif?.id,
                 );
 
-                if (!mounted) return;
+                if (!mounted || _disposed) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: support.pesanBelumTerkirim

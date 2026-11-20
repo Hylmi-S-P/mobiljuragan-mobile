@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import '../../core/network/api_client.dart';
 import '../../models/user_model.dart';
 import '../local/secure/secure_storage_service.dart';
 import '../remote/auth_api_service.dart';
@@ -239,11 +243,35 @@ class AuthRepository {
   /// menolaknya (kedaluwarsa, akun dihapus, atau token tidak pernah diterbitkan
   /// server), sesi dibuang dan pengguna kembali sebagai tamu. Nama diambil dari
   /// server, bukan dari salinan lokal, supaya perubahan di server ikut terlihat.
-  Future<UserModel?> restoreSession() async {
+  ///
+  /// [izinkanModeOffline] dipakai saat server tidak terjangkau: sesi **tidak** dibuang,
+  /// melainkan dipulihkan dari identitas yang tersimpan di perangkat. Dulu
+  /// kegagalan jaringan merambat keluar sebagai galat sehingga pengguna dengan
+  /// token sah terjebak sebagai tamu hanya karena sedang offline; lebih buruk
+  /// lagi, `clearAuth()` lama sempat menghapus sesi pada kegagalan apa pun.
+  Future<UserModel?> restoreSession({bool izinkanModeOffline = false}) async {
     final hasToken = await _secureStorage.hasValidToken();
     if (!hasToken) return null;
 
-    final profil = await _apiService.ambilProfilSaya();
+    final Map<String, dynamic>? profil;
+    try {
+      profil = await _apiService.ambilProfilSaya();
+    } on ApiException catch (galat) {
+      /* 401/403/404 sudah ditangani `ambilProfilSaya()` dengan mengembalikan
+         null; yang sampai ke sini adalah kegagalan jaringan. Untuk kasus itu
+         sesi lokal dipertahankan, bukan dihapus. */
+      if (galat.statusCode == null && izinkanModeOffline) {
+        return _pulihkanIdentitasLokal();
+      }
+      rethrow;
+    } on SocketException {
+      if (izinkanModeOffline) return _pulihkanIdentitasLokal();
+      rethrow;
+    } on TimeoutException {
+      if (izinkanModeOffline) return _pulihkanIdentitasLokal();
+      rethrow;
+    }
+
     if (profil == null) {
       await _secureStorage.clearAuth();
       return null;
@@ -283,6 +311,38 @@ class AuthRepository {
       phoneVerifiedAt: _tanggal(profil['phoneVerifiedAt']),
       passwordUpdatedAt: _tanggal(profil['passwordUpdatedAt']),
       updatedAt: profil['updatedAt']?.toString(),
+    );
+  }
+
+  /// Membangun kembali pengguna dari salinan identitas di perangkat.
+  ///
+  /// Hanya dipakai saat server tidak terjangkau. Token tetap di tempatnya
+  /// sehingga begitu jaringan pulih, pemanggilan berikutnya memverifikasi ulang
+  /// ke server.
+  Future<UserModel?> _pulihkanIdentitasLokal() async {
+    final userId = await _secureStorage.getUserId();
+    if (userId == null || userId.isEmpty) return null;
+
+    final nama = await _secureStorage.getUserName();
+    final phone = await _secureStorage.getUserPhone();
+    final gender = await _secureStorage.getUserGender();
+    final nik = await _secureStorage.getUserNik();
+
+    final actualName = (nama != null && nama.isNotEmpty)
+        ? nama
+        : 'Pelanggan MobilJuragan';
+
+    return UserModel(
+      id: userId,
+      name: actualName,
+      phoneNumber: (phone != null && phone.isNotEmpty)
+          ? phone
+          : (nik ?? ''),
+      gender: gender ?? 'Laki-laki',
+      idCardNumber: nik ?? '',
+      city: 'Merauke, Papua Selatan',
+      avatarInitials: UserModel.computeInitials(actualName),
+      isVerified: true,
     );
   }
 

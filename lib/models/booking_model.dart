@@ -151,6 +151,15 @@ class BookingModel {
   final DocumentDeadline? documentDeadline;
   final String? paymentStatus;
 
+  /// Menandai bahwa baris Drift asal pesanan ini gagal dibaca sebagian.
+  ///
+  /// Kolom JSON (penyesuaian biaya, data pengemudi, atau data pembatalan) bisa
+  /// rusak karena penulisan yang terputus. Saat itu terjadi, model ini tetap
+  /// dibentuk dari kolom lain supaya pesanan masih bisa dilihat, tetapi isi
+  /// mentahnya tidak boleh ditulis ulang: menimpanya dengan data kosong berarti
+  /// menghapus satu-satunya salinan yang tersisa.
+  final bool rawCorrupted;
+
   PaymentMethodType get paymentMethodType =>
       _paymentMethodType ?? PaymentMethodType.belumDipilih;
 
@@ -197,6 +206,7 @@ class BookingModel {
     this.documentRejectionReason,
     this.documentDeadline,
     this.paymentStatus,
+    this.rawCorrupted = false,
   }) : _paymentMethodType = paymentMethodType ?? PaymentMethodType.belumDipilih;
 
   /// Pemetaan status dari respons backend Prisma ke BookingStatus aplikasi mobile
@@ -234,7 +244,14 @@ class BookingModel {
   }
 
   /// Konversi dari entitas tabel Drift (Booking) ke domain BookingModel
+  ///
+  /// Kegagalan membaca salah satu kolom JSON tidak lagi dilewati diam-diam.
+  /// Model yang dihasilkan membawa [rawCorrupted] bernilai benar, sehingga
+  /// [BookingRepository.saveBooking] tahu bahwa kolom mentahnya tidak boleh
+  /// ditimpa dengan data kosong hasil pembacaan yang gagal.
   factory BookingModel.fromDrift(Booking entry, VehicleModel vehicle) {
+    var rusak = false;
+
     BookingStatus parseStatus(String statusStr) {
       for (final s in BookingStatus.values) {
         if (s.name == statusStr) return s;
@@ -250,7 +267,9 @@ class BookingModel {
         if (parsed.driverName.isNotEmpty) {
           assignedDriver = parsed;
         }
-      } catch (_) {}
+      } catch (_) {
+        rusak = true;
+      }
     }
 
     List<BookingFeeAdjustment> adjustments = [];
@@ -265,7 +284,9 @@ class BookingModel {
               ),
             )
             .toList();
-      } catch (_) {}
+      } catch (_) {
+        rusak = true;
+      }
     } else if (entry.isFinalTariffConfirmed) {
       adjustments = [];
     }
@@ -310,7 +331,9 @@ class BookingModel {
         savedPaymentStatus = decoded['paymentStatus']?.toString();
         savedDocumentStatus = decoded['documentStatus']?.toString();
         savedDocumentRejectionReason = decoded['documentRejectionReason']?.toString();
-      } catch (_) {}
+      } catch (_) {
+        rusak = true;
+      }
     }
 
     return BookingModel(
@@ -349,6 +372,7 @@ class BookingModel {
       paymentStatus: savedPaymentStatus,
       documentStatus: savedDocumentStatus,
       documentRejectionReason: savedDocumentRejectionReason,
+      rawCorrupted: rusak,
     );
   }
 
@@ -767,6 +791,7 @@ class BookingModel {
     String? documentRejectionReason,
     DocumentDeadline? documentDeadline,
     String? paymentStatus,
+    bool? rawCorrupted,
   }) {
     return BookingModel(
       id: id ?? this.id,
@@ -813,6 +838,7 @@ class BookingModel {
           documentRejectionReason ?? this.documentRejectionReason,
       documentDeadline: documentDeadline ?? this.documentDeadline,
       paymentStatus: paymentStatus ?? this.paymentStatus,
+      rawCorrupted: rawCorrupted ?? this.rawCorrupted,
     );
   }
 }

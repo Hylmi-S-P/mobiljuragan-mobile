@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../data/local/database/app_database.dart';
+import '../data/local/database/daos/vehicle_dao.dart';
 import '../core/constants/status_labels.dart';
 
 /// Model data kendaraan untuk katalog dan detail rental MobilJuragan
@@ -57,7 +58,15 @@ class VehicleModel {
   bool get isInService => availability == VehicleAvailability.pemeriksaan;
 
   /// Konversi dari entitas tabel Drift (Vehicle) ke domain model VehicleModel
-  factory VehicleModel.fromDrift(Vehicle entry) {
+  ///
+  /// [isFavorite] tidak lagi dibaca dari baris armada karena penanda favorit
+  /// sudah dipindahkan ke tabel Favorites yang terikat pemilik. Nilainya
+  /// diberikan oleh DAO lewat hasil join, sehingga akun lain di perangkat yang
+  /// sama tidak ikut melihat favorit milik akun aktif.
+  factory VehicleModel.fromDrift(
+    Vehicle entry, {
+    bool isFavorite = false,
+  }) {
     return VehicleModel(
       id: entry.id,
       name: entry.name,
@@ -73,10 +82,15 @@ class VehicleModel {
       imageUrl: entry.imageUrl,
       heroImageUrl: entry.heroImageUrl,
       detailImageUrl: entry.detailImageUrl,
-      isFavorite: entry.isFavorite,
+      isFavorite: isFavorite,
       lastFetched: entry.lastFetched,
       updatedAt: entry.updatedAt,
     );
+  }
+
+  /// Konversi dari baris gabungan armada dan penanda favorit milik pemilik.
+  factory VehicleModel.fromDriftRow(VehicleWithFavorite row) {
+    return VehicleModel.fromDrift(row.vehicle, isFavorite: row.isFavorite);
   }
 
   /// Konversi ke Drift VehiclesCompanion untuk penulisan ke database SQLite lokal

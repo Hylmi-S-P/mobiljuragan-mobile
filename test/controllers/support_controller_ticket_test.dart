@@ -184,7 +184,10 @@ void main() {
       );
 
       expect(fakeService.createTicketCount, equals(1));
-      expect(gagal.id, startsWith('TCK-2026-'));
+      /* Nomor sementara tidak lagi meniru format nomor resmi server. Sebelumnya
+         dibentuk dari hitungan panjang daftar (`TCK-2026-083`), sehingga dua
+         pelanggan berbeda di perangkat berbeda bisa mendapat nomor yang sama. */
+      expect(gagal.id, startsWith('TIKET-SEMENTARA-'));
 
       /* Tiket yang tidak sampai ke server harus bisa dikenali. Sebelumnya
          keadaan ini tidak dibedakan, sehingga layar formulir mengantar pelanggan

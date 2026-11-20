@@ -7,7 +7,13 @@ import '../data/repositories/vehicle_repository.dart';
 import '../models/vehicle_model.dart';
 
 /// Controller untuk mengelola katalog armada, filter kategori, pencarian,
-/// dan status favorit kendaraan secara reaktif dari database Drift lokal (Offline-First).
+/// dan status favorit kendaraan secara reaktif dari database Drift lokal
+/// (Offline-First).
+///
+/// Penanda favorit sekarang milik akun, bukan milik perangkat, sehingga
+/// controller ikut memperhatikan pemilik sesi yang aktif. Saat pemilik berganti,
+/// langganan stream dipasang ulang agar status favorit yang tampil selalu milik
+/// akun yang sedang masuk.
 class VehicleController extends ChangeNotifier {
   final VehicleRepository? repository;
   final AppSettingsService? settingsService;
@@ -17,6 +23,9 @@ class VehicleController extends ChangeNotifier {
   String _searchQuery = '';
   bool _isSyncing = false;
   StreamSubscription<List<VehicleModel>>? _vehiclesSubscription;
+
+  /// Pemilik sesi yang sedang dipakai untuk membaca status favorit.
+  String? _userId;
 
   /// Daftar kategori yang tersedia untuk filter (termasuk filter interaktif Favorit)
   static const List<String> availableCategories = [
@@ -28,7 +37,11 @@ class VehicleController extends ChangeNotifier {
     'Commercial',
   ];
 
-  VehicleController({this.repository, this.settingsService}) {
+  VehicleController({
+    this.repository,
+    this.settingsService,
+    String? idPemilik,
+  }) : _userId = idPemilik {
     _init();
   }
 
@@ -41,18 +54,49 @@ class VehicleController extends ChangeNotifier {
 
     final repo = repository;
     if (repo != null) {
-      // Berlangganan Stream reaktif Drift (.watch())
-      // Setiap kali ada penulisan data di SQLite lokal (API sync / toggle favorit), UI langsung terupdate!
-      _vehiclesSubscription = repo.watchVehicles().listen((updatedVehicles) {
-        if (updatedVehicles.isNotEmpty) {
-          _vehicles = updatedVehicles;
-          notifyListeners();
-        }
-      });
+      await _pasangLanggananArmada(repo);
 
       // Lakukan sinkronisasi background jika koneksi tersedia
       unawaited(refreshCatalog(force: true));
     }
+  }
+
+  /// Memasang langganan stream armada untuk pemilik aktif.
+  ///
+  /// Langganan lama dibatalkan lebih dulu supaya tidak ada dua stream yang
+  /// saling menimpa daftar armada saat pemilik berganti.
+  Future<void> _pasangLanggananArmada(VehicleRepository repo) async {
+    await _vehiclesSubscription?.cancel();
+    _vehiclesSubscription = repo
+        .watchVehicles(userId: _userId)
+        .listen((updatedVehicles) {
+      if (updatedVehicles.isNotEmpty) {
+        _vehicles = updatedVehicles;
+        notifyListeners();
+      }
+    });
+  }
+
+  /// Pemilik sesi yang sedang dipakai controller ini.
+  String? get userId => _userId;
+
+  /// Menyesuaikan controller dengan pemilik sesi yang baru.
+  ///
+  /// Dipanggil dari `main.dart` setiap kali `AuthController` memberi tahu
+  /// perubahan sesi. Kalau pemiliknya sama, tidak ada yang dikerjakan.
+  Future<void> syncIfSessionChanged(String? userId) async {
+    if (userId == _userId) return;
+    _userId = userId;
+
+    final repo = repository;
+    if (repo == null) {
+      notifyListeners();
+      return;
+    }
+
+    await repo.refreshSession();
+    await _pasangLanggananArmada(repo);
+    notifyListeners();
   }
 
   /// Daftar seluruh unit armada
@@ -136,7 +180,10 @@ class VehicleController extends ChangeNotifier {
   }
 
   /// Fitur Interaktif Reaktif: Toggle bookmark / favorit armada
-  /// Perubahan disimpan ke Drift SQLite dan disiarkan ke seluruh layar secara instan
+  ///
+  /// Perubahan disimpan ke Drift SQLite dan disiarkan ke seluruh layar secara
+  /// instan. Penandanya diikat ke pemilik aktif, jadi akun lain di perangkat
+  /// yang sama tidak ikut berubah.
   Future<void> toggleFavorite(String vehicleId) async {
     // Optimistic UI update lokal untuk responsivitas seketika
     final index = _vehicles.indexWhere((v) => v.id == vehicleId);
@@ -149,7 +196,7 @@ class VehicleController extends ChangeNotifier {
     // Persist ke Drift database lokal
     final repo = repository;
     if (repo != null) {
-      await repo.toggleFavorite(vehicleId);
+      await repo.toggleFavorite(vehicleId, userId: _userId);
     }
   }
 

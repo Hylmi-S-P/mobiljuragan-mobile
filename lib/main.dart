@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +9,7 @@ import 'controllers/booking_controller.dart';
 import 'controllers/support_controller.dart';
 import 'controllers/vehicle_controller.dart';
 import 'core/config/app_config_store.dart';
+import 'core/network/api_client.dart';
 import 'core/network/app_config_api_service.dart';
 import 'data/local/database/app_database.dart';
 import 'data/local/preferences/app_settings_service.dart';
@@ -55,6 +58,7 @@ void main() async {
   final vehicleRepo = VehicleRepository(
     vehicleDao: appDatabase.vehicleDao,
     settingsService: settingsService,
+    secureStorage: secureStorage,
   );
   final authRepo = AuthRepository(secureStorage: secureStorage);
   final bookingRepo = BookingRepository(
@@ -63,6 +67,21 @@ void main() async {
     secureStorage,
     appDatabase.vehicleDao,
   );
+
+  /* Server yang menolak token (401/403) harus berujung pada satu jalur keluar
+     akun, bukan pada setiap layar yang gagal sendiri-sendiri. Penangan ini
+     dipasang ke controller sesungguhnya, sehingga yang dijalankan adalah
+     pembersihan sesi yang utuh, bukan sekadar penghapusan token. */
+  final authController = AuthController(
+    repository: authRepo,
+    secureStorage: secureStorage,
+    bookingRepository: bookingRepo,
+    // Jejak aktivitas pengguna (kategori terakhir, riwayat pencarian) ikut
+    // dibersihkan saat keluar akun.
+    settingsService: settingsService,
+  );
+  ApiClient.onUnauthorized = authController.logout;
+  unawaited(authController.initSession());
 
   // Set system overlay style untuk status bar yang bersih dan transparan
   SystemChrome.setSystemUIOverlayStyle(
@@ -86,22 +105,27 @@ void main() async {
         Provider<BookingRepository>.value(value: bookingRepo),
 
         // State Management Controllers
-        ChangeNotifierProvider(
+        /* Armada juga mengikuti sesi, karena penanda favorit sekarang menempel
+           pada akun (tabel favorites), bukan pada baris kendaraan. */
+        ChangeNotifierProxyProvider<AuthController, VehicleController>(
           create: (_) => VehicleController(
             repository: vehicleRepo,
             settingsService: settingsService,
+            idPemilik: authController.currentUser?.id,
           ),
+          update: (_, auth, vehicle) {
+            final controller =
+                vehicle ??
+                VehicleController(
+                  repository: vehicleRepo,
+                  settingsService: settingsService,
+                  idPemilik: auth.currentUser?.id,
+                );
+            controller.syncIfSessionChanged(auth.currentUser?.id);
+            return controller;
+          },
         ),
-        ChangeNotifierProvider(
-          create: (_) => AuthController(
-            repository: authRepo,
-            secureStorage: secureStorage,
-            bookingRepository: bookingRepo,
-            // Jejak aktivitas pengguna (kategori terakhir, riwayat pencarian)
-            // ikut dibersihkan saat keluar akun.
-            settingsService: settingsService,
-          )..initSession(),
-        ),
+        ChangeNotifierProvider.value(value: authController),
         /* BookingController mengikuti sesi: saat akun berganti, riwayat akun
            sebelumnya dibuang dan riwayat akun baru diambil dari server. */
         ChangeNotifierProxyProvider<AuthController, BookingController>(

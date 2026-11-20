@@ -58,6 +58,14 @@ class SupportController extends ChangeNotifier {
   String? get bookingTicketError => _bookingTicketError;
   String? _sessionUserId;
 
+  /// Penanda urutan sesi tiket.
+  ///
+  /// Setiap pergantian sesi menaikkan angka ini. Operasi yang sedang menunggu
+  /// jaringan membandingkan angka yang ditangkapnya di awal dengan nilai
+  /// terkini; kalau sudah berbeda, hasilnya dibuang. Tanpa itu, jawaban lambat
+  /// dari akun lama bisa mendarat di daftar tiket akun baru.
+  int _generation = 0;
+
   /// Mengosongkan seluruh data tiket dan percakapan milik sesi pengguna saat logout.
   void clearSessionData() {
     berhentiSemuaDengarkan();
@@ -70,7 +78,14 @@ class SupportController extends ChangeNotifier {
     _isAiThinking.clear();
     _lastSentAt.clear();
     _ticketError = null;
-    _initData();
+    /* Dua keadaan galat/pesan yang sebelumnya tertinggal: galat pemuatan tiket
+       pesanan dan penanda pesan yang gagal terkirim. Keduanya milik sesi lama,
+       jadi harus ikut dibuang, bukan diwariskan ke akun berikutnya. */
+    _bookingTicketError = null;
+    _pesanBelumTerkirim = false;
+    /* Salam pembuka tidak lagi disemai di sini. Isinya kalimat sambutan yang
+       sama sekali tidak berasal dari server, sehingga riwayat percakapan akun
+       baru selalu diawali pesan yang tidak pernah dikirim siapa pun. */
     notifyListeners();
   }
 
@@ -78,7 +93,9 @@ class SupportController extends ChangeNotifier {
   Future<void> syncIfSessionChanged(String? userId) async {
     if (userId == _sessionUserId) return;
     _sessionUserId = userId;
+    final gen = ++_generation;
     await Future<void>.delayed(Duration.zero);
+    if (gen != _generation) return;
     clearSessionData();
     if (userId != null && userId.isNotEmpty) {
       await fetchTickets(force: true);
@@ -284,8 +301,14 @@ class SupportController extends ChangeNotifier {
   /// menampilkan pesan galat, bukan percakapan kosong yang menyesatkan.
   Future<SupportTicketModel?> bukaTiketPesanan({required String bookingId}) async {
     _bookingTicketError = null;
+    final gen = _generation;
     try {
       final data = await _ticketApiService.createBookingTicket(bookingId: bookingId);
+
+      /* Sesi berganti selama permintaan berjalan. Tiket ini milik akun lama,
+         jadi hasilnya tidak boleh dimasukkan ke daftar akun yang sekarang. */
+      if (gen != _generation) return null;
+
       if (data.isEmpty) return null;
 
       final ticket = SupportTicketModel.fromJson(data);
@@ -330,10 +353,17 @@ class SupportController extends ChangeNotifier {
     if (_isLoadingTickets && !force) return;
     _isLoadingTickets = true;
     _ticketError = null;
+    final gen = _generation;
     notifyListeners();
 
     try {
       final rawList = await _ticketApiService.fetchCustomerTickets();
+
+      /* Daftar ini milik sesi yang memintanya. Kalau sesi berganti sebelum
+         jawaban tiba, menuliskan hasilnya berarti menampilkan tiket akun lama
+         di layar akun baru. */
+      if (gen != _generation) return;
+
       final remoteTickets = <SupportTicketModel>[];
       for (final item in rawList) {
         if (item is Map) {
@@ -393,8 +423,13 @@ class SupportController extends ChangeNotifier {
     required TicketCategory category,
     required String description,
   }) async {
-    final tempId =
-        'TCK-2026-${(82 + _tickets.length).toString().padLeft(3, '0')}';
+    final gen = _generation;
+    /* Nomor sementara hanya dipakai selama server belum membalas. Sebelumnya
+       nomor ini dibentuk dari hitungan panjang daftar (`TCK-2026-083`), sehingga
+       dua pelanggan berbeda bisa mendapat nomor tiket yang sama. Sekarang
+       bentuknya jelas penanda sementara dan tidak pernah tampil sebagai nomor
+       resmi setelah server menjawab. */
+    final tempId = 'TIKET-SEMENTARA-${DateTime.now().microsecondsSinceEpoch}';
     SupportTicketModel createdTicket = SupportTicketModel(
       id: tempId,
       ticketNumber: tempId,
@@ -413,6 +448,13 @@ class SupportController extends ChangeNotifier {
         description: description,
         category: category.apiKey,
       );
+
+      /* Sesi berakhir atau berganti akun saat tiket sedang dibuat. Menyisipkan
+         tiket ini ke daftar berarti menampilkan milik akun lama. */
+      if (gen != _generation) {
+        return createdTicket;
+      }
+
       if (res.isNotEmpty && res.containsKey('id')) {
         final serverTicketNumber = res['ticketNumber']?.toString();
         final effectiveTitle =
@@ -431,6 +473,8 @@ class SupportController extends ChangeNotifier {
          pelanggan dan menawarkan kirim ulang, bukan mengantar ke ruang obrolan
          untuk tiket yang tidak ada di database. */
     }
+
+    if (gen != _generation) return createdTicket;
 
     final existingIdx = _tickets.indexWhere(
       (t) => t.id == createdTicket.id || t.id == tempId,
@@ -504,6 +548,7 @@ class SupportController extends ChangeNotifier {
     final hasAiReply = currentList?.any((m) => m.isAI) ?? false;
     if (hasAiReply) return;
 
+    final gen = _generation;
     _isAiThinking[ticketKey] = true;
     notifyListeners();
 
@@ -514,6 +559,8 @@ class SupportController extends ChangeNotifier {
         pesan: promptContext,
         ticketId: ticket.id,
       );
+
+      if (gen != _generation) return;
 
       if (hasil.kosong) return;
 
@@ -531,6 +578,7 @@ class SupportController extends ChangeNotifier {
       );
       _ticketTurnCounts[ticketKey] = (_ticketTurnCounts[ticketKey] ?? 0) + 1;
     } catch (_) {
+      if (gen != _generation) return;
       final daftar = _conversations.putIfAbsent(ticketKey, () => []);
       daftar.add(
         ChatMessageModel(
@@ -667,11 +715,17 @@ class SupportController extends ChangeNotifier {
   /// sudah ditangani staf.
   Future<void> muatRiwayatTiket({required String ticketId}) async {
     final conversationKey = 'ticket_$ticketId';
+    final gen = _generation;
 
     try {
       final detail = await _ticketApiService.fetchTicketDetail(
         ticketId: ticketId,
       );
+
+      /* Sesi berganti selama detail tiket diambil. Percakapan yang tertulis
+         sesudah ini akan menampilkan riwayat akun lama di layar akun baru. */
+      if (gen != _generation) return;
+
       final daftarPesan = detail['messages'];
       if (daftarPesan is! List) return;
 
@@ -876,6 +930,7 @@ class SupportController extends ChangeNotifier {
     required String pesan,
     required String conversationKey,
   }) async {
+    final gen = _generation;
     _isAiThinking[conversationKey] = true;
     notifyListeners();
 
@@ -884,6 +939,8 @@ class SupportController extends ChangeNotifier {
         pesan: pesan,
         ticketId: ticketId,
       );
+
+      if (gen != _generation) return;
 
       if (hasil.kosong) return;
 
@@ -913,6 +970,7 @@ class SupportController extends ChangeNotifier {
 
       notifyListeners();
     } catch (_) {
+      if (gen != _generation) return;
       final daftar = _conversations[conversationKey];
       if (daftar != null) {
         daftar.add(

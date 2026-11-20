@@ -43,6 +43,8 @@ dependencies:
   # Local Storage & Offline-First Persistence
   drift: ^2.24.2
   drift_flutter: ^0.3.1
+  # Dipakai langsung untuk menyetel PRAGMA lewat DriftNativeOptions.setup.
+  sqlite3: ^3.5.2
 
   # Settings & Small Preferences (Non-sensitive data)
   shared_preferences: ^2.5.6

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import '../../data/local/secure/secure_storage_service.dart';
@@ -27,6 +28,33 @@ class ApiClient {
     SecureStorageService? secureStorage,
   })  : _client = client ?? http.Client(),
         _secureStorage = secureStorage ?? SecureStorageService();
+
+  /// Penangan terpusat untuk sesi yang ditolak server (HTTP 401/403).
+  ///
+  /// Dipasang sekali oleh [AuthController] saat aplikasi dimulai. Sebelum ini,
+  /// token yang sudah kedaluwarsa hanya membuat setiap layar gagal satu per
+  /// satu: pengguna tetap terlihat "masuk" padahal seluruh permintaannya
+  /// ditolak, dan tidak pernah dikembalikan ke Guest Mode.
+  static Future<void> Function()? onUnauthorized;
+
+  /// Menghindari pemanggilan berulang saat beberapa permintaan gagal bersamaan.
+  static bool _sedangMenanganiTolak = false;
+
+  void _laporTidakBerwenang() {
+    final handler = onUnauthorized;
+    if (handler == null || _sedangMenanganiTolak) return;
+
+    /* Handler sengaja tidak ditunggu: pemanggilnya sedang menerima galat dan
+       harus tetap mendapat [ApiException] yang sama seperti sebelumnya. */
+    _sedangMenanganiTolak = true;
+    unawaited(
+      handler()
+          .catchError((Object galat) {
+            debugPrint('Gagal membersihkan sesi yang ditolak: $galat');
+          })
+          .whenComplete(() => _sedangMenanganiTolak = false),
+    );
+  }
 
   Future<Map<String, String>> _buildHeaders({bool requiresAuth = false}) async {
     final headers = <String, String>{
@@ -167,6 +195,10 @@ class ApiClient {
       }
       return decoded;
     } else {
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        _laporTidakBerwenang();
+      }
+
       String errorMessage = 'Permintaan gagal (${response.statusCode})';
       if (decoded is Map<String, dynamic>) {
         if (decoded.containsKey('message') && decoded['message'] != null) {

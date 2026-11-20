@@ -3,25 +3,50 @@ import 'dart:async';
 import '../../models/vehicle_model.dart';
 import '../local/database/daos/vehicle_dao.dart';
 import '../local/preferences/app_settings_service.dart';
+import '../local/secure/secure_storage_service.dart';
 import '../remote/vehicle_api_service.dart';
 
 /// Repository Offline-First untuk entitas armada kendaraan
 ///
 /// Mengatur sinkronisasi data backend ke database SQLite Drift lokal,
-/// mengalirkan Stream reaktif ke UI, dan mempertahankan ketersediaan data saat offline.
+/// mengalirkan Stream reaktif ke UI, dan mempertahankan ketersediaan data saat
+/// offline.
 class VehicleRepository {
   final VehicleDao vehicleDao;
   final VehicleApiService _apiService;
   final AppSettingsService settingsService;
+  final SecureStorageService? secureStorage;
 
   // Cache Time-To-Live: 5 Menit
   static const int cacheTtlMillis = 5 * 60 * 1000;
+
+  /// Pemilik yang sedang aktif menurut penyimpanan aman.
+  ///
+  /// Dipakai sebagai nilai awal sebelum pemanggil memberi nilai yang lebih
+  /// spesifik. Penanda favorit selalu diikat ke nilai ini supaya akun lain di
+  /// perangkat yang sama tidak ikut melihat pilihannya.
+  String? _userId;
 
   VehicleRepository({
     required this.vehicleDao,
     VehicleApiService? apiService,
     required this.settingsService,
+    this.secureStorage,
   }) : _apiService = apiService ?? VehicleApiService();
+
+  /// Pemilik yang terakhir dibaca dari penyimpanan aman.
+  String? get activeUserId => _userId;
+
+  /// Membaca ulang pemilik aktif dari penyimpanan aman.
+  Future<String?> refreshSession() async {
+    _userId = await secureStorage?.getUserId();
+    return _userId;
+  }
+
+  /// Mengunci pemilik untuk pengujian tanpa penyimpanan aman.
+  void setActiveUserForTest(String? userId) {
+    _userId = userId;
+  }
 
   /*
    * Tidak ada lagi penyemaian armada contoh ke database lokal.
@@ -35,32 +60,38 @@ class VehicleRepository {
    * Kalau belum ada data, yang tampil adalah keadaan kosong.
    */
 
-  /// Stream reaktif seluruh armada kendaraan yang langsung bersumber dari database SQLite lokal
-  Stream<List<VehicleModel>> watchVehicles({String category = 'Semua'}) {
-    return vehicleDao.watchVehiclesByCategory(category).map((driftList) {
-      return driftList.map((entry) => VehicleModel.fromDrift(entry)).toList();
-    });
+  /// Stream reaktif seluruh armada kendaraan yang langsung bersumber dari
+  /// database SQLite lokal, sudah dilengkapi status favorit pemilik aktif.
+  Stream<List<VehicleModel>> watchVehicles({
+    String category = 'Semua',
+    String? userId,
+  }) {
+    final pemilik = userId ?? _userId;
+    return vehicleDao
+        .watchVehiclesByCategory(category, userId: pemilik)
+        .map(_keModel);
   }
 
   /// Stream reaktif armada favorit pengguna
-  Stream<List<VehicleModel>> watchFavoriteVehicles() {
-    return vehicleDao.watchFavoriteVehicles().map((driftList) {
-      return driftList.map((entry) => VehicleModel.fromDrift(entry)).toList();
-    });
+  Stream<List<VehicleModel>> watchFavoriteVehicles({String? userId}) {
+    final pemilik = userId ?? _userId;
+    return vehicleDao.watchFavoriteVehicles(userId: pemilik).map(_keModel);
   }
 
   /// Stream reaktif detail armada tunggal berdasarkan ID
-  Stream<VehicleModel?> watchVehicleById(String id) {
-    return vehicleDao.watchVehicleById(id).map((entry) {
-      return entry != null ? VehicleModel.fromDrift(entry) : null;
-    });
+  Stream<VehicleModel?> watchVehicleById(String id, {String? userId}) {
+    final pemilik = userId ?? _userId;
+    return vehicleDao
+        .watchVehicleById(id, userId: pemilik)
+        .map((baris) => baris == null ? null : VehicleModel.fromDriftRow(baris));
   }
 
   /// Mengambil data armada tunggal secara Future (Cache-First)
-  Future<VehicleModel?> getVehicleById(String id) async {
-    final entry = await vehicleDao.getVehicleById(id);
-    if (entry != null) {
-      return VehicleModel.fromDrift(entry);
+  Future<VehicleModel?> getVehicleById(String id, {String? userId}) async {
+    final pemilik = userId ?? _userId;
+    final baris = await vehicleDao.getVehicleById(id, userId: pemilik);
+    if (baris != null) {
+      return VehicleModel.fromDriftRow(baris);
     }
     return null;
   }
@@ -103,8 +134,22 @@ class VehicleRepository {
     return false;
   }
 
-  /// Toggle status favorit pada armada (reaktif seketika melalui Stream Drift)
-  Future<bool> toggleFavorite(String vehicleId) async {
-    return await vehicleDao.toggleFavorite(vehicleId);
+  /// Toggle status favorit pada armada milik pemilik aktif.
+  ///
+  /// Penanda disimpan di tabel Favorites yang terikat pemilik, sehingga
+  /// perubahan langsung terlihat lewat Stream Drift tanpa menyentuh baris
+  /// armada yang dipakai bersama.
+  Future<bool> toggleFavorite(String vehicleId, {String? userId}) async {
+    final pemilik = userId ?? _userId;
+    return await vehicleDao.toggleFavorite(vehicleId, userId: pemilik);
+  }
+
+  /// Menghapus penanda favorit milik satu akun saja.
+  Future<int> wipeFavoritesOwnedBy(String? userId) {
+    return vehicleDao.wipeFavoritesOwnedBy(userId);
+  }
+
+  List<VehicleModel> _keModel(List<VehicleWithFavorite> baris) {
+    return baris.map(VehicleModel.fromDriftRow).toList(growable: false);
   }
 }

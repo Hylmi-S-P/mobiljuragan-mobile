@@ -72,6 +72,22 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   bool _isRefreshing = false;
   String? _trackingBookingId;
 
+  /// Penanda bahwa widget sudah dilepas.
+  ///
+  /// Dipakai pada penjaga setelah `await` bersama `mounted` supaya hasil
+  /// jaringan yang datang terlambat tidak lagi menyentuh state.
+  bool _disposed = false;
+
+  /// Pengendali pesanan yang dipantau layar ini.
+  BookingController? _bookingController;
+
+  /// Pemilik sesi saat polling dimulai.
+  ///
+  /// Timer polling berjalan di latar dan sebelumnya tetap hidup setelah
+  /// pengguna keluar akun. Permintaan status berikutnya memakai pemilik baru,
+  /// sehingga layar akun lama bisa menampilkan pesanan akun lain.
+  String? _pemilikSesiPolling;
+
   final DocumentApiService _documentApiService = DocumentApiService();
   BookingDocumentModel? _bookingDocument;
   bool _isUploadingDocument = false;
@@ -105,10 +121,26 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     }
     _trackingBookingId = widget.booking?.id ??
         context.read<BookingController>().activeBooking?.id;
+    _bookingController = context.read<BookingController>();
+    _pemilikSesiPolling = _bookingController?.sessionUserId;
+    _bookingController?.addListener(_pantauPerubahanPemilikSesi);
     WidgetsBinding.instance.addObserver(this);
     _checkAndStartPolling();
     _loadBookingDocuments();
     _loadPayment();
+  }
+
+  /// Menghentikan polling begitu pemilik sesi berganti atau keluar akun.
+  ///
+  /// Tanpa ini timer tetap hidup setelah logout dan pemeriksaan status
+  /// berikutnya memakai pemilik yang baru.
+  void _pantauPerubahanPemilikSesi() {
+    if (_disposed) return;
+    final pemilikSekarang = _bookingController?.sessionUserId;
+    if (pemilikSekarang == _pemilikSesiPolling) return;
+    _pemilikSesiPolling = pemilikSekarang;
+    _pollingTimer?.cancel();
+    _pollingFinished = true;
   }
 
   /* Polling dihentikan saat aplikasi tidak di depan. Sebelumnya timer tetap
@@ -132,7 +164,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
     try {
       final payment = await _paymentApiService.getPaymentByBooking(targetId);
-      if (mounted) {
+      if (mounted && !_disposed) {
         setState(() {
           _payment = payment;
         });
@@ -150,7 +182,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
     try {
       final doc = await _documentApiService.fetchBookingDocuments(targetId);
-      if (mounted) {
+      if (mounted && !_disposed) {
         setState(() {
           _bookingDocument = doc;
           if (doc != null) {
@@ -171,12 +203,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   void _startStatusPolling() {
     _pollingTimer?.cancel();
     _pollingFinished = false;
+    _pemilikSesiPolling = _bookingController?.sessionUserId ?? _pemilikSesiPolling;
 
     // Lakukan polling perdana secara asinkron
     _pollBookingStatus();
 
     _pollingTimer = Timer.periodic(_statusPollingInterval, (timer) {
-      if (!mounted) {
+      if (!mounted || _disposed) {
         timer.cancel();
         return;
       }
@@ -210,7 +243,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
     final bookingId = currentBooking.id;
     final hasUpdated = await controller.refreshActiveBookingStatus(bookingId);
-    if (!mounted) return;
+    if (!mounted || _disposed) return;
 
     if (hasUpdated) {
       BookingModel? updatedBooking;
@@ -344,7 +377,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       _loadBookingDocuments(),
       _loadPayment(),
     ]);
-    if (!mounted) return;
+    if (!mounted || _disposed) return;
     setState(() => _isRefreshing = false);
 
     final targetId = booking.id;
@@ -402,6 +435,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
   @override
   void dispose() {
+    _disposed = true;
+    _bookingController?.removeListener(_pantauPerubahanPemilikSesi);
     WidgetsBinding.instance.removeObserver(this);
     _pollingTimer?.cancel();
 
