@@ -93,10 +93,21 @@ flutter pub get
 ```
 
 ### Langkah 2: Konfigurasi Endpoint Backend API
-Aplikasi mobile berkomunikasi dengan backend Express via REST API:
-- **Android Emulator**: Gunakan alamat `http://10.0.2.2:4000/api/v1` *(karena `localhost` di dalam emulator merujuk ke dirinya sendiri)*.
-- **iOS Simulator / Web**: Gunakan alamat `http://localhost:4000/api/v1`.
-- **Device Fisik (HP Asli)**: Gunakan IP lokal workstation (contoh: `http://192.168.1.x:4000/api/v1`).
+Secara bawaan, aplikasi mobile memakai `http://127.0.0.1:4000/api/v1` (lihat `lib/core/constants/api_constants.dart`).
+
+- **Android Emulator / HP Asli via USB (disarankan):**
+  Jalankan port forwarding agar `127.0.0.1` di perangkat mengarah ke laptop:
+  ```bash
+  adb reverse tcp:4000 tcp:4000
+  # Tambahkan baris berikut hanya jika backend memakai MinIO lokal di port 9000:
+  adb reverse tcp:9000 tcp:9000
+  ```
+- **Custom URL (misalnya via IP Wi-Fi atau server terpisah):**
+  ```bash
+  flutter run --dart-define=API_BASE_URL=http://192.168.1.x:4000/api/v1
+  ```
+- **Login Uji Coba Pelanggan:**
+  Jika backend tidak memakai gateway WhatsApp (`WAPI_API_KEY`), pastikan `ALLOW_DEV_OTP_BYPASS=true` aktif di `.env` backend, lalu masukkan kode OTP `123456` saat login/registrasi.
 
 ### Langkah 3: Menjalankan Aplikasi
 Pilih device target dan jalankan:
