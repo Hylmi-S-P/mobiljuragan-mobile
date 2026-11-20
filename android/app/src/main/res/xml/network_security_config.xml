@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Konfigurasi keamanan jaringan untuk build rilis.
+
+  Backend MobilJuragan di produksi memakai HTTPS. Mengizinkan lalu lintas
+  teks-biasa di build rilis membuat token akses dan data pribadi pelanggan bisa
+  disadap di jaringan publik, jadi seluruh permintaan http:// ditolak. Build
+  debug memakai berkas berbeda di src/debug/res/xml yang mengizinkan loopback
+  untuk pengujian di perangkat sendiri.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart' show CommonDatabase;
 import 'tables/vehicles_table.dart';
 import 'tables/favorites_table.dart';
@@ -94,19 +97,94 @@ class AppDatabase extends _$AppDatabase {
            */
           if (details.versionBefore != null &&
               details.versionBefore! > details.versionNow) {
-            debugPrint(
-              'Skema lokal (${details.versionBefore}) lebih baru daripada '
-              'aplikasi (${details.versionNow}).',
-            );
+            if (kDebugMode) {
+              debugPrint(
+                'Skema lokal (${details.versionBefore}) lebih baru daripada '
+                'aplikasi (${details.versionNow}). Versi aplikasi yang lebih '
+                'baru pernah terpasang di perangkat ini; jalankan ulang '
+                'pemeriksaan data setelah pembaruan aplikasi.',
+              );
+            }
           }
         },
       );
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(
-      name: 'mobiljuragan_local_db',
-      native: const DriftNativeOptions(setup: _siapkanKoneksi),
-    );
+    /* Pembukaan dibungkus LazyDatabase supaya berkas yang sudah rusak bisa
+       dibuang sebelum SQLite mencoba membacanya. Berkas korup (mis. terpotong
+       karena perangkat mati saat menulis) tidak bisa dipulihkan oleh Drift dan
+       dulu membuat aplikasi gagal total saat dibuka; satu-satunya jalan keluar
+       adalah menghapus berkasnya dan membiarkan skema dibuat ulang. */
+    return LazyDatabase(() async {
+      await _pulihkanBerkasKorup();
+      return driftDatabase(
+        name: _namaDatabase,
+        native: const DriftNativeOptions(setup: _siapkanKoneksi),
+      );
+    });
+  }
+
+  /// Nama berkas database lokal (tanpa ekstensi).
+  static const String _namaDatabase = 'mobiljuragan_local_db';
+
+  /// Header wajib berkas SQLite: "SQLite format 3" diikuti satu byte nol.
+  static final Uint8List _headerSqlite = Uint8List.fromList(
+    'SQLite format 3\u0000'.codeUnits,
+  );
+
+  /// Membuang berkas database yang jelas bukan database SQLite.
+  ///
+  /// Pemeriksaan dilakukan pada 16 byte pertama berkas karena SQLite selalu
+  /// menulis header itu. Berkas kosong, terpotong, atau berisi data lain
+  /// dianggap rusak. Berkas yang tidak ada dilewati, sehingga pembukaan pertama
+  /// di perangkat baru tidak melakukan apa pun.
+  static Future<void> _pulihkanBerkasKorup() async {
+    try {
+      final folder = await getApplicationDocumentsDirectory();
+      final berkas = File('${folder.path}/$_namaDatabase.sqlite');
+      if (!await berkas.exists()) return;
+
+      final panjang = await berkas.length();
+      var sehat = false;
+      if (panjang >= _headerSqlite.length) {
+        final pembuka = await berkas.openRead(0, _headerSqlite.length).first;
+        sehat = pembuka.length == _headerSqlite.length &&
+            _isiSama(pembuka, _headerSqlite);
+      }
+
+      if (sehat) return;
+
+      /* Ketiga pendamping dibuang bersama berkas utama. Kalau `-wal` tertinggal,
+         SQLite akan mencoba memutarnya ke berkas baru dan langsung menolak. */
+      for (final akhiran in const ['', '-wal', '-shm']) {
+        final bagian = File('${berkas.path}$akhiran');
+        if (await bagian.exists()) {
+          try {
+            await bagian.delete();
+          } catch (_) {
+            // Berkas terkunci; percobaan berikutnya akan mengulang pemeriksaan.
+          }
+        }
+      }
+      if (kDebugMode) {
+        debugPrint(
+          'Berkas database lokal tidak terbaca sebagai SQLite dan telah dihapus '
+          'agar skema dibuat ulang.',
+        );
+      }
+    } catch (_) {
+      /* Pemeriksaan ini bersifat pencegahan. Kegagalan membaca folder (mis.
+         plugin path belum siap) tidak boleh menghalangi pembukaan database. */
+    }
+  }
+
+  /// Membandingkan dua deret byte tanpa bergantung pada `package:collection`.
+  static bool _isiSama(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// Menyiapkan PRAGMA yang dibutuhkan setiap koneksi database.

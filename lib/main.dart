@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +33,10 @@ void main() async {
   try {
     await NotificationService().init();
   } catch (galat) {
-    debugPrint('Notifikasi perangkat tidak aktif: $galat');
+    // Jaring kedua; teks galat hanya perlu terlihat saat pengembangan.
+    if (kDebugMode) {
+      debugPrint('Notifikasi perangkat tidak aktif: ${galat.runtimeType}');
+    }
   }
 
   // 2. Inisialisasi tier penyimpanan pengaturan (SharedPreferences)

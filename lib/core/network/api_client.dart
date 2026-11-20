@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
+import '../util/pesan_galat.dart';
 import '../../data/local/secure/secure_storage_service.dart';
 
 /// Exception khusus untuk kegagalan komunikasi API
@@ -50,7 +51,9 @@ class ApiClient {
     unawaited(
       handler()
           .catchError((Object galat) {
-            debugPrint('Gagal membersihkan sesi yang ditolak: $galat');
+            if (kDebugMode) {
+              debugPrint('Gagal membersihkan sesi yang ditolak: ${galat.runtimeType}');
+            }
           })
           .whenComplete(() => _sedangMenanganiTolak = false),
     );
@@ -91,7 +94,7 @@ class ApiClient {
       throw ApiException('Koneksi waktu habis (Timeout).');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Terjadi kesalahan jaringan: $e');
+      throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
     }
   }
 
@@ -130,7 +133,7 @@ class ApiClient {
       throw ApiException('Koneksi waktu habis (Timeout).');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Terjadi kesalahan jaringan: $e');
+      throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
     }
   }
 
@@ -156,7 +159,7 @@ class ApiClient {
       throw ApiException('Koneksi waktu habis (Timeout).');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Terjadi kesalahan jaringan: $e');
+      throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
     }
   }
 
@@ -177,7 +180,7 @@ class ApiClient {
       throw ApiException('Koneksi waktu habis (Timeout).');
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Terjadi kesalahan jaringan: $e');
+      throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
     }
   }
 

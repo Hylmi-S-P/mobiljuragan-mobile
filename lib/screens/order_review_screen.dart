@@ -18,6 +18,7 @@ import '../theme/app_typography.dart';
 import '../widgets/gambar_kendaraan.dart';
 import '../data/remote/document_api_service.dart';
 import '../core/util/berkas_unduhan.dart';
+import '../core/util/pesan_galat.dart';
 import '../core/util/format_tanggal.dart';
 
 /// Layar peninjauan pesanan (Frame 06)
@@ -540,7 +541,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           content: Text(
-            'Gagal mengunduh formulir: ${e.toString().replaceAll('ApiException: ', '')}',
+            PesanGalat.ramah('Formulir gagal diunduh', galat: e),
             style: const TextStyle(fontFamily: 'Inter'),
           ),
         ),
@@ -682,7 +683,13 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context).pop(); // Tutup dialog loading jika gagal
-      final errorMsg = e is ApiException ? e.message : 'Gagal mengirimkan pengajuan sewa: $e';
+      /* Galat mentah tidak lagi ditempelkan ke SnackBar. Teks exception bisa
+         memuat nama kelas, jalur berkas, atau potongan respons server; bagi
+         pengguna itu tidak membantu, dan menambah kode referensi membuat
+         laporan tetap bisa ditelusuri. */
+      final errorMsg = e is ApiException
+          ? PesanGalat.dariServer(e.message)
+          : PesanGalat.ramah('Pengajuan sewa gagal dikirim', galat: e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.statusCancelled,

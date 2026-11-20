@@ -15,6 +15,7 @@ import '../core/network/api_client.dart';
 import '../core/network/payment_api_service.dart';
 import '../core/util/berkas_unduhan.dart';
 import '../core/util/format_tanggal.dart';
+import '../core/util/pesan_galat.dart';
 import '../data/remote/document_api_service.dart';
 import '../models/booking_document_model.dart';
 import '../models/booking_model.dart';
@@ -3342,7 +3343,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           content: Text(
-            'Gagal mengunduh formulir: ${e.toString().replaceAll('ApiException: ', '')}',
+            PesanGalat.ramah('Formulir gagal diunduh', galat: e),
             style: const TextStyle(fontFamily: 'Inter'),
           ),
         ),
@@ -3509,7 +3510,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memilih berkas: $e'),
+          content: Text(PesanGalat.ramah('Berkas tidak dapat dipilih', galat: e)),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           backgroundColor: const Color(0xFFDC2626),
@@ -3589,7 +3590,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             content: Text(
-              'Gagal mengirim dokumen: ${e.toString().replaceAll('ApiException: ', '')}',
+              PesanGalat.ramah('Dokumen gagal dikirim', galat: e),
               style: const TextStyle(fontFamily: 'Inter'),
             ),
           ),
@@ -5693,7 +5694,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             content: Text(
-              'Pemeriksaan status belum berhasil: $e',
+              PesanGalat.ramah('Pemeriksaan status belum berhasil', galat: e),
               style: const TextStyle(fontFamily: 'Inter'),
             ),
           ),
@@ -5873,7 +5874,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
           SnackBar(
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            content: Text('Gagal mengirim bukti: $e', style: const TextStyle(fontFamily: 'Inter')),
+            content: Text(PesanGalat.ramah('Bukti pembayaran gagal dikirim', galat: e), style: const TextStyle(fontFamily: 'Inter')),
           ),
         );
       }
@@ -5997,7 +5998,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memilih berkas: $e'),
+          content: Text(PesanGalat.ramah('Berkas tidak dapat dipilih', galat: e)),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           backgroundColor: const Color(0xFFDC2626),

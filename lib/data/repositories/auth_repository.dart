@@ -232,9 +232,36 @@ class AuthRepository {
     return _secureStorage.hasValidToken();
   }
 
-  /// Menghapus sesi dan kredensial pengguna dari SecureStorage.
+  /// Mencabut token di server lebih dulu, lalu menghapus sesi lokal.
+  ///
+  /// Sebelum ini logout hanya menghapus tujuh key di perangkat tanpa memberi tahu
+  /// server, sehingga token akses tetap sah sampai kedaluwarsa. Dampaknya paling
+  /// berbahaya pada perangkat bekas: token yang tidak dicabut masih bisa dipakai
+  /// memulihkan sesi. Endpoint yang tersedia di backend hanya
+  /// `POST /me/logout-all`, jadi pencabutan ini memang mengeluarkan seluruh
+  /// perangkat pengguna.
+  ///
+  /// Pencabutan dibatasi tiga detik dan kegagalannya diabaikan: logout lokal tidak
+  /// boleh gagal hanya karena jaringan sedang putus. Sesudah itu `clearAuth()`
+  /// tetap berjalan seperti biasa.
   Future<void> logout() async {
+    await cabutTokenDiServer();
     await _secureStorage.clearAuth();
+  }
+
+  /// Meminta server mencabut token sesi ini.
+  ///
+  /// Mengembalikan `true` bila server menjawab, `false` bila permintaan gagal
+  /// atau melewati batas waktu. Kegagalan sengaja tidak dilempar ke pemanggil.
+  Future<bool> cabutTokenDiServer({
+    Duration batasWaktu = const Duration(seconds: 3),
+  }) async {
+    try {
+      await _apiService.logoutSemuaPerangkat().timeout(batasWaktu);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Memulihkan sesi pengguna saat aplikasi dibuka.

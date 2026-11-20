@@ -44,8 +44,14 @@ class NotificationService {
       _isInitialized = true;
     } catch (galat) {
       /* Dibiarkan mati: setiap pemanggil show* memeriksa _isInitialized setelah
-         init(), jadi aplikasi berjalan tanpa notifikasi alih-alih gagal buka. */
-      debugPrint('Notifikasi perangkat tidak aktif: $galat');
+         init(), jadi aplikasi berjalan tanpa notifikasi alih-alih gagal buka.
+
+         Teks galat plugin hanya dicetak pada build debug. Di build rilis pesan
+         itu bisa memuat jejak platform yang tidak perlu diketahui pengguna dan
+         memperbesar ukuran log. */
+      if (kDebugMode) {
+        debugPrint('Notifikasi perangkat tidak aktif: ${galat.runtimeType}');
+      }
     }
   }
 
@@ -64,7 +70,9 @@ class NotificationService {
       if (!_isInitialized) return;
       await _notificationsPlugin.cancelAll();
     } catch (galat) {
-      debugPrint('Notifikasi tidak dapat dibersihkan: $galat');
+      if (kDebugMode) {
+        debugPrint('Notifikasi tidak dapat dibersihkan: ${galat.runtimeType}');
+      }
     }
   }
 

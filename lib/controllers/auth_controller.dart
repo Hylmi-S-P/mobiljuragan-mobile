@@ -498,6 +498,19 @@ class AuthController extends ChangeNotifier {
 
   /// Pembersihan data yang melekat pada akun yang sedang keluar.
   Future<void> _langkahPembersihanSesi() async {
+    /* Token dicabut di server selagi bukti sesi masih tersimpan di perangkat.
+       `ApiClient` menyusun header Authorization dari secure storage, jadi
+       pencabutan wajib berjalan sebelum `clearAuth()` di bagian bawah. Dulu
+       logout hanya menghapus salinan lokal tanpa memberi tahu server, sehingga
+       token tetap sah sampai kedaluwarsa dan masih bisa dipakai memulihkan sesi
+       di perangkat bekas. Batas waktunya tiga detik dan kegagalannya diabaikan:
+       logout lokal tidak boleh gagal hanya karena jaringan sedang putus. */
+    try {
+      await repository?.cabutTokenDiServer();
+    } catch (_) {
+      // Server tidak terjangkau: token lokal tetap dihapus pada langkah terakhir.
+    }
+
     // Jejak aktivitas pengguna di SharedPreferences.
     try {
       await settingsService?.clearAllForLogout();

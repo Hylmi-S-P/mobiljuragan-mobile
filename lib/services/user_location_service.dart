@@ -38,6 +38,15 @@ class UserLocationService {
   // atau emulator lambat memberi fix lokasi.
   static const Duration _timeout = Duration(seconds: 5);
 
+  /// Usia maksimal koordinat cache yang masih boleh dipakai sebagai cadangan.
+  ///
+  /// `getLastKnownPosition()` bisa mengembalikan titik dari berjam-jam lalu
+  /// (misalnya perjalanan sebelumnya di kota lain). Tanpa batas usia, alamat
+  /// pengambilan mobil bisa terisi lokasi lama yang menyesatkan. Batas ini hanya
+  /// berlaku untuk cadangan kedua; pembacaan pertama tetap memakai 2 menit
+  /// karena masih dipakai sebagai titik awal yang ringan.
+  static const Duration _usiaMaksimalCadangan = Duration(minutes: 5);
+
   static Future<UserLocationResult> getCurrentLocation() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       return const UserLocationResult(UserLocationStatus.serviceDisabled);
@@ -76,7 +85,16 @@ class UserLocationService {
         ).timeout(_timeout);
       } catch (_) {
         try {
-          position = await Geolocator.getLastKnownPosition();
+          final cadangan = await Geolocator.getLastKnownPosition();
+          /* Cadangan terakhir ini dulu dipakai apa adanya, tanpa memeriksa
+             kapan koordinatnya diambil. Sekarang titik yang lebih tua dari
+             lima menit dianggap tidak ada, sehingga layar menampilkan status
+             `unavailable` dan pengguna diminta mencoba lagi alih-alih
+             menerima alamat yang salah. */
+          if (cadangan != null &&
+              DateTime.now().difference(cadangan.timestamp).abs() <= _usiaMaksimalCadangan) {
+            position = cadangan;
+          }
         } catch (_) {
           position = null;
         }

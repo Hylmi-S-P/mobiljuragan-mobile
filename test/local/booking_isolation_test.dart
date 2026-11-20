@@ -108,23 +108,35 @@ void main() {
     expect(tanpaPemilik, isEmpty);
   });
 
-  test('logout menghapus seluruh cache pesanan', () async {
-    await repository.clearLocalBookings();
+  test('logout hanya menghapus cache milik akun yang keluar', () async {
+    repository.setActiveUserForTest('user-A');
 
-    final tersisa = await database.bookingDao.countBookings();
-    expect(tersisa, 0);
+    final dihapus = await repository.wipeOwnedRows('user-A');
+    expect(dihapus, 2);
+
+    /* Sejak perbaikan isolasi, jalur logout tidak lagi mengosongkan seluruh
+       tabel. Tabel yang sama dipakai bersama tamu dan akun lain di perangkat
+       ini; yang boleh hilang hanyalah baris milik akun yang keluar. */
+    final milikA = await database.bookingDao.getAllBookings(userId: 'user-A');
+    expect(milikA, isEmpty);
+
+    final milikB = await database.bookingDao.getAllBookings(userId: 'user-B');
+    expect(milikB.map((row) => row.id), ['book-b1']);
+
+    final tamu = await database.bookingDao.getAllBookings();
+    expect(tamu.map((row) => row.id), ['book-legacy']);
   });
 
   test('setelah logout lalu masuk akun lain, riwayat akun lama tidak muncul', () async {
     repository.setActiveUserForTest('user-A');
     expect((await repository.getAllBookings()).length, 2);
 
-    // Logout: cache dibuang seluruhnya (server tetap sumber kebenaran).
-    await repository.clearLocalBookings();
+    // Logout: hanya cache milik A yang dibuang (server tetap sumber kebenaran).
+    await repository.wipeOwnedRows('user-A');
     repository.setActiveUserForTest('user-B');
 
     final riwayatB = await repository.getAllBookings();
-    expect(riwayatB, isEmpty);
+    expect(riwayatB.map((b) => b.id), ['book-b1']);
   });
 
   test('akun baru tidak mewarisi baris akun lama meski purge belum jalan', () async {

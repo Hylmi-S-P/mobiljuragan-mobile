@@ -93,6 +93,20 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
     return row?.read(bookings.userId);
   }
 
+  /// Memeriksa apakah sebuah kode pesanan sudah dipakai baris mana pun.
+  ///
+  /// Dipakai bersama [getOwnerOfBooking] untuk membedakan "baris belum ada"
+  /// dari "baris ada tetapi tanpa pemilik" (mode tamu). Tanpa pemeriksaan ini
+  /// penulisan bisa menimpa baris tamu secara diam-diam.
+  Future<bool> hasBookingWithId(String id) async {
+    final query = selectOnly(bookings)
+      ..addColumns([bookings.id])
+      ..where(bookings.id.equals(id))
+      ..limit(1);
+    final row = await query.getSingleOrNull();
+    return row != null;
+  }
+
   /// Menghitung jumlah pesanan yang tersimpan milik satu akun
   Future<int> countBookings({String? userId}) async {
     final countExp = bookings.id.count();

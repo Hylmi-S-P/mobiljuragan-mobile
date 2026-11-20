@@ -443,6 +443,17 @@ class BookingRepository {
 
     if (booking.rawCorrupted) return;
 
+    /* Kode pesanan yang sudah dipakai pemilik lain tidak boleh ditimpa. Kunci
+       utama tabel hanya `{id}`, jadi `insertOnConflictUpdate` akan mengganti
+       baris beserta kolom pemiliknya tanpa peringatan. Karena itu pemilik baris
+       diperiksa lebih dulu lewat query khusus, dan penulisan dilewati bila
+       baris itu ternyata milik akun lain (atau milik tamu). */
+    final sudahAda = await _bookingDao.hasBookingWithId(booking.id);
+    if (sudahAda) {
+      final pemilikLama = await _bookingDao.getOwnerOfBooking(booking.id);
+      if (pemilikLama != owner) return;
+    }
+
     final existing = await _bookingDao.getBookingById(
       booking.id,
       userId: owner,
