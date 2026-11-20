@@ -345,6 +345,25 @@ class MeraukeGeocodingService {
     return completer.future;
   }
 
+  /// Membatalkan permintaan tertunda dan membuang seluruh cache nama lokasi.
+  ///
+  /// Cache ini bersifat statis sehingga bertahan melewati pergantian akun.
+  /// Isinya memang hanya nama jalan dan POI, tetapi tetap merekam di mana
+  /// pelanggan menandai titik jemput. Saat keluar akun, riwayat itu tidak boleh
+  /// tertinggal di memori proses yang akan dipakai akun berikutnya.
+  static void resetForLogout() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+
+    final tertunda = _pendingRequest;
+    _pendingRequest = null;
+    if (tertunda != null && !tertunda.isCompleted) {
+      tertunda.complete(null);
+    }
+
+    _cache.clear();
+  }
+
   /// Menghitung jarak perkiraan (Haversine formula dalam meter)
   static double _calculateDistanceMeters(LatLng p1, LatLng p2) {
     const earthRadius = 6371000.0; // meter

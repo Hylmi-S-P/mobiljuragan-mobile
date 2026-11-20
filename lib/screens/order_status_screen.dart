@@ -273,6 +273,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
   void _onStatusUpdatedToCompleted(BookingModel booking) {
     if (!mounted) return;
+    if (!_layakMemberiNotifikasi(booking)) return;
 
     NotificationService().showRentalCompletedNotification(
       bookingId: booking.id,
@@ -284,6 +285,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   /// supaya pelanggan tidak perlu menebak dari layar yang sudah tidak aktif.
   void _onStatusUpdatedToRejected(BookingModel booking) {
     if (!mounted) return;
+    if (!_layakMemberiNotifikasi(booking)) return;
 
     NotificationService().showBookingRejectedNotification(
       bookingId: booking.id,
@@ -294,12 +296,43 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
 
   void _onStatusUpdatedToConfirmed(BookingModel booking) {
     if (!mounted || _notificationShown) return;
+    if (!_layakMemberiNotifikasi(booking)) return;
     _notificationShown = true;
 
     NotificationService().showTariffReadyNotification(
       bookingId: booking.id,
       vehicleName: booking.vehicle.name,
       totalCost: booking.totalCost,
+    );
+  }
+
+  /// Apakah notifikasi status pesanan [booking] masih layak ditampilkan.
+  ///
+  /// Polling status berjalan di latar dan bisa selesai setelah pengguna keluar
+  /// akun atau berganti akun. Tanpa pemeriksaan ini, notifikasi yang menyebut
+  /// nomor pesanan dan nama armada pelanggan lama bisa muncul di perangkat
+  /// pelanggan berikutnya.
+  ///
+  /// Ada dua syarat yang diperiksa:
+  /// 1. Pemilik cache pesanan di basis data sama dengan akun yang sedang
+  ///    ditampilkan. Setelah keluar akun, pemilik cache bernilai null sehingga
+  ///    syarat ini otomatis gagal.
+  /// 2. Pesanan masih ada di riwayat yang ditampilkan. Riwayat itu berasal dari
+  ///    langganan Drift yang sudah disaring `userId` pemilik aktif, jadi baris
+  ///    yang tidak lagi muncul di sana bukan milik sesi ini.
+  bool _layakMemberiNotifikasi(BookingModel booking) {
+    final bookingController = context.read<BookingController>();
+
+    final pemilikSesi = bookingController.sessionUserId;
+    final pemilikCache = bookingController.repository?.activeUserId;
+
+    if (!bookingController.bookingHistory.any((b) => b.id == booking.id)) {
+      return false;
+    }
+
+    return NotificationService.milikSesiAktif(
+      pemilikPesanan: pemilikCache,
+      penggunaAktif: pemilikSesi,
     );
   }
 
@@ -371,6 +404,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pollingTimer?.cancel();
+
+    /* Berkas dan salinan biner dokumen dibuang bersama layar.
+       Isinya bisa berupa KTP, SIM, dan surat pernyataan lepas kunci — data
+       pribadi yang tidak boleh tetap tinggal di memori proses setelah layar
+       ditutup, karena alamat memori itu bisa dibaca ulang oleh widget lain atau
+       oleh akun berikutnya di perangkat yang sama. */
+    _draftStatement = null;
+    _draftKtp = null;
+    _draftSim = null;
+    _draftStatementBytes = null;
+    _draftKtpBytes = null;
+    _draftSimBytes = null;
+
     super.dispose();
   }
 
@@ -5945,6 +5991,15 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _senderNameController.dispose();
+
+    /* Bukti pembayaran dibuang dari memori bersama layar.
+       `_proofBase64` adalah salinan utuh berkas bukti transfer — bisa berisi
+       nomor rekening dan nama pemilik rekening. Membiarkannya menempel pada
+       objek state yang sudah dilepas membuat data itu tetap ada di timbunan
+       memori sampai pengumpul sampah kebetulan menyapunya. */
+    _proofBase64 = null;
+    _proofFileName = null;
+
     super.dispose();
   }
 

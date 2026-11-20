@@ -59,13 +59,30 @@ class BookingController extends ChangeNotifier {
   /// setelah login karena sinkronisasi hanya berjalan saat aplikasi dibuka.
   String? _sessionUserId;
 
+  /// Akun yang datanya sedang ditampilkan layar ini.
+  ///
+  /// Dipakai layar pesanan untuk memastikan notifikasi status hanya muncul
+  /// selama sesi yang menampilkannya masih menjadi pemilik pesanan.
+  String? get sessionUserId => _sessionUserId;
+
   /// Bereaksi terhadap perubahan sesi (login/logout/akun berbeda).
   Future<void> syncIfSessionChanged(String? userId) async {
     if (userId == _sessionUserId) return;
     _sessionUserId = userId;
 
+    /* Saat sesi berakhir, isian wizard yang sedang dikerjakan dibuang dari
+       memori. Isian itu memuat alamat jemput, titik koordinat, dan catatan
+       pelanggan — jejak aktivitas pemilik akun sebelumnya yang tidak boleh
+       terlihat oleh akun berikutnya di perangkat yang sama. */
+    if (userId == null) {
+      _resetFormTanpaNotifikasi();
+    }
+
     final repo = repository;
-    if (repo == null) return;
+    if (repo == null) {
+      notifyListeners();
+      return;
+    }
 
     await repo.refreshSession();
     if (userId != null) {
@@ -634,6 +651,16 @@ class BookingController extends ChangeNotifier {
 
   /// Mengembalikan nilai formulir wizard ke konfigurasi awal
   void resetForm() {
+    _resetFormTanpaNotifikasi();
+    notifyListeners();
+  }
+
+  /// Isi [resetForm] tanpa memberi tahu pendengar.
+  ///
+  /// Dipakai saat sesi berakhir: pemanggilnya masih akan memberi tahu pendengar
+  /// setelah seluruh pembaruan selesai, sehingga satu pergantian sesi tidak
+  /// memicu dua pembangunan ulang layar yang sama.
+  void _resetFormTanpaNotifikasi() {
     _selectedVehicle = null;
     _selectedDate = DateTime.now().add(const Duration(days: 1));
     _selectedTime = '09.00 WIT';
@@ -645,7 +672,6 @@ class BookingController extends ChangeNotifier {
     _pickupLongitude = 140.4180;
     _customerNote = '';
     _agreementChecked = false;
-    notifyListeners();
   }
 
   /// Khusus pengujian unit & widget: mengatur daftar riwayat pesanan secara eksplisit

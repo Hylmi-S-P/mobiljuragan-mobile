@@ -126,7 +126,7 @@ void main() {
       await _pumpForm(tester, _Support(api));
 
       expect(find.text('0/100'), findsOneWidget);
-      expect(find.text('0/2000'), findsOneWidget);
+      expect(find.text('0/1000'), findsOneWidget);
 
       /* InputFormatter memotong ketikan, jadi penghitung tidak akan pernah
          melewati batas yang sama dengan yang diperiksa server. */

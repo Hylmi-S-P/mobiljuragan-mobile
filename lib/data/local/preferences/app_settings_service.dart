@@ -56,6 +56,37 @@ class AppSettingsService {
     return await _prefs.remove(_keySearchHistory);
   }
 
+  /// Membersihkan pengaturan yang terikat pada satu akun saat keluar (logout).
+  ///
+  /// Hanya data yang mencerminkan aktivitas pengguna yang dibuang: kategori
+  /// terakhir dipilih, riwayat pencarian, dan waktu sinkronisasi terakhir.
+  /// Penanda tingkat perangkat — status onboarding dan preferensi notifikasi —
+  /// sengaja dipertahankan supaya pengguna tidak mengulang onboarding hanya
+  /// karena berganti akun di perangkat yang sama.
+  ///
+  /// Kegagalan satu kunci tidak menghentikan pembersihan kunci lain: setiap
+  /// langkah dibungkus sendiri-sendiri dan hasilnya dilaporkan sebagai satu
+  /// nilai. Pemanggil boleh mengabaikan hasilnya, tetapi tetap mendapat
+  /// kepastian bahwa seluruh kunci sudah dicoba.
+  Future<bool> clearAllForLogout() async {
+    var berhasil = true;
+    for (final kunci in const [
+      _keySearchHistory,
+      _keySelectedCategory,
+      _keyLastSyncTime,
+    ]) {
+      try {
+        final terhapus = await _prefs.remove(kunci);
+        // remove() mengembalikan false bila kunci memang tidak ada; itu bukan
+        // kegagalan, jadi hasilnya tidak dipakai untuk menilai keberhasilan.
+        berhasil = berhasil && (terhapus || !_prefs.containsKey(kunci));
+      } catch (_) {
+        berhasil = false;
+      }
+    }
+    return berhasil;
+  }
+
   // Preferensi notifikasi
   bool getNotificationsEnabled() {
     return _prefs.getBool(_keyNotifications) ?? true;

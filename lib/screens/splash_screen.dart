@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../theme/app_colors.dart';
 import 'main_navigation_screen.dart';
 import '../theme/app_typography.dart';
@@ -18,7 +20,21 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  Timer? _navigationTimer;
+
+  /* Dua syarat berpindah layar: waktu tampil minimum sudah lewat, dan status
+     boot sesi sudah selesai. Dulu hanya syarat pertama yang ada, sehingga
+     aplikasi bisa masuk ke layar utama sebelum pemulihan sesi selesai —
+     pengguna yang sebenarnya sudah punya sesi sempat terlihat sebagai tamu,
+     dan sebaliknya. Waktu minimum tetap dipertahankan supaya animasi merek
+     punya kesempatan tampil utuh. */
+  Timer? _minimumTimer;
+  bool _waktuMinimumSelesai = false;
+
+  /// Sesi yang ditunggu status bootnya; null bila tidak ada penyedia.
+  AuthController? _auth;
+
+  /// Menahan perpindahan agar tidak terjadi dua kali.
+  bool _sudahBerpindah = false;
 
   @override
   void initState() {
@@ -44,26 +60,67 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animController.forward();
 
-    // Auto-navigasi ke MainNavigationScreen setelah 2 detik
-    _navigationTimer = Timer(const Duration(milliseconds: 2100), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const MainNavigationScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
+    _minimumTimer = Timer(const Duration(milliseconds: 2100), () {
+      _waktuMinimumSelesai = true;
+      _cobaPindah();
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    /* Penyedia dibaca dengan aman: pengujian widget memasang SplashScreen
+       tanpa MultiProvider, dan aplikasi tidak boleh gagal hanya karena itu.
+       Bila penyedia ada, status boot-nya ikut ditunggu; bila tidak ada,
+       splash tetap berpindah setelah waktu minimum. */
+    AuthController? auth;
+    try {
+      auth = Provider.of<AuthController>(context, listen: false);
+    } catch (_) {
+      auth = null;
+    }
+
+    if (auth != _auth) {
+      _auth?.removeListener(_padaPerubahanSesi);
+      _auth = auth;
+      _auth?.addListener(_padaPerubahanSesi);
+    }
+    // Status boot bisa saja sudah selesai sebelum listener terpasang.
+    _cobaPindah();
+  }
+
+  /// Dipanggil setiap kali status boot sesi berubah.
+  void _padaPerubahanSesi() {
+    _cobaPindah();
+  }
+
+  /// Berpindah ke layar utama begitu kedua syarat terpenuhi.
+  void _cobaPindah() {
+    if (_sudahBerpindah || !mounted) return;
+    if (!_waktuMinimumSelesai) return;
+
+    final auth = _auth;
+    if (auth != null && auth.bootState == StatusBootSesi.memuat) return;
+
+    _sudahBerpindah = true;
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const MainNavigationScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
+  @override
   void dispose() {
-    _navigationTimer?.cancel();
+    _minimumTimer?.cancel();
+    _auth?.removeListener(_padaPerubahanSesi);
     _animController.dispose();
     super.dispose();
   }

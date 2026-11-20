@@ -1,10 +1,31 @@
 import 'package:flutter/foundation.dart';
 import '../core/network/api_client.dart';
+import '../core/util/berkas_unduhan.dart';
+import '../data/local/preferences/app_settings_service.dart';
 import '../data/local/secure/secure_storage_service.dart';
 import '../data/remote/auth_api_service.dart' show NiatOtp;
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/user_model.dart';
+import '../services/merauke_geocoding_service.dart';
+import '../services/notification_service.dart';
+
+/// Status pemulihan sesi saat aplikasi dibuka.
+///
+/// Dipakai layar splash untuk memutuskan kapan boleh berpindah layar: menunggu
+/// sampai statusnya bukan [memuat] lagi. Sebelumnya splash hanya menunggu
+/// pengatur waktu tetap, sehingga aplikasi bisa terbuka dalam keadaan belum
+/// diketahui — tamu yang sebenarnya sudah punya sesi, atau sebaliknya.
+enum StatusBootSesi {
+  /// Pemulihan sesi belum selesai.
+  memuat,
+
+  /// Sesi selesai dipulihkan (atau pengguna memang tamu).
+  siap,
+
+  /// Sesi terputus di tengah jalan dan sisa pembersihannya baru dituntaskan.
+  dipulihkan,
+}
 
 /// Controller untuk mengelola autentikasi berbasis OTP WhatsApp dan sesi pengguna
 /// dengan token aman di FlutterSecureStorage (Hardware Keystore).
@@ -15,6 +36,12 @@ class AuthController extends ChangeNotifier {
   /// Cache pesanan lokal. Dipakai untuk memastikan riwayat satu akun tidak
   /// terbawa ke akun lain: dibersihkan saat logout dan saat akun berganti.
   final BookingRepository? bookingRepository;
+
+  /// Pengaturan ringan yang menyimpan jejak aktivitas pengguna.
+  ///
+  /// Opsional supaya pengujian bisa membuat controller tanpa SharedPreferences;
+  /// bila tidak ada, langkah pembersihannya cukup dilewati.
+  final AppSettingsService? settingsService;
 
   UserModel? _currentUser;
   bool _isLoggedIn = false;
@@ -43,10 +70,21 @@ class AuthController extends ChangeNotifier {
   Map<String, String>? _pendingRegistration;
   NiatOtp _activeOtpIntent = NiatOtp.login;
 
+  /// Status pemulihan sesi saat aplikasi dibuka.
+  StatusBootSesi _bootState = StatusBootSesi.memuat;
+
+  /// Sedang menjalankan proses keluar akun.
+  ///
+  /// Menahan ketukan ganda pada tombol keluar. Sebelumnya dua ketukan beruntun
+  /// menjalankan dua rangkaian pembersihan sekaligus, dan yang kedua bisa
+  /// menghapus token milik sesi baru bila pengguna sempat masuk kembali.
+  bool _isLoggingOut = false;
+
   AuthController({
     this.repository,
     this.secureStorage,
     this.bookingRepository,
+    this.settingsService,
   });
 
   UserModel? get currentUser => _currentUser;
@@ -60,32 +98,78 @@ class AuthController extends ChangeNotifier {
   bool get hasSecureToken => _hasSecureToken;
   bool get isMenyimpanProfil => _isMenyimpanProfil;
   bool get isLoadingOtp => _isLoadingOtp;
+  StatusBootSesi get bootState => _bootState;
+  bool get isLoggingOut => _isLoggingOut;
 
   /// Memulihkan sesi pengguna dari Secure Storage saat aplikasi pertama kali dibuka (Guest Mode jika belum login)
   Future<void> initSession() async {
     final storage = secureStorage;
     final repo = repository;
 
+    /* Jurnal pembersihan diperiksa paling awal. Bila penandanya masih ada,
+       proses keluar akun sebelumnya terputus di tengah jalan — aplikasi ditutup
+       paksa oleh penghemat daya, misalnya — sehingga sebagian lapisan lokal
+       masih memuat data pemilik lama. Sisa pembersihan dituntaskan lebih dulu
+       sebelum sesi apa pun dipulihkan, supaya akun berikutnya tidak mewarisi
+       jejak akun sebelumnya. */
     if (storage != null) {
-      final hasToken = await storage.hasValidToken();
-      _hasSecureToken = hasToken;
-
-      if (hasToken && repo != null) {
-        final restoredUser = await repo.restoreSession();
-        if (restoredUser != null) {
-          _currentUser = restoredUser;
-          _profilUpdatedAt = restoredUser.updatedAt;
-          _isLoggedIn = true;
+      try {
+        if (await storage.isWipePending()) {
+          await _pulihkanPembersihanTerputus();
+          _bootState = StatusBootSesi.dipulihkan;
           notifyListeners();
           return;
         }
+      } catch (_) {
+        // Secure storage tidak terbaca. Pemulihan sesi tetap dilanjutkan; bila
+        // token memang tidak terbaca, pengguna berakhir sebagai tamu.
       }
     }
 
-    // Default Guest Mode: pengguna belum login
-    _currentUser = null;
-    _isLoggedIn = false;
-    _hasSecureToken = false;
+    try {
+      if (storage != null) {
+        final hasToken = await storage.hasValidToken();
+        _hasSecureToken = hasToken;
+
+        if (hasToken && repo != null) {
+          final restoredUser = await repo.restoreSession();
+          if (restoredUser != null) {
+            _currentUser = restoredUser;
+            _profilUpdatedAt = restoredUser.updatedAt;
+            _isLoggedIn = true;
+            return;
+          }
+        }
+      }
+
+      // Default Guest Mode: pengguna belum login
+      _currentUser = null;
+      _isLoggedIn = false;
+      _hasSecureToken = false;
+    } finally {
+      /* Status boot selalu diselesaikan, termasuk saat pemulihan gagal. Layar
+         splash menunggu nilai ini; tanpa blok finally, satu kegagalan membuat
+         aplikasi berhenti di layar pembuka selamanya. */
+      _bootState = StatusBootSesi.siap;
+      notifyListeners();
+    }
+  }
+
+  /// Menandai sesi masuk tanpa memulihkan dari server.
+  ///
+  /// Dipakai pengujian widget yang perlu memeriksa perilaku layar saat pengguna
+  /// benar-benar masuk, tanpa jaringan maupun secure storage sungguhan. Polanya
+  /// sama dengan `setBookingsForTesting` pada `BookingController` dan
+  /// `setActiveUserForTest` pada `BookingRepository`.
+  @visibleForTesting
+  void setSessionForTest({
+    required UserModel? user,
+    bool hasToken = true,
+  }) {
+    _currentUser = user;
+    _isLoggedIn = user != null;
+    _hasSecureToken = user != null && hasToken;
+    _bootState = StatusBootSesi.siap;
     notifyListeners();
   }
 
@@ -313,30 +397,185 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// Keluar dari sesi akun (menghapus token di Hardware Keystore)
+  /// Keluar dari sesi akun dan membersihkan seluruh lapisan data lokal.
+  ///
+  /// Urutannya disengaja: token di secure storage dihapus **paling akhir**.
+  /// Selama token masih ada, aplikasi belum dianggap keluar; bila proses
+  /// terhenti di tengah jalan, jurnal [SecureStorageService.markWipePending]
+  /// yang membuat pembersihan dilanjutkan saat aplikasi dibuka kembali.
+  ///
+  /// Setiap langkah dibungkus try/catch sendiri. Sebelumnya satu kegagalan
+  /// menghentikan seluruh rangkaian: token sudah hilang tetapi cache pesanan
+  /// dan berkas unduhan tetap tertinggal, dan pengguna tidak pernah menerima
+  /// pemberitahuan karena `notifyListeners()` ada di baris terakhir.
   Future<void> logout() async {
+    // Ketukan ganda tidak boleh menjalankan dua rangkaian pembersihan sekaligus.
+    if (_isLoggingOut) return;
+    _isLoggingOut = true;
+
+    /* Penanda ditulis sebelum langkah destruktif pertama. Bila aplikasi mati
+       di antara baris ini dan penghapusan penanda, pembukaan berikutnya tahu
+       bahwa pembersihan belum tuntas. */
+    final storage = secureStorage;
+    try {
+      await storage?.markWipePending();
+    } catch (_) {
+      // Jurnal gagal ditulis (secure storage bermasalah). Pembersihan tetap
+      // dijalankan; risikonya hanya hilangnya jaminan pemulihan otomatis.
+    }
+
+    try {
+      /* Status sesi di memori dibuang lebih dulu supaya seluruh layar langsung
+         berhenti menampilkan data pemilik lama, walau pembersihan cakram masih
+         berjalan. */
+      _isLoggedIn = false;
+      _hasSecureToken = false;
+      _currentUser = null;
+      _phoneNumber = '';
+      _inputOtp = '';
+      _hasLoginError = false;
+      _errorMessage = null;
+      _profilUpdatedAt = null;
+      _pendingRegistration = null;
+      _activeOtpIntent = NiatOtp.login;
+      _isMenyimpanProfil = false;
+      _isLoadingOtp = false;
+
+      // Setiap langkah berdiri sendiri: kegagalan satu lapisan tidak boleh
+      // membatalkan lapisan lain.
+      await _langkahPembersihanBersama();
+      await _langkahPembersihanSesi();
+    } finally {
+      try {
+        await storage?.clearWipePending();
+      } catch (_) {
+        // Bila penanda gagal dihapus, pembukaan berikutnya hanya menjalankan
+        // pembersihan sekali lagi. Itu tidak berbahaya karena semua langkah
+        // bersifat idempoten.
+      }
+
+      _isLoggingOut = false;
+      notifyListeners();
+    }
+  }
+
+  /// Pembersihan yang tidak bergantung pada isi cache per akun.
+  ///
+  /// Dijalankan juga oleh [_pulihkanPembersihanTerputus], karena pembersihan
+  /// yang terputus bisa terjadi sebelum maupun sesudah langkah-langkah ini.
+  Future<void> _langkahPembersihanBersama() async {
+    // Menghentikan notifikasi pesanan yang masih terpasang di baki notifikasi.
+    try {
+      await NotificationService().cancelAll();
+    } catch (_) {
+      // Plugin notifikasi tidak tersedia atau gagal: bukan alasan membatalkan
+      // pembersihan data yang jauh lebih sensitif.
+    }
+
+    // Membuang cache nama lokasi dan permintaan geocoding yang tertunda.
+    try {
+      MeraukeGeocodingService.resetForLogout();
+    } catch (_) {
+      // Cache statis; kegagalan di sini tidak berdampak pada data pengguna.
+    }
+
+    // Menghapus berkas unduhan (tanda terima, surat pernyataan, salinan
+    // dokumen identitas) beserta cache gambar yang sudah ter-decode.
+    try {
+      await BerkasUnduhan.wipeAll();
+    } catch (_) {
+      // Berkas sementara akan tertimpa pada unduhan berikutnya.
+    }
+  }
+
+  /// Pembersihan data yang melekat pada akun yang sedang keluar.
+  Future<void> _langkahPembersihanSesi() async {
+    // Jejak aktivitas pengguna di SharedPreferences.
+    try {
+      await settingsService?.clearAllForLogout();
+    } catch (_) {
+      // Preferensi tidak terbaca: lanjut ke lapisan berikutnya.
+    }
+
+    /* Cache pesanan lokal. Server tetap sumber kebenaran; cache hanya salinan
+       untuk pemakaian offline, jadi seluruh isinya dibuang saat keluar akun. */
+    final bookingRepo = bookingRepository;
+    if (bookingRepo != null) {
+      try {
+        await bookingRepo.clearLocalBookings();
+      } catch (_) {
+        // Cache pesanan gagal dihapus. Token dihapus pada langkah terakhir,
+        // sehingga jurnal pembersihan yang memastikan percobaan ulang.
+      }
+    }
+
+    /* Token dihapus paling akhir. Sampai baris ini, aplikasi masih memegang
+       bukti sesi; setelahnya tidak ada lagi data akun yang tersisa.
+
+       Penghapusan dilakukan langsung lewat secure storage, bukan melalui
+       `AuthRepository.logout()`. Keduanya menghapus kunci yang sama, sehingga
+       memanggil keduanya berarti tujuh operasi platform dijalankan dua kali
+       untuk hasil yang identik. */
+    final storage = secureStorage;
+    if (storage != null) {
+      try {
+        await storage.clearAuth();
+      } catch (_) {
+        // Secure storage menolak dihapus (jarang terjadi; biasanya platform
+        // channel belum siap). Jurnal pembersihan masih terpasang sehingga
+        // percobaan diulang saat aplikasi dibuka kembali.
+      }
+    } else {
+      // Tanpa secure storage (mis. controller uji tanpa dependensi), repositori
+      // tetap diminta membersihkan sesi bila tersedia.
+      try {
+        await repository?.logout();
+      } catch (_) {
+        // Tidak ada lagi jaring pengaman di bawah ini; kegagalan diabaikan
+        // karena tidak ada token yang bisa dihapus.
+      }
+    }
+
+    /* Pemilik cache di memori disegarkan setelah token hilang.
+       Tanpa langkah ini, `BookingRepository._userId` tetap menyimpan id akun
+       yang baru keluar sampai ada login berikutnya; nilai itu dipakai menyaring
+       baris dan menjadi dasar pemeriksaan kepemilikan notifikasi. */
+    if (bookingRepo != null) {
+      try {
+        await bookingRepo.refreshSession();
+      } catch (_) {
+        // Pemilik cache tidak terbaca: tidak ada yang bisa disaring lagi.
+      }
+    }
+  }
+
+  /// Menuntaskan pembersihan sesi yang terputus sebelum aplikasi ditutup.
+  ///
+  /// Dipanggil dari [initSession] ketika jurnal `sec_wipe_pending` masih ada.
+  /// Seluruh langkah idempoten: menjalankannya pada sisa pembersihan yang
+  /// sebagian sudah selesai tidak menimbulkan efek samping.
+  Future<void> _pulihkanPembersihanTerputus() async {
+    /* Status di memori disamakan lebih dulu: apa pun yang tersisa di cakram,
+       pengguna saat ini belum tentu pemilik data itu. */
     _isLoggedIn = false;
     _hasSecureToken = false;
     _currentUser = null;
-    final storage = secureStorage;
-    if (storage != null) {
-      await storage.clearAuth();
-    }
-    final repo = repository;
-    if (repo != null) {
-      await repo.logout();
-    }
+    _phoneNumber = '';
+    _inputOtp = '';
+    _hasLoginError = false;
+    _errorMessage = null;
+    _profilUpdatedAt = null;
+    _pendingRegistration = null;
+    _activeOtpIntent = NiatOtp.login;
 
-    /* Cache pesanan bersifat sementara; server tetap sumber kebenaran. Menghapus
-       seluruh cache saat logout adalah cara paling aman agar akun berikutnya
-       tidak melihat riwayat pemilik sebelumnya. */
-    final bookingRepo = bookingRepository;
-    if (bookingRepo != null) {
-      await bookingRepo.clearLocalBookings();
-      await bookingRepo.refreshSession();
-    }
+    await _langkahPembersihanBersama();
+    await _langkahPembersihanSesi();
 
-    notifyListeners();
+    try {
+      await secureStorage?.clearWipePending();
+    } catch (_) {
+      // Penanda tetap ada; pembersihan akan diulang pada pembukaan berikutnya.
+    }
   }
 
   /// Mengubah nama lewat server.

@@ -97,6 +97,9 @@ void main() async {
             repository: authRepo,
             secureStorage: secureStorage,
             bookingRepository: bookingRepo,
+            // Jejak aktivitas pengguna (kategori terakhir, riwayat pencarian)
+            // ikut dibersihkan saat keluar akun.
+            settingsService: settingsService,
           )..initSession(),
         ),
         /* BookingController mengikuti sesi: saat akun berganti, riwayat akun

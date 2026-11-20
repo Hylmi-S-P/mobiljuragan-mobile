@@ -49,6 +49,40 @@ class NotificationService {
     }
   }
 
+  /// Membatalkan seluruh notifikasi status pesanan yang masih terpasang.
+  ///
+  /// Dipanggil saat keluar akun. Tanpa ini, notifikasi pesanan milik akun
+  /// sebelumnya tetap tertinggal di baki notifikasi dan masih bisa diketuk
+  /// setelah akun berganti — isinya menyebut nomor pesanan dan nama armada
+  /// pelanggan lama.
+  ///
+  /// Kegagalan plugin diabaikan: keluar akun tidak boleh terhenti hanya karena
+  /// notifikasi tidak bisa dibersihkan.
+  Future<void> cancelAll() async {
+    try {
+      await init();
+      if (!_isInitialized) return;
+      await _notificationsPlugin.cancelAll();
+    } catch (galat) {
+      debugPrint('Notifikasi tidak dapat dibersihkan: $galat');
+    }
+  }
+
+  /// Memeriksa apakah [bookingId] masih layak ditampilkan sebagai notifikasi.
+  ///
+  /// Notifikasi hanya boleh muncul untuk pesanan milik sesi yang sedang aktif.
+  /// Polling status pada layar pesanan berjalan di latar dan bisa selesai
+  /// setelah pengguna keluar akun; tanpa pemeriksaan ini notifikasi pesanan
+  /// pemilik lama sempat muncul di perangkat pemilik baru.
+  static bool milikSesiAktif({
+    required String? pemilikPesanan,
+    required String? penggunaAktif,
+  }) {
+    if (penggunaAktif == null || penggunaAktif.isEmpty) return false;
+    if (pemilikPesanan == null || pemilikPesanan.isEmpty) return false;
+    return pemilikPesanan == penggunaAktif;
+  }
+
   /// Menampilkan notifikasi native saat tarif final terbit dari admin
   Future<void> showTariffReadyNotification({
     required String bookingId,

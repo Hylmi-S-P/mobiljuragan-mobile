@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobiljuragan_mobile/controllers/auth_controller.dart';
 import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/controllers/support_controller.dart';
 import 'package:mobiljuragan_mobile/data/remote/ai_api_service.dart';
@@ -242,6 +243,9 @@ void main() {
                         ),
                         ChangeNotifierProvider<BookingController>(
                           create: (_) => BookingController(),
+                        ),
+                        ChangeNotifierProvider<AuthController>(
+                          create: (_) => AuthController(),
                         ),
                       ],
                       child: const HelpCenterScreen(showBackButton: true),

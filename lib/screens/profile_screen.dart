@@ -459,9 +459,19 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              auth.logout();
-              Navigator.pop(dialogCtx);
+            onPressed: () async {
+              /* Proses keluar ditunggu sampai tuntas lebih dulu, baru dialog
+                 ditutup dan SnackBar ditampilkan. Versi sebelumnya menutup
+                 dialog lalu memanggil logout() tanpa menunggunya: SnackBar
+                 "telah keluar" muncul sebelum token benar-benar terhapus, dan
+                 kegagalan di tengah proses tidak pernah sampai ke pengguna. */
+              await auth.logout();
+
+              if (dialogCtx.mounted) {
+                Navigator.pop(dialogCtx);
+              }
+
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Anda telah keluar dari akun.')),
               );

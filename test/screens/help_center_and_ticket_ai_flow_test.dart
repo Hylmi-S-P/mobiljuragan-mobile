@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobiljuragan_mobile/controllers/auth_controller.dart';
 import 'package:mobiljuragan_mobile/controllers/booking_controller.dart';
 import 'package:mobiljuragan_mobile/controllers/support_controller.dart';
 import 'package:mobiljuragan_mobile/data/remote/ai_api_service.dart';
@@ -7,6 +8,7 @@ import 'package:mobiljuragan_mobile/data/remote/faq_api_service.dart';
 import 'package:mobiljuragan_mobile/data/remote/ticket_api_service.dart';
 import 'package:mobiljuragan_mobile/models/faq_model.dart';
 import 'package:mobiljuragan_mobile/models/support_ticket_model.dart';
+import 'package:mobiljuragan_mobile/models/user_model.dart';
 import 'package:mobiljuragan_mobile/screens/chat_support_screen.dart';
 import 'package:mobiljuragan_mobile/screens/help_center_screen.dart';
 import 'package:provider/provider.dart';
@@ -95,6 +97,19 @@ class MockFaqApiService extends FaqApiService {
   Future<List<FaqModel>> fetchFaqs({String? category, String? search}) async => [];
 }
 
+/* Pengguna masuk untuk pengujian widget.
+ *
+ * Dua pengujian penyegaran tiket di bawah memeriksa bahwa daftar tiket diminta
+ * ulang saat aplikasi aktif. `HelpCenterScreen` sengaja tidak meminta daftar
+ * tiket bagi tamu, jadi pengujian itu butuh sesi yang benar-benar masuk.
+ */
+final UserModel penggunaUjiMasuk = UserModel(
+  id: 'user-uji-001',
+  name: 'Budi Santoso',
+  phoneNumber: '081248002910',
+  avatarInitials: 'BS',
+);
+
 class MockSupportControllerForChat extends SupportController {
   MockSupportControllerForChat({
     required super.aiApiService,
@@ -137,6 +152,7 @@ void main() {
             providers: [
               ChangeNotifierProvider<SupportController>.value(value: supportController),
               ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+              ChangeNotifierProvider<AuthController>(create: (_) => AuthController()),
             ],
             child: const HelpCenterScreen(),
           ),
@@ -170,6 +186,9 @@ void main() {
             providers: [
               ChangeNotifierProvider<SupportController>.value(value: supportController),
               ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+              ChangeNotifierProvider<AuthController>(
+                create: (_) => AuthController()..setSessionForTest(user: penggunaUjiMasuk),
+              ),
             ],
             child: const HelpCenterScreen(),
           ),
@@ -210,6 +229,9 @@ void main() {
             providers: [
               ChangeNotifierProvider<SupportController>.value(value: supportController),
               ChangeNotifierProvider<BookingController>(create: (_) => BookingController()),
+              ChangeNotifierProvider<AuthController>(
+                create: (_) => AuthController()..setSessionForTest(user: penggunaUjiMasuk),
+              ),
             ],
             child: const HelpCenterScreen(),
           ),
@@ -293,13 +315,18 @@ void main() {
 
       // Kirim pesan ke-2
       supportController.sendUserMessage(text: 'Sudah saya coba atur suhunya tetap panas', conversationKey: ticketKey);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      /*
+       * Jeda kirim minimal 1,5 detik di controller adalah pengaman anti-spam dan
+       * memakai jam dinding, bukan jam palsu pengujian. Pesan berikutnya baru
+       * diterima setelah jeda itu benar-benar lewat.
+       */
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
       expect(supportController.getTicketTurnCount(ticketKey), equals(2));
       expect(supportController.isAiHandoffToAdminFor(ticketKey), isFalse);
 
       // Kirim pesan ke-3 (mencapai batas retensi default = 3)
       supportController.sendUserMessage(text: 'Masih belum dingin juga', conversationKey: ticketKey);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
       expect(supportController.getTicketTurnCount(ticketKey), equals(3));
 
       // Harus otomatis memicu handover ke staf
@@ -488,6 +515,14 @@ void main() {
 
       final key = 'ticket_${ticket.id}';
       supportController.sendUserMessage(text: 'Ban belakang kempes', conversationKey: key);
+      /*
+       * Pesan kedua menunggu jeda anti-spam 1,5 detik di controller. Jeda itu
+       * memakai jam dinding, jadi waktu nyata harus benar-benar lewat; di dalam
+       * testWidgets jam palsu tidak menggeser DateTime.now().
+       */
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 1600)),
+      );
       supportController.sendUserMessage(text: 'Terjadi di jalan raya', conversationKey: key);
 
       await tester.pumpWidget(

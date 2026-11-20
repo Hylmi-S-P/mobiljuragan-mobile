@@ -27,6 +27,20 @@ class SecureStorageService {
   static const String _keyUserName = 'sec_user_name';
   static const String _keyUserGender = 'sec_user_gender';
 
+  /// Jurnal keluar akun yang belum tuntas.
+  ///
+  /// Ditulis sebelum langkah pembersihan pertama dan baru dihapus setelah
+  /// seluruh langkah selesai. Kalau aplikasi ditutup paksa di tengah proses,
+  /// penanda ini masih ada saat aplikasi dibuka lagi sehingga sisa pembersihan
+  /// bisa dituntaskan sebelum sesi apa pun dipulihkan. Tanpa jurnal ini, token
+  /// yang sudah terlanjur dihapus bisa berpasangan dengan cache pesanan yang
+  /// masih utuh — persis kondisi yang membuat riwayat pemilik lama muncul lagi.
+  static const String _keyWipePending = 'sec_wipe_pending';
+
+  /// Nilai penanda jurnal. Versi disertakan supaya bentuk jurnal bisa berubah
+  /// tanpa salah membaca penanda dari versi aplikasi yang lebih lama.
+  static const String _wipePendingValue = 'v1';
+
   /// Menyimpan token autentikasi JWT
   Future<void> saveAuthTokens({
     required String accessToken,
@@ -79,6 +93,26 @@ class SecureStorageService {
   Future<bool> hasValidToken() async {
     final token = await getAccessToken();
     return token != null && token.isNotEmpty;
+  }
+
+  /// Menandai bahwa pembersihan sesi sedang berjalan.
+  ///
+  /// Dipanggil sebelum langkah destruktif pertama. Penanda ini sengaja tidak
+  /// ikut dihapus oleh [clearAuth] supaya tetap terbaca saat aplikasi dibuka
+  /// kembali setelah ditutup paksa di tengah proses keluar akun.
+  Future<void> markWipePending() async {
+    await _storage.write(key: _keyWipePending, value: _wipePendingValue);
+  }
+
+  /// Membaca apakah ada pembersihan sesi yang belum tuntas.
+  Future<bool> isWipePending() async {
+    final nilai = await _storage.read(key: _keyWipePending);
+    return nilai != null && nilai.isNotEmpty;
+  }
+
+  /// Menghapus penanda jurnal setelah seluruh pembersihan selesai.
+  Future<void> clearWipePending() async {
+    await _storage.delete(key: _keyWipePending);
   }
 
   /// Menghapus seluruh kredensial rahasia saat keluar (Logout)

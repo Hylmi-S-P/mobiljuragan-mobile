@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobiljuragan_mobile/controllers/auth_controller.dart';
 import 'package:mobiljuragan_mobile/controllers/support_controller.dart';
 import 'package:mobiljuragan_mobile/core/network/api_client.dart';
 import 'package:mobiljuragan_mobile/data/remote/faq_api_service.dart';
@@ -193,8 +194,13 @@ void main() {
       final controller = await siapkanController();
 
       await tester.pumpWidget(
-        ChangeNotifierProvider<SupportController>.value(
-          value: controller,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<SupportController>.value(value: controller),
+            ChangeNotifierProvider<AuthController>(
+              create: (_) => AuthController(),
+            ),
+          ],
           child: const MaterialApp(
             home: HelpCenterScreen(),
           ),
@@ -215,8 +221,13 @@ void main() {
       final controller = await siapkanController();
 
       await tester.pumpWidget(
-        ChangeNotifierProvider<SupportController>.value(
-          value: controller,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<SupportController>.value(value: controller),
+            ChangeNotifierProvider<AuthController>(
+              create: (_) => AuthController(),
+            ),
+          ],
           child: const MaterialApp(
             home: HelpCenterScreen(),
           ),
@@ -244,8 +255,13 @@ void main() {
       final controller = await siapkanController();
 
       await tester.pumpWidget(
-        ChangeNotifierProvider<SupportController>.value(
-          value: controller,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<SupportController>.value(value: controller),
+            ChangeNotifierProvider<AuthController>(
+              create: (_) => AuthController(),
+            ),
+          ],
           child: const MaterialApp(
             home: HelpCenterScreen(),
           ),
