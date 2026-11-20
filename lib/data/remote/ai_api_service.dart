@@ -33,7 +33,7 @@ class AiApiService {
 
     final response = await _client.post(
       ApiConstants.aiChatEndpoint,
-      requiresAuth: false,
+      requiresAuth: true,
       timeout: ApiConstants.aiTimeoutDuration,
       body: body,
     );

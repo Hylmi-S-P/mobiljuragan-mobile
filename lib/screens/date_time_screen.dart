@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../core/util/format_tanggal.dart';
+import '../core/util/rental_duration.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -21,10 +22,12 @@ import '../theme/app_typography.dart';
 /// Layar pemilihan jadwal tanggal dan durasi sewa
 class DateTimeScreen extends StatefulWidget {
   final VehicleModel vehicle;
+  final DateTime Function()? nowProvider;
 
   const DateTimeScreen({
     super.key,
     required this.vehicle,
+    this.nowProvider,
   });
 
   @override
@@ -44,22 +47,49 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
 
   final List<String> _dayNames = namaHariSingkat;
 
+  DateTime _sekarang() => widget.nowProvider?.call() ?? DateTime.now();
+
+  DateTime _minStartMonth(DateTime now) {
+    final earliest = tanggalMulaiPalingAwal(now);
+    return DateTime(earliest.year, earliest.month, 1);
+  }
+
+  DateTime _maxNavMonth(DateTime now) {
+    final maxStart = batasTanggalMulaiMaksimal(now);
+    return DateTime(maxStart.year, maxStart.month, 1);
+  }
+
   @override
   void initState() {
     super.initState();
+    final now = _sekarang();
+    final minDate = tanggalMulaiPalingAwal(now);
+    final maxDate = batasTanggalMulaiMaksimal(now);
     final booking = context.read<BookingController>();
-    _displayedMonth = DateTime(booking.selectedDate.year, booking.selectedDate.month, 1);
-    _selectedDate = booking.selectedDate;
-    final initialParsed = _parseTimeOfDay(booking.selectedTime);
-    if (_isWithinOperationalHours(initialParsed)) {
-      _selectedTime = booking.selectedTime;
+
+    final kandidatTanggal = tanggalSaja(booking.selectedDate);
+    if (kandidatTanggal.isBefore(minDate)) {
+      _selectedDate = minDate;
+    } else if (kandidatTanggal.isAfter(maxDate)) {
+      _selectedDate = maxDate;
     } else {
-      _selectedTime = '09.00 WIT';
+      _selectedDate = kandidatTanggal;
     }
-    _durationDays = booking.durationDays.clamp(1, 30);
+
+    _displayedMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+    _selectedTime = jamValidUntukTanggal(
+      tanggal: _selectedDate,
+      labelSekarang: booking.selectedTime,
+      now: now,
+    );
+    final parsed = _parseTimeOfDay(_selectedTime);
+    _timeDescription = _getTimeDescription(parsed?.hour ?? 9);
+    _durationDays = booking.durationDays.clamp(1, maxBookingAdvanceDays);
   }
 
   void _previousMonth() {
+    final minMonth = _minStartMonth(_sekarang());
+    if (!_displayedMonth.isAfter(minMonth)) return;
     setState(() {
       _displayedMonth = DateTime(
         _displayedMonth.year,
@@ -70,6 +100,8 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 
   void _nextMonth() {
+    final maxMonth = _maxNavMonth(_sekarang());
+    if (!_displayedMonth.isBefore(maxMonth)) return;
     setState(() {
       _displayedMonth = DateTime(
         _displayedMonth.year,
@@ -157,6 +189,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     final String formattedYear = _displayedMonth.year.toString();
     final DateTime returnDate = _selectedDate.add(Duration(days: _durationDays));
 
+    final now = _sekarang();
+    final canGoPrev = _displayedMonth.isAfter(_minStartMonth(now));
+    final canGoNext = _displayedMonth.isBefore(_maxNavMonth(now));
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -167,92 +203,37 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Bulan & Navigasi Kalender
-          /* Wrap, bukan Row: pada layar 320–360dp chip "Pilih tanggal selesai"
-             tidak muat sebaris dengan navigasi bulan dan dulu meluber keluar
-             kartu. Wrap memindahkannya ke baris berikutnya apa adanya. */
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
+          // Header Bulan & Navigasi Kalender: tombol kiri/kanan menempel di tepi
+          // kartu supaya posisinya tetap konsisten dan tidak bergeser mengikuti
+          // panjang nama bulan.
+          Row(
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InkWell(
-                    onTap: _previousMonth,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.borderSubtle, width: 1),
-                      ),
-                      child: const Icon(
-                        Icons.chevron_left,
-                        size: 20,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      '$monthName $formattedYear',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: AppTypography.sizeTitle,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: _nextMonth,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.borderSubtle, width: 1),
-                      ),
-                      child: const Icon(
-                        Icons.chevron_right,
-                        size: 20,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
+              _buildMonthNavButton(
+                icon: Icons.chevron_left,
+                enabled: canGoPrev,
+                onTap: _previousMonth,
               ),
-              if (_isSelectingEndDate)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.tealLight,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.2)),
-                  ),
-                  child: const Text(
-                    'Pilih tanggal selesai',
-                    style: TextStyle(
-                      fontSize: AppTypography.sizeCaption,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryTeal,
-                      fontFamily: 'Inter',
-                    ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  '$monthName $formattedYear',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeTitle,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
                   ),
                 ),
+              ),
+              const SizedBox(width: 4),
+              _buildMonthNavButton(
+                icon: Icons.chevron_right,
+                enabled: canGoNext,
+                onTap: _nextMonth,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -277,7 +258,90 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           const SizedBox(height: 10),
           _buildDatesGrid(daysInMonth, startingWeekday, returnDate),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: _isSelectingEndDate ? AppColors.tealLight : AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _isSelectingEndDate
+                    ? AppColors.primaryTeal.withValues(alpha: 0.25)
+                    : AppColors.borderSubtle,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isSelectingEndDate
+                      ? Icons.date_range_rounded
+                      : Icons.touch_app_outlined,
+                  size: 15,
+                  color: _isSelectingEndDate
+                      ? AppColors.primaryTeal
+                      : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _isSelectingEndDate
+                        ? 'Pilih tanggal selesai'
+                        : 'Ketuk tanggal mulai, lalu pilih tanggal selesai',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      fontWeight:
+                          _isSelectingEndDate ? FontWeight.w600 : FontWeight.w500,
+                      color: _isSelectingEndDate
+                          ? AppColors.primaryTeal
+                          : AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMonthNavButton({
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(
+          child: Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: enabled
+                  ? AppColors.surfaceLight
+                  : AppColors.surfaceLight.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: enabled ? AppColors.borderMedium : AppColors.borderSubtle,
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: enabled
+                  ? AppColors.primaryNavy
+                  : AppColors.textSecondary.withValues(alpha: 0.35),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -299,6 +363,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       returnDate.month,
       returnDate.day,
     );
+
+    final now = _sekarang();
+    final DateTime minStartDate = tanggalMulaiPalingAwal(now);
+    final DateTime maxStartDate = batasTanggalMulaiMaksimal(now);
 
     final DateTime prevMonth = DateTime(_displayedMonth.year, _displayedMonth.month - 1, 1);
     final int daysInPrevMonth = DateUtils.getDaysInMonth(prevMonth.year, prevMonth.month);
@@ -333,42 +401,59 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           isOtherMonth = true;
         }
 
+        final bool isDisabled =
+            currentDayOnly.isBefore(minStartDate) || currentDayOnly.isAfter(maxStartDate);
+
         final bool isStartDate = currentDayOnly.isAtSameMomentAs(startDayOnly);
         final bool isEndDate = currentDayOnly.isAtSameMomentAs(endDayOnly);
         final bool isInRange = currentDayOnly.isAfter(startDayOnly) &&
             currentDayOnly.isBefore(endDayOnly);
 
         return InkWell(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() {
-              if (isOtherMonth) {
-                _displayedMonth = DateTime(currentDayOnly.year, currentDayOnly.month, 1);
-              }
-              if (!_isSelectingEndDate) {
-                // Ketukan 1: Memilih tanggal mulai sewa
-                _selectedDate = currentDayOnly;
-                _durationDays = 1;
-                _isSelectingEndDate = true;
-              } else {
-                // Ketukan 2: Memilih tanggal selesai sewa
-                if (currentDayOnly.isAfter(_selectedDate)) {
-                  final diff = currentDayOnly.difference(_selectedDate).inDays;
-                  _durationDays = diff.clamp(1, 30);
-                  _isSelectingEndDate = false;
-                } else if (currentDayOnly.isBefore(_selectedDate)) {
-                  // Jika memilih tanggal sebelum tanggal mulai, jadikan tanggal mulai baru
-                  _selectedDate = currentDayOnly;
-                  _durationDays = 1;
-                  _isSelectingEndDate = true;
-                } else {
-                  // Mengetuk tanggal yang sama persis: durasi 1 hari
-                  _durationDays = 1;
-                  _isSelectingEndDate = false;
-                }
-              }
-            });
-          },
+          onTap: isDisabled
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    if (isOtherMonth) {
+                      _displayedMonth = DateTime(currentDayOnly.year, currentDayOnly.month, 1);
+                    }
+                    if (!_isSelectingEndDate) {
+                      // Ketukan 1: Memilih tanggal mulai sewa
+                      _selectedDate = currentDayOnly;
+                      _durationDays = 1;
+                      _isSelectingEndDate = true;
+                    } else {
+                      // Ketukan 2: Memilih tanggal selesai sewa
+                      if (currentDayOnly.isAfter(_selectedDate)) {
+                        _durationDays = currentDayOnly.difference(_selectedDate).inDays;
+                        _isSelectingEndDate = false;
+                      } else if (currentDayOnly.isBefore(_selectedDate)) {
+                        // Jika memilih tanggal sebelum tanggal mulai, jadikan tanggal mulai baru
+                        _selectedDate = currentDayOnly;
+                        _durationDays = 1;
+                        _isSelectingEndDate = true;
+                      } else {
+                        // Mengetuk tanggal yang sama persis: durasi 1 hari
+                        _durationDays = 1;
+                        _isSelectingEndDate = false;
+                      }
+                    }
+
+                    final jamBaru = jamValidUntukTanggal(
+                      tanggal: _selectedDate,
+                      labelSekarang: _selectedTime,
+                      now: _sekarang(),
+                    );
+                    if (jamBaru != _selectedTime) {
+                      _selectedTime = jamBaru;
+                      final parsedBaru = _parseTimeOfDay(jamBaru);
+                      if (parsedBaru != null) {
+                        _timeDescription = _getTimeDescription(parsedBaru.hour);
+                      }
+                    }
+                  });
+                },
           borderRadius: BorderRadius.circular(18),
           child: Stack(
             alignment: Alignment.center,
@@ -426,9 +511,11 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                           ? AppColors.textWhite
                           : isInRange
                               ? AppColors.primaryNavy
-                              : isOtherMonth
-                                  ? AppColors.textSecondary.withValues(alpha: 0.35)
-                                  : AppColors.textPrimary,
+                              : isDisabled
+                                  ? AppColors.textSecondary.withValues(alpha: 0.22)
+                                  : isOtherMonth
+                                      ? AppColors.textSecondary.withValues(alpha: 0.78)
+                                      : AppColors.textPrimary,
                       fontFamily: 'Inter',
                     ),
                   ),
@@ -455,12 +542,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     }
   }
 
-  bool _isWithinOperationalHours(TimeOfDay? time) {
-    if (time == null) return false;
-    final totalMinutes = time.hour * 60 + time.minute;
-    return totalMinutes >= 360 && totalMinutes <= 1320;
-  }
-
   String _getTimeDescription(int hour) {
     if (hour >= 6 && hour < 11) {
       return 'Pagi';
@@ -474,6 +555,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 
   void _applyTime(String timeStr, {String? desc}) {
+    final now = _sekarang();
     final parsed = _parseTimeOfDay(timeStr);
     if (parsed == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -487,7 +569,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       );
       return;
     }
-    if (!_isWithinOperationalHours(parsed)) {
+    if (!adalahJamOperasional(parsed.hour, parsed.minute)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -495,6 +577,19 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           backgroundColor: Color(0xFFDC2626),
           duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+    if (!jadwalMulaiMemenuhiLeadTime(_selectedDate, parsed.hour, parsed.minute, now)) {
+      final minPickup = waktuJemputPalingAwal(now);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Untuk sewa hari ini, jam jemput minimal 2 jam dari sekarang (paling cepat pukul ${formatJamWit(minPickup.hour, minPickup.minute)}).',
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -507,11 +602,17 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   }
 
   Future<void> _pickTimeManually() async {
-    final parsed = _parseTimeOfDay(_selectedTime) ?? const TimeOfDay(hour: 9, minute: 0);
+    final now = _sekarang();
+    final jamAwal = jamValidUntukTanggal(
+      tanggal: _selectedDate,
+      labelSekarang: _selectedTime,
+      now: now,
+    );
+    final parsed = _parseTimeOfDay(jamAwal) ?? const TimeOfDay(hour: 9, minute: 0);
     DateTime tempTime = DateTime(
-      2026,
-      1,
-      1,
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
       parsed.hour,
       parsed.minute,
     );
@@ -523,8 +624,31 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       icon: Icons.schedule_rounded,
       child: StatefulBuilder(
         builder: (sheetContext, setSheetState) {
-          final currentHour = tempTime.hour;
-          final isOperational = currentHour >= 6 && currentHour <= 22;
+          final sheetNow = _sekarang();
+          final isOperational = adalahJamOperasional(tempTime.hour, tempTime.minute);
+          final meetsLeadTime = jadwalMulaiMemenuhiLeadTime(
+            _selectedDate,
+            tempTime.hour,
+            tempTime.minute,
+            sheetNow,
+          );
+          final isValid = isOperational && meetsLeadTime;
+          final minPickup = waktuJemputPalingAwal(sheetNow);
+
+          final String statusText;
+          final String buttonText;
+          if (!isOperational) {
+            statusText =
+                'Di luar jam operasional (06.00 - 22.00 WIT). Butuh konfirmasi khusus CS.';
+            buttonText = 'Pilih jam 06.00 - 22.00 WIT';
+          } else if (!meetsLeadTime) {
+            final jamMinimal = formatJamWit(minPickup.hour, minPickup.minute);
+            statusText = 'Minimal 2 jam dari sekarang (paling cepat $jamMinimal).';
+            buttonText = 'Pilih jam mulai $jamMinimal';
+          } else {
+            statusText = 'Jam operasional normal Merauke (06.00 - 22.00 WIT)';
+            buttonText = 'Terapkan Jam Sewa';
+          }
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -555,7 +679,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     initialDateTime: tempTime,
                     onDateTimeChanged: (DateTime newDateTime) {
                       setSheetState(() {
-                        tempTime = newDateTime;
+                        tempTime = DateTime(
+                          _selectedDate.year,
+                          _selectedDate.month,
+                          _selectedDate.day,
+                          newDateTime.hour,
+                          newDateTime.minute,
+                        );
                       });
                     },
                   ),
@@ -567,20 +697,18 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               Row(
                 children: [
                   Icon(
-                    isOperational ? Icons.check_circle_outline : Icons.info_outline,
+                    isValid ? Icons.check_circle_outline : Icons.info_outline,
                     size: 16,
-                    color: isOperational ? AppColors.statusSuccessFg : AppColors.statusDangerFg,
+                    color: isValid ? AppColors.statusSuccessFg : AppColors.statusDangerFg,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      isOperational
-                          ? 'Jam operasional normal Merauke (06.00 - 22.00 WIT)'
-                          : 'Di luar jam operasional (06.00 - 22.00 WIT). Butuh konfirmasi khusus CS.',
+                      statusText,
                       style: TextStyle(
                         fontSize: AppTypography.sizeBody,
                         fontWeight: FontWeight.w500,
-                        color: isOperational ? AppColors.statusSuccessFg : AppColors.statusDangerFg,
+                        color: isValid ? AppColors.statusSuccessFg : AppColors.statusDangerFg,
                         fontFamily: 'Inter',
                       ),
                     ),
@@ -593,7 +721,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
               ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 48),
                 child: ElevatedButton(
-                  onPressed: isOperational
+                  onPressed: isValid
                       ? () => Navigator.of(sheetContext).pop(tempTime)
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -607,9 +735,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    isOperational
-                        ? 'Terapkan Jam Sewa'
-                        : 'Pilih jam 06.00 - 22.00 WIT',
+                    buttonText,
                     style: const TextStyle(
                       fontSize: AppTypography.sizeBodyLarge,
                       fontWeight: FontWeight.w700,
@@ -758,24 +884,35 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           const SizedBox(height: 10),
 
           // Keterangan Jam Operasional (Tanpa Box Berlapis)
-          const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.info_outline, size: 14, color: AppColors.primaryTeal),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Untuk kebutuhan khusus di luar jam tersebut, silakan konfirmasi melalui Chat CS.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeTiny,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                    height: 1.35,
+          Builder(
+            builder: (context) {
+              final now = _sekarang();
+              final isHariIni =
+                  tanggalSaja(_selectedDate).isAtSameMomentAs(tanggalSaja(now));
+              final minPickup = waktuJemputPalingAwal(now);
+              final teks = isHariIni
+                  ? 'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Pemesanan hari ini minimal 2 jam dari sekarang (mulai pukul ${formatJamWit(minPickup.hour, minPickup.minute)}).'
+                  : 'Penjemputan dilayani pukul 06.00 - 22.00 WIT. Jadwal sewa tersedia hingga 60 hari ke depan.';
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline, size: 14, color: AppColors.primaryTeal),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      teks,
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTiny,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                        height: 1.35,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 14),
@@ -922,14 +1059,16 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
                 constraints: const BoxConstraints(minHeight: 44),
                 child: ElevatedButton(
                   onPressed: () {
-                    final parsed = _parseTimeOfDay(_selectedTime);
-                    if (!_isWithinOperationalHours(parsed)) {
+                    final error = validasiJadwalSewa(
+                      tanggal: _selectedDate,
+                      labelJam: _selectedTime,
+                      now: _sekarang(),
+                    );
+                    if (error != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Jam sewa harus dalam batas operasional (06.00 s.d. 22.00 WIT). Hubungi Chat CS Merauke jika butuh penjemputan khusus.',
-                          ),
-                          backgroundColor: Color(0xFFDC2626),
+                        SnackBar(
+                          content: Text(error),
+                          backgroundColor: const Color(0xFFDC2626),
                         ),
                       );
                       return;

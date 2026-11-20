@@ -5,7 +5,6 @@ import '../controllers/booking_controller.dart';
 import '../models/user_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import 'profile/ubah_kata_sandi_sheet.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/standard_bottom_sheet.dart';
 import 'auth/login_screen.dart';
@@ -347,39 +346,6 @@ class ProfileScreen extends StatelessWidget {
                 },
               ),
               const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
-              _buildMenuItem(
-                icon: Icons.edit_note_outlined,
-                title: 'Ubah Data Kontak & Profil',
-                onTap: () {
-                  _showEditProfileModal(context, auth, user);
-                },
-              ),
-              const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
-              _buildMenuItem(
-                icon: Icons.password_rounded,
-                title: 'Kata Sandi Akun',
-                onTap: () async {
-                  /* Akun lama belum punya kata sandi; server yang menentukan
-                     apakah perlu kata sandi saat ini. Nilai di sini hanya untuk
-                     menentukan kolom yang ditampilkan. */
-                  final sudahPunya = user.punyaKataSandi;
-                  final berhasil = await UbahKataSandiSheet.tampilkan(
-                    context,
-                    sudahPunyaKataSandi: sudahPunya,
-                  );
-                  if (!context.mounted || !berhasil) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Kata sandi tersimpan. Perangkat lain sudah dikeluarkan.',
-                      ),
-                      backgroundColor: Color(0xFF16A34A),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
             ],
             _buildMenuItem(
               icon: Icons.shield_outlined,
@@ -516,216 +482,17 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showEditProfileModal(
-    BuildContext context,
-    AuthController auth,
-    UserModel user,
-  ) {
-    final nameController = TextEditingController(text: user.name);
-    final rawPhone = user.phone
-        .replaceAll('+62 ', '')
-        .replaceAll('+62', '')
-        .replaceAll('-', '')
-        .trim();
-    final phoneController = TextEditingController(text: rawPhone);
-    String selectedGender = (user.gender != null && user.gender!.isNotEmpty)
-        ? user.gender!
-        : 'Laki-laki';
-
-    StandardBottomSheet.show<void>(
-      context: context,
-      title: 'Perbarui Data Profil',
-      subtitle:
-          'Perubahan nama dan kontak akan digunakan pada tanda terima sewa resmi.',
-      icon: Icons.edit_note_outlined,
-      child: StatefulBuilder(
-        builder: (sheetCtx, setModalState) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'Nama Lengkap',
-                filled: true,
-                fillColor: AppColors.surfaceLight,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                  borderSide: const BorderSide(
-                    color: AppColors.primaryNavy,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneController,
-              readOnly: true,
-              enabled: false,
-              decoration: InputDecoration(
-                labelText: 'Nomor WhatsApp (tidak dapat diubah di sini)',
-                prefixText: '+62 ',
-                filled: true,
-                fillColor: AppColors.surfaceLight,
-                helperText: 'Hubungi admin bila nomor Anda berubah.',
-                helperStyle: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Jenis Kelamin',
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      setModalState(() {
-                        selectedGender = 'Laki-laki';
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: selectedGender == 'Laki-laki'
-                            ? AppColors.primaryNavy
-                            : AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                        border: Border.all(
-                          color: selectedGender == 'Laki-laki'
-                              ? AppColors.primaryNavy
-                              : AppColors.borderSubtle,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Laki-laki',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: selectedGender == 'Laki-laki'
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      setModalState(() {
-                        selectedGender = 'Perempuan';
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: selectedGender == 'Perempuan'
-                            ? AppColors.primaryNavy
-                            : AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                        border: Border.all(
-                          color: selectedGender == 'Perempuan'
-                              ? AppColors.primaryNavy
-                              : AppColors.borderSubtle,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Perempuan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeBody,
-                          fontWeight: FontWeight.w600,
-                          color: selectedGender == 'Perempuan'
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final galat = await auth.ubahNama(nameController.text);
-                  if (!context.mounted) return;
-
-                  if (galat != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(galat),
-                        backgroundColor: AppColors.statusCancelled,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Nama berhasil diperbarui dan tersimpan di server.',
-                      ),
-                      backgroundColor: Color(0xFF16A34A),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryNavy,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text('Simpan Perubahan'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Menampilkan nomor dalam bentuk `+62 812...`.
-  ///
-  /// Server menyimpan bentuk lokal (`0812...`); tampilan memakai bentuk
-  /// internasional supaya konsisten dengan teks lain di aplikasi.
+  /// Menampilkan nomor dalam bentuk `+62 812...` tanpa duplikasi awalan `62`.
   static String _formatNomor(String nomor) {
-    final digit = nomor.replaceAll(RegExp(r'\D'), '');
-    final tanpaNol = digit.startsWith('0') ? digit.substring(1) : digit;
-    return '+62 $tanpaNol';
+    var digit = nomor.replaceAll(RegExp(r'\D'), '');
+    if (digit.startsWith('620')) {
+      digit = digit.substring(3);
+    } else if (digit.startsWith('62')) {
+      digit = digit.substring(2);
+    } else if (digit.startsWith('0')) {
+      digit = digit.substring(1);
+    }
+    return '+62 $digit';
   }
 
   void _showTermsModal(BuildContext context) {

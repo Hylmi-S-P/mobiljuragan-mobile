@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/network/api_client.dart';
 import '../data/remote/ai_api_service.dart';
 import '../data/remote/ai_chat_api_service.dart';
 import '../data/remote/faq_api_service.dart';
@@ -53,10 +54,44 @@ class SupportController extends ChangeNotifier {
   bool get isLoadingTickets => _isLoadingTickets;
   String? _ticketError;
   String? get ticketError => _ticketError;
+  String? _bookingTicketError;
+  String? get bookingTicketError => _bookingTicketError;
+  String? _sessionUserId;
+
+  /// Mengosongkan seluruh data tiket dan percakapan milik sesi pengguna saat logout.
+  void clearSessionData() {
+    berhentiSemuaDengarkan();
+    _tickets.clear();
+    _statusServer.clear();
+    _conversations.clear();
+    _handoffStatus.clear();
+    _tiketTertutup.clear();
+    _ticketTurnCounts.clear();
+    _isAiThinking.clear();
+    _lastSentAt.clear();
+    _ticketError = null;
+    _initData();
+    notifyListeners();
+  }
+
+  /// Menyesuaikan data tiket ketika akun berganti atau pengguna logout.
+  Future<void> syncIfSessionChanged(String? userId) async {
+    if (userId == _sessionUserId) return;
+    _sessionUserId = userId;
+    await Future<void>.delayed(Duration.zero);
+    clearSessionData();
+    if (userId != null && userId.isNotEmpty) {
+      await fetchTickets(force: true);
+    }
+  }
 
   final Map<String, bool> _isAiThinking = {};
   bool isAiThinking(String conversationKey) =>
       _isAiThinking[conversationKey] ?? false;
+
+  /// Waktu pengiriman terakhir per percakapan untuk mencegah spam beruntun.
+  final Map<String, DateTime> _lastSentAt = {};
+  static const Duration _minSendInterval = Duration(milliseconds: 1500);
 
   /// Batas retensi putaran dialog dengan AI sebelum dievaluasi untuk eskalasi ke staf operasional
   static const int maxAiTurnsBeforeHandoff = 3;
@@ -248,6 +283,7 @@ class SupportController extends ChangeNotifier {
   /// Mengembalikan `null` bila server tidak bisa dihubungi: layar chat lalu
   /// menampilkan pesan galat, bukan percakapan kosong yang menyesatkan.
   Future<SupportTicketModel?> bukaTiketPesanan({required String bookingId}) async {
+    _bookingTicketError = null;
     try {
       final data = await _ticketApiService.createBookingTicket(bookingId: bookingId);
       if (data.isEmpty) return null;
@@ -281,6 +317,9 @@ class SupportController extends ChangeNotifier {
 
       notifyListeners();
       return ticket;
+    } on ApiException catch (e) {
+      _bookingTicketError = e.message;
+      return null;
     } catch (_) {
       return null;
     }
@@ -337,6 +376,10 @@ class SupportController extends ChangeNotifier {
         ..addAll(remoteTickets)
         ..addAll(belumTersimpan);
     } catch (e) {
+      if (e is ApiException && e.statusCode == 401) {
+        clearSessionData();
+        return;
+      }
       _ticketError = e.toString();
     } finally {
       _isLoadingTickets = false;
@@ -750,6 +793,18 @@ class SupportController extends ChangeNotifier {
   }) {
     if (text.trim().isEmpty) return;
 
+    final isHandedOff = isAiHandoffToAdminFor(conversationKey);
+    if (!isHandedOff && isAiThinking(conversationKey)) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastSent = _lastSentAt[conversationKey];
+    if (lastSent != null && now.difference(lastSent) < _minSendInterval) {
+      return;
+    }
+    _lastSentAt[conversationKey] = now;
+
     /* Tiket yang sudah ditutup tidak boleh menerima pesan dari sisi mana pun.
      *
      * Penjagaan ini ada di controller, bukan hanya di layar, karena tombol saran
@@ -792,8 +847,6 @@ class SupportController extends ChangeNotifier {
         pesanLokal: userMsg,
       );
     }
-
-    final isHandedOff = isAiHandoffToAdminFor(conversationKey);
 
     /* Balasan AI diambil dari backend sungguhan.
      *
@@ -851,9 +904,10 @@ class SupportController extends ChangeNotifier {
       final turnCount = _ticketTurnCounts[conversationKey]!;
 
       // Jika percakapan tiket mencapai batas retensi (misal 3 putaran),
-      // picu eskalasi otomatis ke staf operasional agar pengguna segera ditangani langsung
+      // kunci handoff langsung agar tidak ada balasan AI susulan, lalu teruskan ke server.
       if (conversationKey.startsWith('ticket_') &&
           turnCount >= maxAiTurnsBeforeHandoff) {
+        _handoffStatus[conversationKey] = true;
         unawaited(handoffToAdmin(conversationKey: conversationKey));
       }
 
@@ -906,11 +960,13 @@ class SupportController extends ChangeNotifier {
     }
 
     final ticketId = conversationKey.replaceFirst('ticket_', '');
+    _handoffStatus[conversationKey] = true;
 
     try {
       final berhasil = await _ticketApiService.handover(ticketId: ticketId);
 
       if (!berhasil) {
+        _handoffStatus[conversationKey] = false;
         _tambahPesanSistem(
           conversationKey: conversationKey,
           pesan:
@@ -929,6 +985,7 @@ class SupportController extends ChangeNotifier {
       );
       return true;
     } catch (_) {
+      _handoffStatus[conversationKey] = false;
       _tambahPesanSistem(
         conversationKey: conversationKey,
         pesan:

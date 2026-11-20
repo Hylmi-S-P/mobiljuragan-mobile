@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/support_controller.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
@@ -21,7 +22,7 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && context.read<AuthController>().isLoggedIn) {
         context.read<SupportController>().fetchTickets();
       }
     });
@@ -29,8 +30,13 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthController>().isLoggedIn;
     final support = context.watch<SupportController>();
-    final historyTickets = support.tickets.where((t) => t.isFinished).toList();
+    final historyTickets = isLoggedIn
+        ? support.tickets
+            .where((t) => t.isFinished && (t.bookingId == null || t.bookingId!.isEmpty))
+            .toList()
+        : const <SupportTicketModel>[];
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -41,7 +47,11 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => context.read<SupportController>().fetchTickets(force: true),
+          onRefresh: () async {
+            if (context.read<AuthController>().isLoggedIn) {
+              await context.read<SupportController>().fetchTickets(force: true);
+            }
+          },
           color: AppColors.primaryNavy,
           child: historyTickets.isEmpty
               ? LayoutBuilder(
@@ -111,27 +121,6 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
                 height: 1.4,
                 color: AppColors.textSecondary,
                 fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back, size: 18),
-              label: const Text(
-                'Kembali ke Pusat Bantuan',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primaryNavy,
-                side: const BorderSide(color: AppColors.borderSubtle),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
             ),
           ],

@@ -105,11 +105,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     final auth = context.read<AuthController>();
-    var rawPhone = _phoneController.text.trim();
-    if (!rawPhone.startsWith('+62')) {
+    var rawPhone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (rawPhone.startsWith('620')) {
+      rawPhone = rawPhone.substring(3);
+    } else if (rawPhone.startsWith('62')) {
+      rawPhone = rawPhone.substring(2);
+    } else if (rawPhone.startsWith('0')) {
       rawPhone = rawPhone.replaceFirst(RegExp(r'^0+'), '');
     }
-    final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
+    final fullPhone = '+62 $rawPhone';
 
     // Simpan data pendaftaran sementara (termasuk kata sandi) di memori.
     auth.setPendingRegistration(
@@ -305,6 +309,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _nameController,
+          maxLength: 60,
           textCapitalization: TextCapitalization.words,
           style: const TextStyle(
             fontSize: 15,
@@ -314,6 +319,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           decoration: InputDecoration(
             hintText: 'Contoh: Harun',
+            counterText: '',
             hintStyle: const TextStyle(
               color: AppColors.textMuted,
               fontSize: AppTypography.sizeBodyLarge,
@@ -396,6 +402,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Expanded(
                 child: TextFormField(
                   controller: _phoneController,
+                  maxLength: 20,
                   keyboardType: TextInputType.phone,
                   style: const TextStyle(
                     fontSize: 15,
@@ -405,6 +412,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   decoration: const InputDecoration(
                     hintText: '812-3456-7890',
+                    counterText: '',
                     hintStyle: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: AppTypography.sizeBodyLarge,
@@ -446,6 +454,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _passwordController,
+          maxLength: 50,
           obscureText: _obscurePassword,
           autocorrect: false,
           enableSuggestions: false,
@@ -499,6 +508,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _passwordConfirmController,
+          maxLength: 50,
           obscureText: _obscureConfirm,
           autocorrect: false,
           enableSuggestions: false,
@@ -604,6 +614,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }) {
     return InputDecoration(
       hintText: hint,
+      counterText: '',
       hintStyle: const TextStyle(
         color: AppColors.textMuted,
         fontSize: AppTypography.sizeBodyLarge,

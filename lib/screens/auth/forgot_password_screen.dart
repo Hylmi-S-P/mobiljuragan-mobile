@@ -266,6 +266,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _passwordController,
+                    maxLength: 50,
                     obscureText: _obscure,
                     autocorrect: false,
                     enableSuggestions: false,
@@ -304,6 +305,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _confirmController,
+                    maxLength: 50,
                     obscureText: _obscure,
                     autocorrect: false,
                     enableSuggestions: false,

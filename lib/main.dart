@@ -112,10 +112,14 @@ void main() async {
             return booking ?? BookingController(repository: bookingRepo);
           },
         ),
-        ChangeNotifierProvider(
-          create: (_) => SupportController()
-            ..fetchFaqs()
-            ..fetchTickets(),
+        ChangeNotifierProxyProvider<AuthController, SupportController>(
+          create: (_) => SupportController()..fetchFaqs(),
+          update: (_, auth, support) {
+            if (support != null) {
+              support.syncIfSessionChanged(auth.currentUser?.id);
+            }
+            return support ?? (SupportController()..fetchFaqs());
+          },
         ),
       ],
       child: const MobilJuraganApp(),

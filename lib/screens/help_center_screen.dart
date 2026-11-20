@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../controllers/support_controller.dart';
 import '../models/faq_model.dart';
 import '../theme/app_colors.dart';
@@ -46,7 +47,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
       if (mounted) {
         final support = context.read<SupportController>();
         support.fetchFaqs();
-        support.fetchTickets();
+        if (context.read<AuthController>().isLoggedIn) {
+          support.fetchTickets();
+        }
       }
     });
 
@@ -70,7 +73,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
      * Saat kembali ke depan, daftar disegarkan sekali lalu jadwal dilanjutkan.
      */
     if (state == AppLifecycleState.resumed) {
-      if (mounted) {
+      if (mounted && context.read<AuthController>().isLoggedIn) {
         context.read<SupportController>().fetchTickets();
       }
       _mulaiSegarkanTiket();
@@ -85,7 +88,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
     _hentikanSegarkanTiket();
     _ticketsPollingTimer = Timer.periodic(_jedaSegarkanTiket, (_) {
       if (!mounted) return;
-      context.read<SupportController>().fetchTickets();
+      if (context.read<AuthController>().isLoggedIn) {
+        context.read<SupportController>().fetchTickets();
+      }
     });
   }
 
@@ -102,6 +107,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthController>().isLoggedIn;
     final support = context.watch<SupportController>();
     final categories = support.faqCategories;
     if (!categories.contains(_selectedCategory)) {
@@ -120,9 +126,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
         child: RefreshIndicator(
           onRefresh: () async {
             final supportCtrl = context.read<SupportController>();
+            final loggedIn = context.read<AuthController>().isLoggedIn;
             await Future.wait([
               supportCtrl.fetchFaqs(force: true),
-              supportCtrl.fetchTickets(force: true),
+              if (loggedIn) supportCtrl.fetchTickets(force: true),
             ]);
           },
           color: AppColors.primaryNavy,
@@ -149,9 +156,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
                 _buildFaqSection(faqs, categories),
                 const SizedBox(height: 24),
 
-                // Seksi 2: Tiket Bantuan Saya
-                _buildUserTicketsSection(support),
-                const SizedBox(height: 24),
+                // Seksi 2: Tiket Bantuan Saya (hanya saat akun terhubung)
+                if (isLoggedIn) ...[
+                  _buildUserTicketsSection(support),
+                  const SizedBox(height: 24),
+                ],
 
                 // Seksi 3: Saluran Bantuan
                 _buildSupportChannelsSection(),
@@ -497,7 +506,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
        pada tiket RESOLVED maupun CLOSED, jadi keduanya tidak boleh muncul di sini:
        menampilkannya sebagai "aktif" hanya menjanjikan percakapan yang sudah
        mati. Keduanya pindah ke Riwayat Tiket. */
-    final activeTickets = support.tickets.where((t) => !t.isFinished).toList();
+    final activeTickets = support.tickets
+        .where((t) => !t.isFinished && (t.bookingId == null || t.bookingId!.isEmpty))
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

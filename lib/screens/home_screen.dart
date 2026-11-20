@@ -285,41 +285,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            const Text(
-              'Status Reservasi',
-              style: TextStyle(
-                fontSize: AppTypography.sizeTitle,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            if (hasActive)
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => OrderStatusScreen(booking: activeOrder),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Detail Status ›',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryNavy,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ),
-          ],
+        const Text(
+          'Status Reservasi',
+          style: TextStyle(
+            fontSize: AppTypography.sizeTitle,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
         ),
         const SizedBox(height: 10),
         InkWell(

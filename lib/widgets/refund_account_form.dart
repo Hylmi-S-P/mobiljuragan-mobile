@@ -178,7 +178,7 @@ class _RefundAccountFormState extends State<RefundAccountForm> {
           const SizedBox(height: 10),
           TextFormField(
             controller: _bankLainController,
-            maxLength: 60,
+            maxLength: 30,
             onChanged: (_) => _emit(),
             decoration: InputDecoration(
               labelText: 'Nama bank / e-wallet',
@@ -193,11 +193,11 @@ class _RefundAccountFormState extends State<RefundAccountForm> {
         TextFormField(
           controller: _nomorController,
           keyboardType: TextInputType.number,
-          maxLength: 30,
+          maxLength: 20,
           onChanged: (_) => _emit(),
           decoration: InputDecoration(
             labelText: 'Nomor Rekening',
-            hintText: '6–30 angka, tanpa spasi atau tanda hubung',
+            hintText: '6-20 angka, tanpa spasi atau tanda hubung',
             counterText: '',
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -206,7 +206,7 @@ class _RefundAccountFormState extends State<RefundAccountForm> {
         const SizedBox(height: 10),
         TextFormField(
           controller: _pemilikController,
-          maxLength: 120,
+          maxLength: 60,
           onChanged: (_) => _emit(),
           decoration: InputDecoration(
             labelText: 'Nama Pemilik Rekening',

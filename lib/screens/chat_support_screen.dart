@@ -149,7 +149,8 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       _galatTiket = null;
     });
 
-    final tiket = await context.read<SupportController>().bukaTiketPesanan(
+    final supportCtrl = context.read<SupportController>();
+    final tiket = await supportCtrl.bukaTiketPesanan(
       bookingId: booking.id,
     );
 
@@ -158,7 +159,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     if (tiket == null) {
       setState(() {
         _memuatTiket = false;
-        _galatTiket =
+        _galatTiket = supportCtrl.bookingTicketError ??
             'Percakapan bantuan gagal dibuka. Periksa koneksi lalu coba lagi.';
       });
       return;
@@ -227,6 +228,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
 
   void _handleSendMessage(SupportController controller) {
     if (_ticketFinal != null) return;
+    final isHandedOff =
+        controller.isAiHandoffToAdminFor(conversationKey) ||
+        (_tiketAktif?.isHandledByHuman ?? false);
+    if (!isHandedOff && controller.isAiThinking(conversationKey)) return;
 
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
@@ -317,7 +322,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     if (currentBooking != null) {
       screenTitle = currentBooking.vehicle.name;
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke · balas 08.00–17.00 WIT'
+          ? 'Staf Operasional Merauke · balas 06.00-22.00 WIT'
           : 'Asisten AI MobilJuragan · membalas otomatis';
     } else if (activeTicket != null) {
       screenTitle = (liveTicket ?? activeTicket).title;
@@ -327,13 +332,13 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         screenSubtitle = 'Tiket selesai · riwayat tersimpan';
       } else {
         screenSubtitle = isHandedOff
-            ? 'Staf Operasional Merauke · balas 08.00–17.00 WIT'
+            ? 'Staf Operasional Merauke · balas 06.00-22.00 WIT'
             : 'Asisten AI MobilJuragan · membalas otomatis';
       }
     } else {
       screenTitle = 'Bantuan MobilJuragan';
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke · balas 08.00–17.00 WIT'
+          ? 'Staf Operasional Merauke · balas 06.00-22.00 WIT'
           : 'Asisten AI MobilJuragan · membalas otomatis';
     }
 
@@ -1108,6 +1113,8 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     }
 
     final adaTeks = _messageController.text.trim().isNotEmpty;
+    final bolehKirim =
+        adaTeks && (isHandedOff || !controller.isAiThinking(conversationKey));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
@@ -1118,6 +1125,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             child: TextField(
               controller: _messageController,
               focusNode: _focusNode,
+              maxLength: 500,
               minLines: 1,
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
@@ -1135,6 +1143,9 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               ),
               decoration: InputDecoration(
                 hintText: isHandedOff ? 'Tulis pesan untuk staf operasional' : 'Tulis pesan',
+                counterText: _messageController.text.length >= 400
+                    ? '${_messageController.text.length}/500'
+                    : '',
                 hintStyle: const TextStyle(
                   fontSize: AppTypography.sizeBodyLarge,
                   color: AppColors.textMuted,
@@ -1166,15 +1177,15 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
             width: 44,
             height: 44,
             child: Material(
-              color: adaTeks ? AppColors.primaryNavy : AppColors.surfaceLight,
+              color: bolehKirim ? AppColors.primaryNavy : AppColors.surfaceLight,
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: adaTeks ? () => _handleSendMessage(controller) : null,
+                onTap: bolehKirim ? () => _handleSendMessage(controller) : null,
                 child: Icon(
                   Icons.send_rounded,
                   size: 19,
-                  color: adaTeks ? AppColors.textWhite : AppColors.textMuted,
+                  color: bolehKirim ? AppColors.textWhite : AppColors.textMuted,
                 ),
               ),
             ),

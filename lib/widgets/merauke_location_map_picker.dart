@@ -456,9 +456,11 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
         TextField(
           controller: _searchController,
           focusNode: _searchFocus,
+          maxLength: 50,
           style: const TextStyle(fontSize: AppTypography.sizeBody, fontFamily: 'Inter'),
           decoration: InputDecoration(
             isDense: true,
+            counterText: '',
             hintText: 'Cari lokasi, misalnya "bandara"',
             hintStyle: const TextStyle(
               fontSize: AppTypography.sizeBody,
@@ -589,6 +591,14 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
               options: MapOptions(
                 initialCenter: _currentCenter,
                 initialZoom: 14.0,
+                minZoom: 11.5,
+                maxZoom: 18.0,
+                cameraConstraint: CameraConstraint.contain(
+                  bounds: LatLngBounds(
+                    const LatLng(-8.65, 140.25),
+                    const LatLng(-8.35, 140.55),
+                  ),
+                ),
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.none,
                 ),
@@ -666,35 +676,42 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
               ],
             ),
 
-            // Kontrol Zoom & Pusatkan di pojok kanan bawah
+            // Kontrol Zoom & Pusatkan di pojok kanan bawah (sejajar agar tidak bertabrakan dengan tombol Perbesar)
             Positioned(
               right: 10,
               bottom: 10,
-              child: Column(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _buildMapActionButton(
-                    icon: Icons.add,
-                    onPressed: () {
-                      final zoom = _mapController.camera.zoom;
-                      _mapController.move(_mapController.camera.center, zoom + 1);
-                    },
-                  ),
-                  const SizedBox(height: 5),
-                  _buildMapActionButton(
-                    icon: Icons.remove,
-                    onPressed: () {
-                      final zoom = _mapController.camera.zoom;
-                      _mapController.move(_mapController.camera.center, zoom - 1);
-                    },
-                  ),
                   if (widget.isWithDriver) ...[
-                    const SizedBox(height: 5),
                     _buildMapActionButton(
                       icon: Icons.my_location,
                       onPressed: _isLocating ? null : _useCurrentLocation,
                       isLoading: _isLocating,
                     ),
+                    const SizedBox(width: 6),
                   ],
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildMapActionButton(
+                        icon: Icons.add,
+                        onPressed: () {
+                          final nextZoom = (_mapController.camera.zoom + 1).clamp(11.5, 18.0);
+                          _mapController.move(_mapController.camera.center, nextZoom);
+                        },
+                      ),
+                      const SizedBox(height: 5),
+                      _buildMapActionButton(
+                        icon: Icons.remove,
+                        onPressed: () {
+                          final nextZoom = (_mapController.camera.zoom - 1).clamp(11.5, 18.0);
+                          _mapController.move(_mapController.camera.center, nextZoom);
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -853,6 +870,14 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                             options: MapOptions(
                               initialCenter: _currentCenter,
                               initialZoom: 14.5,
+                              minZoom: 11.5,
+                              maxZoom: 18.0,
+                              cameraConstraint: CameraConstraint.contain(
+                                bounds: LatLngBounds(
+                                  const LatLng(-8.65, 140.25),
+                                  const LatLng(-8.35, 140.55),
+                                ),
+                              ),
                               onTap: (tapPosition, point) async {
                                 if (widget.isWithDriver && widget.onCustomCoordinateSelected != null) {
                                   setState(() {

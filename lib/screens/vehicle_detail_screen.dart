@@ -243,25 +243,6 @@ class VehicleDetailScreen extends StatelessWidget {
       icon: Icons.info_outline_rounded,
       title: bannerTitle,
       message: bannerMessage,
-      action: OutlinedButton(
-        onPressed: () => Navigator.of(context).maybePop(),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.statusWarningFg,
-          side: const BorderSide(color: AppColors.statusWarningBorder),
-          minimumSize: const Size(0, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.control),
-          ),
-        ),
-        child: const Text(
-          'Lihat Armada Lain',
-          style: TextStyle(
-            fontSize: AppTypography.sizeBody,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Inter',
-          ),
-        ),
-      ),
     );
   }
 

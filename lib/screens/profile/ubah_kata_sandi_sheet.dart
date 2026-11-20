@@ -173,6 +173,7 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _lamaController,
+                maxLength: 50,
                 obscureText: _obscureLama,
                 autocorrect: false,
                 enableSuggestions: false,
@@ -203,6 +204,7 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _baruController,
+              maxLength: 50,
               obscureText: _obscure,
               autocorrect: false,
               enableSuggestions: false,
@@ -233,6 +235,7 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _ulangiController,
+              maxLength: 50,
               obscureText: _obscure,
               autocorrect: false,
               enableSuggestions: false,
@@ -333,6 +336,7 @@ class _UbahKataSandiSheetState extends State<UbahKataSandiSheet> {
 
   InputDecoration _dekorasi(String hint, {Widget? suffix}) => InputDecoration(
         hintText: hint,
+        counterText: '',
         hintStyle: const TextStyle(
           color: AppColors.textMuted,
           fontSize: AppTypography.sizeBodyLarge,

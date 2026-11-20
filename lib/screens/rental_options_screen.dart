@@ -4,14 +4,12 @@ import 'package:provider/provider.dart';
 import '../controllers/booking_controller.dart';
 import '../core/config/app_config_store.dart';
 import '../core/network/pickup_point_api_service.dart';
-import '../data/remote/document_api_service.dart';
 import '../models/vehicle_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/daftar_geser_horizontal.dart';
 import '../widgets/merauke_location_map_picker.dart';
-import '../widgets/standard_bottom_sheet.dart';
 import 'date_time_screen.dart';
 import '../theme/app_typography.dart';
 
@@ -30,8 +28,6 @@ class RentalOptionsScreen extends StatefulWidget {
 }
 
 class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
-  final DocumentApiService _documentApiService = DocumentApiService();
-
   /* Titik serah terima sepenuhnya berasal dari backend (GET /pickup-points).
      Tidak ada daftar cadangan berisi koordinat karangan: kalau server belum
      menjawab, layar menampilkan keadaan memuat atau gagal, bukan titik palsu
@@ -768,33 +764,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
             _buildPolicyRow('Unggah foto e-KTP dan SIM A aktif di halaman status pesanan, lalu tunjukkan berkas fisiknya saat serah terima unit.'),
             _buildPolicyRow('Wajib mengunduh, menandatangani, dan mengunggah Surat Pernyataan Penyewa (bebas alkohol/narkoba & tanggung jawab unit) sebelum pengambilan kunci.'),
             _buildPolicyRow('Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => _showStatementPreviewModal(context),
-              borderRadius: BorderRadius.circular(6),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.visibility_outlined, size: 15, color: AppColors.primaryTeal),
-                    SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        'Lihat Pratinjau Surat Pernyataan',
-                        style: TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryTeal,
-                          fontFamily: 'Inter',
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ] else ...[
             _buildPolicyRow('Pengemudi adalah staf tetap MobilJuragan yang terikat SOP perusahaan.'),
             _buildPolicyRow('Jam kerja operasional harian sopir adalah 12 jam per hari.'),
@@ -802,118 +771,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
             _buildPolicyRow('Koordinasi nomor WhatsApp sopir dilakukan langsung melalui Chat CS.'),
           ],
         ],
-      ),
-    );
-  }
-
-  void _showStatementPreviewModal(BuildContext context) {
-    StandardBottomSheet.show(
-      context: context,
-      title: 'Pratinjau Surat Pernyataan',
-      subtitle: 'Klausul Hukum Sewa Lepas Kunci',
-      icon: Icons.description_outlined,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.scaffoldBackground,
-          borderRadius: BorderRadius.circular(AppRadius.control),
-          border: Border.all(color: AppColors.borderSubtle),
-        ),
-        child: FutureBuilder<Map<String, dynamic>>(
-          /*
-           * Yang ditampilkan adalah keterangan dokumen resmi yang sedang
-           * aktif di server: nama berkas, jenis, ukuran, dan versinya.
-           */
-          future: _documentApiService.fetchStatementTemplateText(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              );
-            }
-
-            final data = snapshot.data;
-
-            if (snapshot.hasError || data == null || data.isEmpty) {
-              return const Text(
-                'Keterangan dokumen tidak dapat dimuat saat ini. Dokumen lengkap tetap bisa Anda unduh dan tandatangani lewat aplikasi.',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  height: 1.45,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'Inter',
-                ),
-              );
-            }
-
-            final namaBerkas = data['namaBerkas']?.toString();
-            final versi = data['versi']?.toString();
-            final byte = data['byte'];
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['judul']?.toString() ?? 'Surat Pernyataan Penyewa',
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryNavy,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  [
-                    if (namaBerkas != null && namaBerkas.isNotEmpty) namaBerkas,
-                    if (byte is int) '${(byte / 1024).toStringAsFixed(0)} KB',
-                    if (versi != null) 'versi $versi',
-                  ].join(' · '),
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    height: 1.45,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Dokumen ini yang akan Anda cetak, isi, tanda tangani dengan meterai, lalu foto dan unggah kembali di aplikasi.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    height: 1.45,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-      footer: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 48),
-        child: ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryNavy,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.control),
-            ),
-          ),
-          child: const Text(
-            'Saya Mengerti',
-            style: TextStyle(fontSize: AppTypography.sizeBodyLarge, fontWeight: FontWeight.w700),
-          ),
-        ),
       ),
     );
   }

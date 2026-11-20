@@ -138,6 +138,7 @@ class _LoginPasswordScreenState extends State<LoginPasswordScreen> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
+                  maxLength: 50,
                   obscureText: _obscure,
                   autocorrect: false,
                   enableSuggestions: false,
@@ -152,6 +153,7 @@ class _LoginPasswordScreenState extends State<LoginPasswordScreen> {
                   ),
                   decoration: InputDecoration(
                     hintText: 'Masukkan kata sandi Anda',
+                    counterText: '',
                     hintStyle: const TextStyle(
                       color: AppColors.textMuted,
                       fontSize: AppTypography.sizeBodyLarge,

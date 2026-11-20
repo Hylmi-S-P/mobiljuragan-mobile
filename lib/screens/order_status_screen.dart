@@ -90,9 +90,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   PaymentModel? _payment;
   bool _isLepasKunciDocsCollapsed = true;
 
-  bool get isProofUploaded =>
-      _payment?.isPendingVerification == true ||
-      (_payment?.proofImageUrl != null && _payment!.proofImageUrl!.isNotEmpty);
+  bool get isProofRejected => _payment?.isFailed == true;
+
+  bool get isProofUploaded => _payment?.isPendingVerification == true;
 
   @override
   void initState() {
@@ -278,32 +278,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       bookingId: booking.id,
       vehicleName: booking.vehicle.name,
     );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: const Color(0xFF16A34A),
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Row(
-          children: [
-            const Icon(Icons.verified_rounded, color: Colors.white, size: 22),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Penyewaan ${booking.vehicle.name} telah selesai. Terima kasih telah mempercayai MobilJuragan!',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   /// Pesanan ditolak atau dibatalkan kantor: beri tahu lewat notifikasi sistem
@@ -316,70 +290,17 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       vehicleName: booking.vehicle.name,
       reason: booking.cancellationReason,
     );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: const Color(0xFFB91C1C),
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: Row(
-          children: [
-            const Icon(Icons.cancel_outlined, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Pesanan ${booking.vehicle.name} (${booking.id}) tidak dapat diproses.',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
-  void _onStatusUpdatedToConfirmed(BookingModel booking) {    if (!mounted) return;
+  void _onStatusUpdatedToConfirmed(BookingModel booking) {
+    if (!mounted || _notificationShown) return;
+    _notificationShown = true;
 
     NotificationService().showTariffReadyNotification(
       bookingId: booking.id,
       vehicleName: booking.vehicle.name,
       totalCost: booking.totalCost,
     );
-
-    if (!_notificationShown) {
-      _notificationShown = true;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.primaryNavy,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          content: Row(
-            children: [
-              const Icon(Icons.notifications_active, color: Color(0xFFFDE68A), size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Tarif final Rp ${_formatRupiah(booking.totalCost)} sudah disetujui admin! Status: Menunggu Pembayaran.',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
   }
 
   Future<void> _manualRefreshStatus(BookingModel booking) async {
@@ -402,12 +323,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     }
 
     if (hasUpdated && updatedBooking != null) {
-      if (updatedBooking.status == BookingStatus.menungguPembayaran ||
-          updatedBooking.isFinalTariffConfirmed) {
+      if (updatedBooking.status == BookingStatus.menungguPembayaran) {
         _onStatusUpdatedToConfirmed(updatedBooking);
       } else if (updatedBooking.status == BookingStatus.selesai) {
         _onStatusUpdatedToCompleted(updatedBooking);
-      } else if (updatedBooking.status == BookingStatus.mobilSiapDigunakan) {
+      } else if (updatedBooking.status == BookingStatus.mobilSiapDigunakan ||
+          updatedBooking.status == BookingStatus.pembayaranSelesai ||
+          updatedBooking.status == BookingStatus.verifikasiKantor) {
         _onStatusUpdatedToInProgress(updatedBooking);
       } else if (updatedBooking.status == BookingStatus.dibatalkan) {
         _onStatusUpdatedToRejected(updatedBooking);
@@ -423,17 +345,25 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.surfaceLight,
-          content: Text(
-            booking.status == BookingStatus.selesai
-                ? 'Status pesanan telah selesai.'
-                : 'Belum ada perubahan tarif dari admin operasional.',
-            style: const TextStyle(fontFamily: 'Inter', color: AppColors.textPrimary),
+      final statusSekarang = updatedBooking?.status ?? booking.status;
+      final String? pesanBelumBerubah = switch (statusSekarang) {
+        BookingStatus.menungguTarifFinal =>
+          'Belum ada perubahan tarif dari admin operasional.',
+        BookingStatus.verifikasiKantor =>
+          'Bukti pembayaran masih dalam proses verifikasi admin.',
+        _ => null,
+      };
+      if (pesanBelumBerubah != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.surfaceLight,
+            content: Text(
+              pesanBelumBerubah,
+              style: const TextStyle(fontFamily: 'Inter', color: AppColors.textPrimary),
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -780,13 +710,19 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isProofUploaded ? AppColors.tealLight : const Color(0xFFFEF3C7),
+                    color: isProofRejected
+                        ? const Color(0xFFFEE2E2)
+                        : (isProofUploaded ? AppColors.tealLight : const Color(0xFFFEF3C7)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    isProofUploaded ? Icons.hourglass_bottom_rounded : Icons.schedule_rounded,
+                    isProofRejected
+                        ? Icons.error_outline_rounded
+                        : (isProofUploaded ? Icons.hourglass_bottom_rounded : Icons.schedule_rounded),
                     size: 20,
-                    color: isProofUploaded ? AppColors.primaryTeal : const Color(0xFFD97706),
+                    color: isProofRejected
+                        ? const Color(0xFFDC2626)
+                        : (isProofUploaded ? AppColors.primaryTeal : const Color(0xFFD97706)),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -795,24 +731,32 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isProofUploaded
-                            ? 'Menunggu Verifikasi Pembayaran'
-                            : 'Selesaikan Pembayaran',
+                        isProofRejected
+                            ? 'Bukti Pembayaran Ditolak'
+                            : (isProofUploaded
+                                ? 'Menunggu Verifikasi Pembayaran'
+                                : 'Selesaikan Pembayaran'),
                         style: TextStyle(
                           fontSize: AppTypography.sizeBodyLarge,
                           fontWeight: FontWeight.w700,
-                          color: isProofUploaded ? AppColors.primaryNavy : const Color(0xFF92400E),
+                          color: isProofRejected
+                              ? const Color(0xFF991B1B)
+                              : (isProofUploaded ? AppColors.primaryNavy : const Color(0xFF92400E)),
                           fontFamily: 'Inter',
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isProofUploaded
-                            ? 'Bukti transfer telah diterima dan sedang diperiksa oleh admin operasional.'
-                            : 'Rincian tarif final telah diterbitkan oleh admin',
-                        style: const TextStyle(
+                        isProofRejected
+                            ? (_payment?.rejectionReason != null
+                                ? 'Alasan: ${_payment!.rejectionReason}'
+                                : 'Bukti sebelumnya ditolak admin. Silakan unggah ulang bukti transfer yang valid.')
+                            : (isProofUploaded
+                                ? 'Bukti transfer telah diterima dan sedang diperiksa oleh admin operasional.'
+                                : 'Rincian tarif final telah diterbitkan oleh admin'),
+                        style: TextStyle(
                           fontSize: AppTypography.sizeCaption,
-                          color: AppColors.textSecondary,
+                          color: isProofRejected ? const Color(0xFFB91C1C) : AppColors.textSecondary,
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -958,7 +902,42 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (isProofUploaded) ...[
+                    if (isProofRejected) ...[
+                      const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.cancel_rounded,
+                            size: 13,
+                            color: Color(0xFFDC2626),
+                          ),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Bukti Ditolak',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: AppTypography.sizeTiny,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFDC2626),
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        'Rp ${_formatRupiah(booking.totalCost)}',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeBodyLarge,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryNavy,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ] else if (isProofUploaded) ...[
                       const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1075,12 +1054,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                         )
                       : ElevatedButton.icon(
                           onPressed: () => _showOnlinePaymentSheet(context, booking),
-                          icon: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
-                          label: const FittedBox(
+                          icon: Icon(
+                            isProofRejected ? Icons.upload_file_rounded : Icons.payment_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          label: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              'Bayar Sekarang',
-                              style: TextStyle(
+                              isProofRejected ? 'Unggah Ulang' : 'Bayar Sekarang',
+                              style: const TextStyle(
                                 fontSize: AppTypography.sizeBodyLarge,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
@@ -1089,7 +1072,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryNavy,
+                            backgroundColor: isProofRejected
+                                ? const Color(0xFFDC2626)
+                                : AppColors.primaryNavy,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             elevation: 0,
@@ -1977,9 +1962,11 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             subtitle: step2Done
                 ? 'Pembayaran telah terverifikasi dan tercatat lunas'
                 : (step2Active
-                      ? (isProofUploaded
-                            ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
-                            : 'Batas pelunasan sesuai tagihan yang diterbitkan admin')
+                      ? (isProofRejected
+                            ? 'Bukti pembayaran ditolak admin, silakan unggah ulang'
+                            : (isProofUploaded
+                                  ? 'Bukti transfer telah diunggah dan sedang diverifikasi admin'
+                                  : 'Batas pelunasan sesuai tagihan yang diterbitkan admin'))
                       : (isDriver
                             ? 'Menunggu penetapan rincian tarif final'
                             : 'Menunggu konfirmasi tarif dan verifikasi dokumen')),
@@ -1987,10 +1974,16 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
             isActive: step2Active,
             isLast: false,
             badgeText: step2Active
-                ? (isProofUploaded ? 'VERIFIKASI ADMIN' : 'MENUNGGU BAYAR')
+                ? (isProofRejected
+                      ? 'BUKTI DITOLAK'
+                      : (isProofUploaded ? 'VERIFIKASI ADMIN' : 'MENUNGGU BAYAR'))
                 : null,
-            badgeColor: step2Active ? AppColors.primaryTeal : null,
-            badgeBgColor: step2Active ? AppColors.tealLight : null,
+            badgeColor: step2Active
+                ? (isProofRejected ? const Color(0xFFDC2626) : AppColors.primaryTeal)
+                : null,
+            badgeBgColor: step2Active
+                ? (isProofRejected ? const Color(0xFFFEE2E2) : AppColors.tealLight)
+                : null,
           ),
           _buildStepRow(
             stepNumber: 3,
@@ -4945,6 +4938,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: customReasonController,
+                        maxLength: 300,
                         maxLines: 2,
                         decoration: InputDecoration(
                           hintText: 'Tuliskan alasan spesifik pembatalan Anda...',
@@ -5412,9 +5406,15 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
           if (active.qrisPayload != null && active.qrisPayload!.isNotEmpty) {
             _qrisPayload = active.qrisPayload!;
           }
-          if (active.isPendingVerification ||
-              (active.proofImageUrl != null && active.proofImageUrl!.isNotEmpty)) {
+          if (active.isFailed) {
+            _isProofUploaded = false;
+          } else if (active.isPendingVerification) {
             _isProofUploaded = true;
+          }
+          if (_senderNameController.text.isEmpty &&
+              active.senderAccount != null &&
+              active.senderAccount!.isNotEmpty) {
+            _senderNameController.text = active.senderAccount!;
           }
           if (active.method == PaymentMethod.bankTransfer) {
             _selectedTab = 1;
@@ -5513,7 +5513,31 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
           return;
         }
 
+        if (payment.isFailed) {
+          setState(() {
+            _isProofUploaded = false;
+          });
+          final reason = payment.rejectionReason;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              content: Text(
+                reason != null
+                    ? 'Bukti pembayaran ditolak: $reason'
+                    : 'Bukti pembayaran ditolak admin. Silakan unggah ulang.',
+                style: AppTypography.bodyStrong,
+              ),
+            ),
+          );
+          return;
+        }
+
         if (payment.isPendingVerification) {
+          setState(() {
+            _isProofUploaded = true;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: const Color(0xFFD97706),
@@ -6158,6 +6182,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     final isWaitingVerification = _isProofUploaded ||
         _payment?.status == PaymentStatus.pendingVerification ||
         _payment?.status == PaymentStatus.paid;
+    final isRejected = !_isProofUploaded && _payment?.isFailed == true;
 
     final Color background;
     final Color foreground;
@@ -6171,6 +6196,12 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
       border = const Color(0xFFBBF7D0);
       icon = Icons.verified_outlined;
       label = 'Menunggu verifikasi';
+    } else if (isRejected) {
+      background = const Color(0xFFFEF2F2);
+      foreground = const Color(0xFFDC2626);
+      border = const Color(0xFFFECACA);
+      icon = Icons.error_outline_rounded;
+      label = 'Bukti Ditolak';
     } else if (isExpired) {
       background = const Color(0xFFFEF2F2);
       foreground = const Color(0xFFDC2626);
@@ -6523,12 +6554,18 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
       return _buildProofSubmittedCard(isQris);
     }
 
+    final isRejected = _payment?.isFailed == true;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Sudah melakukan pembayaran?',
-          style: TextStyle(
+        if (isRejected) ...[
+          _buildPaymentRejectedBanner(_payment!),
+          const SizedBox(height: 14),
+        ],
+        Text(
+          isRejected ? 'Unggah ulang bukti pembayaran' : 'Sudah melakukan pembayaran?',
+          style: const TextStyle(
             fontSize: AppTypography.sizeBody,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -6536,9 +6573,11 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
           ),
         ),
         const SizedBox(height: 2),
-        const Text(
-          'Unggah bukti agar admin dapat memverifikasi pembayaran Anda.',
-          style: TextStyle(
+        Text(
+          isRejected
+              ? 'Lampirkan foto atau screenshot bukti transfer yang baru agar admin dapat memverifikasi ulang.'
+              : 'Unggah bukti agar admin dapat memverifikasi pembayaran Anda.',
+          style: const TextStyle(
             fontSize: AppTypography.sizeCaption,
             color: AppColors.textSecondary,
             fontFamily: 'Inter',
@@ -6547,10 +6586,12 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
         const SizedBox(height: 12),
         TextField(
           controller: _senderNameController,
+          maxLength: 60,
           textCapitalization: TextCapitalization.words,
           style: const TextStyle(fontSize: AppTypography.sizeBody, fontFamily: 'Inter'),
           decoration: InputDecoration(
             labelText: 'Nama pengirim',
+            counterText: '',
             hintText: isQris ? 'Sesuai nama di e-wallet' : 'Sesuai nama di rekening',
             prefixIcon: const Icon(Icons.person_outline_rounded, size: 18),
             labelStyle: const TextStyle(
@@ -6650,6 +6691,54 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
       return '${(bytes / (1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} MB';
     }
     return '${(bytes / 1024).round()} KB';
+  }
+
+  /// Peringatan penolakan bukti pembayaran oleh admin agar pelanggan segera unggah ulang.
+  Widget _buildPaymentRejectedBanner(PaymentModel payment) {
+    final reason = payment.rejectionReason;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, size: 18, color: Color(0xFFDC2626)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Bukti pembayaran sebelumnya ditolak',
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF991B1B),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            reason != null
+                ? 'Alasan penolakan: $reason'
+                : 'Admin operasional menolak bukti sebelumnya. Pastikan nominal transfer dan foto bukti terlihat jelas.',
+            style: const TextStyle(
+              fontSize: AppTypography.sizeCaption,
+              color: Color(0xFF7F1D1D),
+              fontFamily: 'Inter',
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Keadaan setelah bukti terkirim: tidak ada tombol kirim ulang yang besar,

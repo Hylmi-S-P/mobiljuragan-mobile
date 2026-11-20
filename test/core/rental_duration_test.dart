@@ -45,4 +45,68 @@ void main() {
       expect(gabungTanggalDanJam(tanggal, 'segera'), tanggal);
     });
   });
+
+  group('validasiJadwalSewa & batas jadwal', () {
+    test('menolak tanggal sebelum hari ini', () {
+      final now = DateTime(2026, 11, 20, 8, 0);
+      final err = validasiJadwalSewa(
+        tanggal: DateTime(2026, 11, 19),
+        labelJam: '09.00 WIT',
+        now: now,
+      );
+      expect(err, isNotNull);
+    });
+
+    test('hari ini butuh jeda minimal 2 jam dari sekarang', () {
+      final now = DateTime(2026, 11, 20, 8, 15, 20);
+      expect(
+        validasiJadwalSewa(
+          tanggal: DateTime(2026, 11, 20),
+          labelJam: '10.15 WIT',
+          now: now,
+        ),
+        isNotNull,
+      );
+      expect(
+        validasiJadwalSewa(
+          tanggal: DateTime(2026, 11, 20),
+          labelJam: '10.16 WIT',
+          now: now,
+        ),
+        isNull,
+      );
+    });
+
+    test('setelah jam 20.00 hari ini bergeser paling awal ke besok', () {
+      final now = DateTime(2026, 11, 20, 20, 5);
+      expect(tanggalMulaiPalingAwal(now), DateTime(2026, 11, 21));
+    });
+
+    test('jam operasional maksimal tepat 22.00 WIT dan tolak 22.01 WIT', () {
+      expect(adalahJamOperasional(22, 0), isTrue);
+      expect(adalahJamOperasional(22, 1), isFalse);
+      expect(adalahJamOperasional(5, 59), isFalse);
+      expect(adalahJamOperasional(6, 0), isTrue);
+    });
+
+    test('menolak tanggal mulai lebih dari 60 hari ke depan', () {
+      final now = DateTime(2026, 11, 20, 8, 0);
+      expect(
+        validasiJadwalSewa(
+          tanggal: DateTime(2026, 11, 20).add(const Duration(days: 60)),
+          labelJam: '09.00 WIT',
+          now: now,
+        ),
+        isNull,
+      );
+      expect(
+        validasiJadwalSewa(
+          tanggal: DateTime(2026, 11, 20).add(const Duration(days: 61)),
+          labelJam: '09.00 WIT',
+          now: now,
+        ),
+        isNotNull,
+      );
+    });
+  });
 }

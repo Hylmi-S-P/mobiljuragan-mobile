@@ -34,7 +34,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
   static const int _maxTitleLength = 100;
 
   /// Deskripsi dipakai server sebagai pesan pertama percakapan.
-  static const int _maxDescriptionLength = 2000;
+  static const int _maxDescriptionLength = 1000;
 
   /// Di bawah ini deskripsi belum bisa ditindaklanjuti siapa pun.
   static const int _minDescriptionLength = 10;

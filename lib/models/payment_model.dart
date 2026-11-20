@@ -156,6 +156,23 @@ class PaymentModel {
   /// Status apakah bukti transfer sedang dalam antrean verifikasi staf
   bool get isPendingVerification => status == PaymentStatus.pendingVerification;
 
+  /// Status apakah bukti pembayaran ditolak oleh admin
+  bool get isFailed => status == PaymentStatus.failed;
+
+  /// Alasan penolakan dari catatan admin jika status pembayaran ditolak
+  String? get rejectionReason {
+    if (!isFailed) return null;
+    final raw = notes?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    const marker = 'DITOLAK:';
+    final idx = raw.lastIndexOf(marker);
+    if (idx >= 0) {
+      final reason = raw.substring(idx + marker.length).trim();
+      if (reason.isNotEmpty) return reason;
+    }
+    return raw;
+  }
+
   /// Status apakah tagihan sudah melewati waktu kedaluwarsa
   bool get isExpired {
     if (expiresAt == null) return false;

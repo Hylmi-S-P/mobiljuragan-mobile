@@ -87,12 +87,16 @@ class AuthRepository {
     await _secureStorage.saveAuthTokens(accessToken: token);
 
     final name = userData?['fullName']?.toString() ?? 'Pelanggan MobilJuragan';
+    final serverPhone = userData?['phoneNumber']?.toString().trim();
+    final canonicalPhone = AuthApiService.sanitizePhoneNumber(
+      (serverPhone != null && serverPhone.isNotEmpty) ? serverPhone : phoneNumber,
+    );
     final userGender = gender ?? 'Laki-laki';
 
     await _secureStorage.saveUserIdentity(
       userId: userId,
       nik: idCardNumber,
-      phoneNumber: phoneNumber,
+      phoneNumber: canonicalPhone,
       fullName: name,
       gender: userGender,
     );
@@ -100,7 +104,7 @@ class AuthRepository {
     return UserModel(
       id: userId,
       name: name,
-      phoneNumber: phoneNumber,
+      phoneNumber: canonicalPhone,
       gender: userGender,
       idCardNumber: idCardNumber ?? '',
       city: 'Merauke, Papua Selatan',

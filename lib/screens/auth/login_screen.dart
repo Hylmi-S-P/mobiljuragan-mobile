@@ -35,11 +35,15 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    var rawPhone = _phoneController.text.trim();
-    if (!rawPhone.startsWith('+62')) {
+    var rawPhone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (rawPhone.startsWith('620')) {
+      rawPhone = rawPhone.substring(3);
+    } else if (rawPhone.startsWith('62')) {
+      rawPhone = rawPhone.substring(2);
+    } else if (rawPhone.startsWith('0')) {
       rawPhone = rawPhone.replaceFirst(RegExp(r'^0+'), '');
     }
-    final fullPhone = rawPhone.startsWith('+62') ? rawPhone : '+62 $rawPhone';
+    final fullPhone = '+62 $rawPhone';
 
     context.read<AuthController>().clearPendingRegistration();
 
@@ -383,6 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Expanded(
                 child: TextFormField(
                   controller: _phoneController,
+                  maxLength: 20,
                   keyboardType: TextInputType.phone,
                   style: const TextStyle(
                     fontSize: 15,
@@ -392,6 +397,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   decoration: const InputDecoration(
                     hintText: '812-xxxx-xxxx',
+                    counterText: '',
                     hintStyle: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: AppTypography.sizeBodyLarge,

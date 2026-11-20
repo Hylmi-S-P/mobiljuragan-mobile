@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/config/app_config_store.dart';
 import '../core/network/api_client.dart';
+import '../core/util/rental_duration.dart';
 import '../data/remote/booking_api_service.dart';
 import '../data/repositories/booking_repository.dart';
 import '../models/booking_model.dart';
@@ -296,12 +297,12 @@ class BookingController extends ChangeNotifier {
   }) {
     _selectedDate = date;
     _selectedTime = time;
-    _durationDays = durationDays.clamp(1, 30);
+    _durationDays = durationDays.clamp(1, maxBookingAdvanceDays);
     notifyListeners();
   }
 
   void setDurationDays(int days) {
-    _durationDays = days.clamp(1, 30);
+    _durationDays = days.clamp(1, maxBookingAdvanceDays);
     notifyListeners();
   }
 
@@ -350,6 +351,16 @@ class BookingController extends ChangeNotifier {
       throw StateError(
         'Pilih kendaraan terlebih dahulu sebelum mengirim pesanan.',
       );
+    }
+
+    final jadwalError = validasiJadwalSewa(
+      tanggal: _selectedDate,
+      labelJam: _selectedTime,
+      now: DateTime.now(),
+      leadTime: const Duration(minutes: 115),
+    );
+    if (jadwalError != null) {
+      throw ApiException(jadwalError, statusCode: 400);
     }
 
     final repo = repository;
