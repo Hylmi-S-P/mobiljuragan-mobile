@@ -9,7 +9,9 @@
   antarperangkat, karena perangkat tujuan bisa dipakai akun lain.
 
   Berkas basis data Drift selalu disertai -wal dan -shm selama mode WAL aktif,
-  sehingga ketiganya harus dikecualikan bersama.
+  sehingga ketiganya harus dikecualikan bersama. Direktori cache aplikasi
+  tidak ditulis terpisah karena sudah dikecualikan otomatis oleh Android OS
+  (domain="cache" ditolak oleh Android Lint FullBackupContent).
 -->
 <data-extraction-rules>
     <cloud-backup>
@@ -19,7 +21,6 @@
         <exclude domain="sharedpref" path="." />
         <exclude domain="file" path="." />
         <exclude domain="external" path="." />
-        <exclude domain="cache" path="." />
         <exclude domain="root" path="." />
     </cloud-backup>
     <device-transfer>
@@ -27,7 +28,6 @@
         <exclude domain="sharedpref" path="." />
         <exclude domain="file" path="." />
         <exclude domain="external" path="." />
-        <exclude domain="cache" path="." />
         <exclude domain="root" path="." />
     </device-transfer>
 </data-extraction-rules>
