@@ -26,18 +26,17 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  /* 1. Inisialisasi layanan notifikasi sistem perangkat.
-     Notifikasi hanya pelengkap: kegagalannya tidak boleh menghalangi aplikasi
-     dibuka, jadi galat ditelan di sini juga (init() sendiri sudah menangkap,
-     ini jaring kedua kalau kegagalan terjadi di luar jangkauannya). */
-  try {
-    await NotificationService().init();
-  } catch (galat) {
-    // Jaring kedua; teks galat hanya perlu terlihat saat pengembangan.
-    if (kDebugMode) {
-      debugPrint('Notifikasi perangkat tidak aktif: ${galat.runtimeType}');
-    }
-  }
+  /* 1. Inisialisasi layanan notifikasi sistem perangkat di latar belakang.
+     Meminta izin notifikasi Android 13+ sebelum runApp() bisa menahan frame
+     pertama di logo splash bawaan; kegagalannya juga tidak boleh menghalangi
+     aplikasi dibuka. */
+  unawaited(
+    NotificationService().init().catchError((Object galat) {
+      if (kDebugMode) {
+        debugPrint('Notifikasi perangkat tidak aktif: ${galat.runtimeType}');
+      }
+    }),
+  );
 
   // 2. Inisialisasi tier penyimpanan pengaturan (SharedPreferences)
   final settingsService = await AppSettingsService.create();
@@ -48,15 +47,18 @@ void main() async {
   // 4. Inisialisasi tier penyimpanan terstruktur lokal (Drift SQLite)
   final appDatabase = AppDatabase();
 
-  /* Pengaturan publik (tarif jasa supir, jam operasional) dibaca dari backend.
-     Kegagalan diabaikan: aplikasi tetap bisa dibuka dengan nilai cadangan, dan
+  /* Pengaturan publik (tarif jasa supir, jam operasional) dibaca di latar
+     belakang agar startup tidak tertahan di logo splash Flutter saat DNS/sinyal
+     lambat. Selama belum diterima, AppConfigStore memakai nilai cadangan dan
      tagihan tetap dihitung server. */
-  try {
-    final konfigurasi = await AppConfigApiService().fetchConfig();
-    AppConfigStore.terapkan(konfigurasi);
-  } catch (_) {
-    AppConfigStore.reset();
-  }
+  unawaited(
+    AppConfigApiService()
+        .fetchConfig()
+        .then(AppConfigStore.terapkan)
+        .catchError((Object _) {
+          AppConfigStore.reset();
+        }),
+  );
 
   // 5. Inisialisasi lapisan Repository Offline-First
   final vehicleRepo = VehicleRepository(
@@ -109,6 +111,8 @@ void main() async {
         Provider<BookingRepository>.value(value: bookingRepo),
 
         // State Management Controllers
+        // AuthController wajib berada di atas seluruh ProxyProvider yang bergantung padanya.
+        ChangeNotifierProvider.value(value: authController),
         /* Armada juga mengikuti sesi, karena penanda favorit sekarang menempel
            pada akun (tabel favorites), bukan pada baris kendaraan. */
         ChangeNotifierProxyProvider<AuthController, VehicleController>(
@@ -129,7 +133,6 @@ void main() async {
             return controller;
           },
         ),
-        ChangeNotifierProvider.value(value: authController),
         /* BookingController mengikuti sesi: saat akun berganti, riwayat akun
            sebelumnya dibuang dan riwayat akun baru diambil dari server. */
         ChangeNotifierProxyProvider<AuthController, BookingController>(
