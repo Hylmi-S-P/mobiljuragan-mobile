@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../controllers/auth_controller.dart';
 import '../controllers/support_controller.dart';
 import '../models/support_ticket_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/login_required_sheet.dart';
 import 'chat_support_screen.dart';
 
 /// Formulir pengajuan tiket bantuan pelanggan.
@@ -72,11 +74,36 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
     if (mounted) setState(() {});
   }
 
+  AuthController? _bacaAuthOpsional() {
+    try {
+      return Provider.of<AuthController>(context, listen: false);
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
   Future<void> _handleSubmit() async {
     if (_isSubmitting) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     FocusScope.of(context).unfocus();
+
+    final auth = _bacaAuthOpsional();
+    if (auth != null && !auth.isLoggedIn) {
+      await showLoginRequiredSheet(
+        context: context,
+        subtitle: 'Diperlukan sebelum mengirim tiket bantuan',
+        description:
+            'Masuk atau buat akun terlebih dahulu agar keluhan Anda tercatat di sistem dan balasan staf maupun asisten virtual tersimpan di riwayat tiket.',
+        onAuthenticated: () {
+          if (mounted) {
+            _handleSubmit();
+          }
+        },
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -101,6 +128,22 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
        apa yang gagal. */
     if (!ticket.tersimpanDiServer) {
       support.buangTiketBelumTersimpan(ticket.id);
+      final authSaatIni = _bacaAuthOpsional();
+      if (authSaatIni != null && !authSaatIni.isLoggedIn) {
+        setState(() => _isSubmitting = false);
+        await showLoginRequiredSheet(
+          context: context,
+          subtitle: 'Sesi masuk Anda berakhir',
+          description:
+              'Masuk kembali ke akun Anda untuk mengirimkan tiket bantuan ini. Isian Anda masih tersimpan di formulir.',
+          onAuthenticated: () {
+            if (mounted) {
+              _handleSubmit();
+            }
+          },
+        );
+        return;
+      }
       setState(() {
         _isSubmitting = false;
         _errorMessage =

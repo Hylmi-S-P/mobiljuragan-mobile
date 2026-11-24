@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/daftar_geser_horizontal.dart';
+import '../widgets/login_required_sheet.dart';
 import 'chat_support_screen.dart';
 import 'create_ticket_screen.dart';
 import 'ticket_history_screen.dart';
@@ -304,6 +305,22 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
   Widget _buildActionCards() {
     return InkWell(
       onTap: () {
+        if (!context.read<AuthController>().isLoggedIn) {
+          showLoginRequiredSheet(
+            context: context,
+            subtitle: 'Diperlukan untuk membuat tiket bantuan',
+            description:
+                'Masuk atau buat akun terlebih dahulu agar staf operasional dan asisten virtual dapat menindaklanjuti kendala Anda serta menyimpan riwayat percakapan.',
+            onAuthenticated: () {
+              if (!mounted) return;
+              context.read<SupportController>().fetchTickets();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
+              );
+            },
+          );
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const CreateTicketScreen()),
         );
