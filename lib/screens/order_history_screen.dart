@@ -899,6 +899,13 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           icon: Icons.calculate_outlined,
         );
       case BookingStatus.menungguPembayaran:
+        if (booking.paymentStatus?.toUpperCase() == 'PENDING_VERIFICATION') {
+          return const StatusBadge(
+            label: 'Verifikasi Pembayaran',
+            tone: StatusTone.info,
+            icon: Icons.hourglass_top_rounded,
+          );
+        }
         return const StatusBadge(
           label: 'Menunggu Pembayaran',
           tone: StatusTone.warning,

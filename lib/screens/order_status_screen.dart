@@ -413,9 +413,14 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       }
     } else {
       final statusSekarang = updatedBooking?.status ?? booking.status;
+      final payStatusSekarang =
+          (updatedBooking?.paymentStatus ?? booking.paymentStatus)?.toUpperCase();
       final String? pesanBelumBerubah = switch (statusSekarang) {
         BookingStatus.menungguTarifFinal =>
           'Belum ada perubahan tarif dari admin operasional.',
+        BookingStatus.menungguPembayaran
+            when payStatusSekarang == 'PENDING_VERIFICATION' =>
+          'Bukti pembayaran masih dalam proses verifikasi admin.',
         BookingStatus.verifikasiKantor =>
           'Bukti pembayaran masih dalam proses verifikasi admin.',
         _ => null,

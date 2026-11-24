@@ -98,7 +98,7 @@ enum PaymentStatus {
       case PaymentStatus.failed:
         return 'Pembayaran Ditolak';
       case PaymentStatus.refunded:
-        return 'Dana Dikembalikan';
+        return 'Pengembalian Dana';
     }
   }
 }

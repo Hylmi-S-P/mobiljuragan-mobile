@@ -490,16 +490,6 @@ class SupportController extends ChangeNotifier {
     _ticketTurnCounts[ticketKey] = 0;
     final initialList = [
       ChatMessageModel(
-        id: 'tck-sys-${createdTicket.id}',
-        message:
-            'Tiket bantuan #${createdTicket.displayTicketNumber} telah berhasil dibuat. Asisten virtual kami akan menjawab keluhan Anda secara otomatis.',
-        timestamp: createdTicket.createdAt,
-        isFromUser: false,
-        senderName: 'Sistem',
-        isAI: false,
-        conversationKey: ticketKey,
-      ),
-      ChatMessageModel(
         id: 'tck-usr-${createdTicket.id}',
         message: description,
         timestamp: createdTicket.createdAt,
@@ -544,6 +534,7 @@ class SupportController extends ChangeNotifier {
     required SupportTicketModel ticket,
   }) async {
     final ticketKey = 'ticket_${ticket.id}';
+    if (_isAiThinking[ticketKey] == true) return;
     final currentList = _conversations[ticketKey];
     final hasAiReply = currentList?.any((m) => m.isAI) ?? false;
     if (hasAiReply) return;
@@ -553,10 +544,9 @@ class SupportController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final promptContext =
-          'Tiket #${ticket.displayTicketNumber}: ${ticket.title} (Kategori: ${ticket.categoryLabel}). Keluhan pelanggan: ${ticket.description}';
+      final promptAwal = ticket.description.trim();
       final hasil = await _aiApiService.kirimPesan(
-        pesan: promptContext,
+        pesan: promptAwal,
         ticketId: ticket.id,
       );
 

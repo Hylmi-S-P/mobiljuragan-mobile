@@ -66,7 +66,7 @@ class LoginMethodScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Nomor $phoneNumber terdaftar. Masuk dengan kode WhatsApp atau kata sandi Anda.',
+                'Pilih metode masuk untuk nomor $phoneNumber.',
                 style: const TextStyle(
                   fontSize: AppTypography.sizeBodyLarge,
                   height: 1.45,

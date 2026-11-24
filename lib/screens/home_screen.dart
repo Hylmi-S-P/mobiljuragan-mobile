@@ -409,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (hasActive) _buildReservationStatusBadge(activeOrder.status),
+                if (hasActive) _buildReservationStatusBadge(activeOrder),
               ],
             ),
           ),
@@ -419,12 +419,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getReservationSubtitleHint(BookingModel order) {
+    final payStatus = order.paymentStatus?.toUpperCase();
     switch (order.status) {
+      case BookingStatus.permintaanDiterima:
+        return 'Pengajuan sewa sedang ditinjau admin';
+      case BookingStatus.pemeriksaanArmada:
+        return 'Armada sedang diperiksa sebelum serah terima';
       case BookingStatus.menungguTarifFinal:
         return 'Admin sedang menghitung rincian tarif final';
       case BookingStatus.menungguPembayaran:
+        if (payStatus == 'PENDING_VERIFICATION') {
+          return 'Bukti pembayaran sedang diverifikasi admin';
+        }
+        if (payStatus == 'FAILED') {
+          return 'Bukti pembayaran ditolak, silakan unggah ulang';
+        }
         return 'Rincian tarif terbit, silakan selesaikan pembayaran di aplikasi';
       case BookingStatus.pembayaranSelesai:
+      case BookingStatus.verifikasiKantor:
         return 'Pembayaran terkonfirmasi, armada disiapkan';
       case BookingStatus.mobilSiapDigunakan:
         /* Mode dengan sopir tidak menyerahkan kunci, jadi kalimatnya dibedakan:
@@ -432,26 +444,49 @@ class _HomeScreenState extends State<HomeScreen> {
         return order.withDriver
             ? 'Sopir siap menjemput Anda di ${order.pickupLocation}'
             : 'Kunci siap diserahterimakan di ${order.pickupLocation}';
-      default:
-        return 'Jadwal sewa unit terkonfirmasi';
+      case BookingStatus.selesai:
+        return 'Masa sewa telah selesai';
+      case BookingStatus.dibatalkan:
+        return 'Pengajuan sewa telah dibatalkan';
     }
   }
 
-  Widget _buildReservationStatusBadge(BookingStatus status) {
+  Widget _buildReservationStatusBadge(BookingModel order) {
+    final payStatus = order.paymentStatus?.toUpperCase();
     Color bg;
     Color text;
     String label;
 
-    switch (status) {
+    switch (order.status) {
+      case BookingStatus.permintaanDiterima:
+        bg = const Color(0xFFFFFBEB);
+        text = const Color(0xFFB45309);
+        label = 'MENUNGGU';
+        break;
+      case BookingStatus.pemeriksaanArmada:
+        bg = AppColors.tealLight;
+        text = AppColors.primaryTeal;
+        label = 'DISIAPKAN';
+        break;
       case BookingStatus.mobilSiapDigunakan:
         bg = const Color(0xFFDCFCE7);
         text = const Color(0xFF15803D);
         label = 'SIAP PAKAI';
         break;
       case BookingStatus.menungguPembayaran:
-        bg = AppColors.badgeAmberBg;
-        text = AppColors.badgeAmberText;
-        label = 'MENUNGGU BAYAR';
+        if (payStatus == 'PENDING_VERIFICATION') {
+          bg = AppColors.tealLight;
+          text = AppColors.primaryTeal;
+          label = 'VERIFIKASI BAYAR';
+        } else if (payStatus == 'FAILED') {
+          bg = const Color(0xFFFEF2F2);
+          text = const Color(0xFFB91C1C);
+          label = 'BUKTI DITOLAK';
+        } else {
+          bg = AppColors.badgeAmberBg;
+          text = AppColors.badgeAmberText;
+          label = 'MENUNGGU BAYAR';
+        }
         break;
       case BookingStatus.menungguTarifFinal:
         bg = const Color(0xFFFFFBEB);
@@ -459,14 +494,21 @@ class _HomeScreenState extends State<HomeScreen> {
         label = 'HITUNG TARIF';
         break;
       case BookingStatus.pembayaranSelesai:
+      case BookingStatus.verifikasiKantor:
         bg = const Color(0xFFECFDF5);
         text = const Color(0xFF047857);
         label = 'LUNAS';
         break;
-      default:
-        bg = AppColors.tealLight;
-        text = AppColors.primaryTeal;
-        label = 'AKTIF';
+      case BookingStatus.selesai:
+        bg = const Color(0xFFF1F5F9);
+        text = const Color(0xFF475569);
+        label = 'SELESAI';
+        break;
+      case BookingStatus.dibatalkan:
+        bg = const Color(0xFFFEF2F2);
+        text = const Color(0xFFB91C1C);
+        label = 'BATAL';
+        break;
     }
 
     return Container(
