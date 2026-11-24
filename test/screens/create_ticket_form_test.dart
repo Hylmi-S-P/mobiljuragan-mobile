@@ -108,9 +108,10 @@ void main() {
       expect(find.textContaining('Lampiran'), findsNothing);
       expect(find.textContaining('Lampirkan'), findsNothing);
 
-      // Badge dukungan cepat dan kalimat penutup juga diminta hilang.
+      // Badge dukungan cepat, kalimat penutup, dan pemilih kategori juga dihilangkan.
       expect(find.textContaining('Dukungan Cepat'), findsNothing);
       expect(find.textContaining('terhubung langsung'), findsNothing);
+      expect(find.text('Jenis Bantuan'), findsNothing);
     });
 
     testWidgets('deskripsi tidak lagi mengklaim hanya untuk masa sewa', (tester) async {

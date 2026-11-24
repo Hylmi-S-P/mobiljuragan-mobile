@@ -11,6 +11,7 @@ import 'package:mobiljuragan_mobile/models/support_ticket_model.dart';
 import 'package:mobiljuragan_mobile/models/user_model.dart';
 import 'package:mobiljuragan_mobile/screens/chat_support_screen.dart';
 import 'package:mobiljuragan_mobile/screens/help_center_screen.dart';
+import 'package:mobiljuragan_mobile/widgets/custom_app_bar.dart';
 import 'package:provider/provider.dart';
 
 class MockAiApiService extends AiApiService {
@@ -379,9 +380,16 @@ void main() {
       // Pastikan tombol manual "Panggil Staf" TIDAK ADA di AppBar
       expect(find.widgetWithText(OutlinedButton, 'Panggil Staf'), findsNothing);
 
-      /* Peran lawan bicara sekarang ditandai satu kali lewat subjudul + avatar
-         header, bukan badge terpisah yang mengulang hal yang sama. */
-      expect(find.text('Asisten AI MobilJuragan · membalas otomatis'), findsOneWidget);
+      // Subjudul header hanya memuat penanda lawan bicara tanpa teks otomatis tambahan.
+      expect(
+        find.descendant(
+          of: find.byType(CustomAppBar),
+          matching: find.text('Asisten AI MobilJuragan'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('06.00-22.00 WIT'), findsNothing);
+      expect(find.textContaining('membalas otomatis'), findsNothing);
 
       /* Kartu tawaran retensi dihapus: penawaran bicara dengan staf akan datang
          dari AI sendiri saat percakapan tidak berprogress, bukan dari tombol
@@ -486,13 +494,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      /* Judul header adalah judul tiket, bukan nomor tiket: nomor tidak memberi
-         tahu apa pun soal isi percakapan. Nomornya tetap ada di daftar riwayat. */
+      /* Judul header adalah judul tiket, bukan nomor tiket atau kategori/status. */
       expect(find.text('Kaca Spion Lepas'), findsOneWidget);
       expect(find.textContaining('TKT-20261101-0010'), findsNothing);
-
-      // Banner ringkasan hanya memuat kategori dan status, bukan judul lagi.
-      expect(find.text('Kondisi Unit Armada · Menunggu'), findsOneWidget);
+      expect(find.text('Kondisi Unit Armada · Menunggu'), findsNothing);
     });
 
     testWidgets('Pesan berurutan dari pengirim sama digabung jadi satu rangkaian', (tester) async {

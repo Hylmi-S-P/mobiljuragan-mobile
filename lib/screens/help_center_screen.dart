@@ -29,6 +29,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
   String _selectedCategory = 'Semua';
   String? _expandedFaqId;
   Timer? _ticketsPollingTimer;
+  final PageController _activeTicketPageController = PageController();
+  int _activeTicketPage = 0;
 
   /*
    * Daftar tiket disegarkan berkala sebagai jaring pengaman, bukan sebagai
@@ -61,6 +63,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hentikanSegarkanTiket();
+    _activeTicketPageController.dispose();
     super.dispose();
   }
 
@@ -286,7 +289,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
                 ),
                 SizedBox(height: 3),
                 Text(
-                  'Setiap tiket bantuan dijawab otomatis oleh asisten virtual dan dapat dialihkan ke staf operasional Merauke.',
+                  'Sampaikan kendala Anda melalui tiket bantuan untuk ditangani asisten virtual atau admin operasional Merauke.',
                   style: TextStyle(
                     fontSize: AppTypography.sizeTiny,
                     height: 1.35,
@@ -310,7 +313,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
             context: context,
             subtitle: 'Diperlukan untuk membuat tiket bantuan',
             description:
-                'Masuk atau buat akun terlebih dahulu agar staf operasional dan asisten virtual dapat menindaklanjuti kendala Anda serta menyimpan riwayat percakapan.',
+                'Masuk atau buat akun terlebih dahulu agar admin operasional dan asisten virtual dapat menindaklanjuti kendala Anda serta menyimpan riwayat percakapan.',
             onAuthenticated: () {
               if (!mounted) return;
               context.read<SupportController>().fetchTickets();
@@ -592,7 +595,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   child: Text(
-                    'Riwayat Tiket ›',
+                    'Riwayat Tiket Selesai ›',
                     style: TextStyle(
                       fontSize: AppTypography.sizeBody,
                       fontWeight: FontWeight.w600,
@@ -638,119 +641,189 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
             ),
           )
         else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: activeTickets.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final ticket = activeTickets[index];
-              return InkWell(
-                onTap: () {
-                  Navigator.of(context)
-                      .push(
-                    MaterialPageRoute(
-                      builder: (_) => ChatSupportScreen(ticket: ticket),
-                    ),
-                  )
-                      .then((_) {
-                    if (context.mounted) {
-                      context.read<SupportController>().fetchTickets();
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardWhite,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFFDE68A)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFD97706),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Aktif • ${ticket.statusPelanggan}',
-                              style: const TextStyle(
-                                fontSize: AppTypography.sizeTiny,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFB45309),
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              ticket.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: AppTypography.sizeBody,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
-                              style: const TextStyle(
-                                fontSize: AppTypography.sizeTiny,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                            if (ticket.bookingCode != null) ...[
-                              const SizedBox(height: 2),
-                              /* Tiket yang lahir dari tombol "Chat dengan CS" pada
-                                 satu pesanan: kode pesanan ditampilkan supaya
-                                 pelanggan tahu ini soal sewa yang mana. */
-                              Text(
-                                'Pesanan ${ticket.bookingCode}',
-                                style: const TextStyle(
-                                  fontSize: AppTypography.sizeTiny,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primaryTeal,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
+          _buildPaginatedActiveTickets(activeTickets),
+      ],
+    );
+  }
+
+  Widget _buildPaginatedActiveTickets(List<dynamic> activeTickets) {
+    const int pageSize = 3;
+    final int totalPages = (activeTickets.length / pageSize).ceil();
+    final int safePage = _activeTicketPage.clamp(0, totalPages - 1);
+
+    if (totalPages <= 1) {
+      return Column(
+        children: [
+          for (int i = 0; i < activeTickets.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            _buildActiveTicketCard(activeTickets[i]),
+          ],
+        ],
+      );
+    }
+
+    final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 2.0);
+    final hasAnyBookingCode = activeTickets.any((t) => t.bookingCode != null);
+    final itemSlotHeight = (hasAnyBookingCode ? 54.0 : 34.0) * textScale + 30.0;
+    final pageHeight = (itemSlotHeight * pageSize) + ((pageSize - 1) * 8.0);
+
+    return Column(
+      children: [
+        SizedBox(
+          height: pageHeight,
+          child: PageView.builder(
+            controller: _activeTicketPageController,
+            itemCount: totalPages,
+            onPageChanged: (page) {
+              if (mounted) {
+                setState(() => _activeTicketPage = page);
+              }
+            },
+            itemBuilder: (context, pageIndex) {
+              final start = pageIndex * pageSize;
+              final end = (start + pageSize).clamp(0, activeTickets.length);
+              final pageTickets = activeTickets.sublist(start, end);
+              return SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int i = 0; i < pageTickets.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 8),
+                      _buildActiveTicketCard(pageTickets[i]),
                     ],
-                  ),
+                  ],
                 ),
               );
             },
           ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(totalPages, (pageIdx) {
+            final isSelected = pageIdx == safePage;
+            return InkWell(
+              onTap: () {
+                _activeTicketPageController.animateToPage(
+                  pageIdx,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                );
+              },
+              borderRadius: BorderRadius.circular(999),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: isSelected ? 18 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primaryNavy
+                        : AppColors.borderMedium,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
       ],
+    );
+  }
+
+  Widget _buildActiveTicketCard(dynamic ticket) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                builder: (_) => ChatSupportScreen(ticket: ticket),
+              ),
+            )
+            .then((_) {
+              if (mounted) {
+                context.read<SupportController>().fetchTickets();
+              }
+            });
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.cardWhite,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD97706),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  const Text(
+                    'Aktif',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFB45309),
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ticket.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeBody,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                  if (ticket.bookingCode != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Pesanan ${ticket.bookingCode}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeTiny,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryTeal,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
     );
   }
 }

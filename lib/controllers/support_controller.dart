@@ -456,13 +456,10 @@ class SupportController extends ChangeNotifier {
       }
 
       if (res.isNotEmpty && res.containsKey('id')) {
-        final serverTicketNumber = res['ticketNumber']?.toString();
-        final effectiveTitle =
-            (serverTicketNumber != null && !title.contains(serverTicketNumber))
-            ? '$title ($serverTicketNumber)'
-            : title;
         createdTicket = SupportTicketModel.fromJson(res).copyWith(
-          title: effectiveTitle,
+          title: res['title']?.toString().trim().isNotEmpty == true
+              ? res['title'].toString().trim()
+              : title,
           handledBy: res['handledBy']?.toString() ?? 'AI',
           tersimpanDiServer: true,
         );
@@ -647,7 +644,7 @@ class SupportController extends ChangeNotifier {
           ChatMessageModel(
             id: 'init-booking-$bookingId',
             message:
-                'Halo! Ini adalah ruang obrolan koordinasi resmi untuk pesanan #$bookingId. Tim CS dan staf operasional MobilJuragan siap melayani kebutuhan Anda.',
+                'Halo! Ini adalah ruang obrolan koordinasi resmi untuk pesanan #$bookingId. Tim CS dan admin operasional MobilJuragan siap melayani kebutuhan Anda.',
             timestamp: DateTime.now(),
             isFromUser: false,
             senderName: 'Customer Service MobilJuragan',
@@ -735,7 +732,7 @@ class SupportController extends ChangeNotifier {
             id: (mentah['id'] as String?) ?? 'srv-${hasil.length}',
             message: (mentah['body'] as String?) ?? '',
             timestamp:
-                DateTime.tryParse((mentah['sentAt'] as String?) ?? '') ??
+                DateTime.tryParse((mentah['sentAt'] as String?) ?? '')?.toLocal() ??
                 DateTime.now(),
             isFromUser: adalahPelanggan,
             senderName: adalahPelanggan
@@ -744,7 +741,7 @@ class SupportController extends ChangeNotifier {
                 ? 'Asisten AI MobilJuragan'
                 : (namaPengirim?.isNotEmpty == true
                       ? namaPengirim!
-                      : 'Customer Service MobilJuragan'),
+                      : 'Admin Operasional Merauke'),
             isAI: adalahAi,
             conversationKey: conversationKey,
           ),
@@ -998,12 +995,9 @@ class SupportController extends ChangeNotifier {
   Future<bool> handoffToAdmin({String conversationKey = 'general'}) async {
     if (!conversationKey.startsWith('ticket_')) {
       // Percakapan tanpa tiket belum punya wadah di backend. Penanda lokal tetap
-      // dipasang supaya perilaku lamanya tidak hilang.
+      // dipasang tanpa menampilkan pesan sistem otomatis ke percakapan.
       _handoffStatus[conversationKey] = true;
-      _tambahPesanSistem(
-        conversationKey: conversationKey,
-        pesan: 'Percakapan dialihkan ke staf operasional.',
-      );
+      notifyListeners();
       return true;
     }
 
@@ -1015,31 +1009,16 @@ class SupportController extends ChangeNotifier {
 
       if (!berhasil) {
         _handoffStatus[conversationKey] = false;
-        _tambahPesanSistem(
-          conversationKey: conversationKey,
-          pesan:
-              'Gagal mengalihkan ke staf: tiket belum berstatus ditangani staf. '
-              'Silakan coba lagi sebentar.',
-        );
+        notifyListeners();
         return false;
       }
 
       _handoffStatus[conversationKey] = true;
-      _tambahPesanSistem(
-        conversationKey: conversationKey,
-        pesan:
-            'Percakapan berhasil dialihkan ke staf admin operasional MobilJuragan Merauke. '
-            'Balasan staf akan muncul di layar ini.',
-      );
+      notifyListeners();
       return true;
     } catch (_) {
       _handoffStatus[conversationKey] = false;
-      _tambahPesanSistem(
-        conversationKey: conversationKey,
-        pesan:
-            'Gagal mengalihkan ke staf karena koneksi bermasalah. '
-            'Pesan Anda tetap tersimpan; silakan coba lagi.',
-      );
+      notifyListeners();
       return false;
     }
   }

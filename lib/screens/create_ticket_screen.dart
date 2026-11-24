@@ -47,7 +47,6 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _descriptionFocus = FocusNode();
 
-  TicketCategory _selectedCategory = TicketCategory.reservasi;
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -94,7 +93,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
         context: context,
         subtitle: 'Diperlukan sebelum mengirim tiket bantuan',
         description:
-            'Masuk atau buat akun terlebih dahulu agar keluhan Anda tercatat di sistem dan balasan staf maupun asisten virtual tersimpan di riwayat tiket.',
+            'Masuk atau buat akun terlebih dahulu agar keluhan Anda tercatat di sistem dan balasan admin maupun asisten virtual tersimpan di riwayat tiket.',
         onAuthenticated: () {
           if (mounted) {
             _handleSubmit();
@@ -115,7 +114,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
 
     final ticket = await support.createTicket(
       title: title,
-      category: _selectedCategory,
+      category: TicketCategory.reservasi,
       description: description,
     );
 
@@ -190,15 +189,6 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
               ),
               const SizedBox(height: 24),
 
-              _buildLabel('Jenis Bantuan'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: TicketCategory.values.map(_buildCategoryChip).toList(),
-              ),
-              const SizedBox(height: 24),
-
               _buildLabel('Judul'),
               const SizedBox(height: 6),
               TextFormField(
@@ -213,7 +203,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                   fontFamily: 'Inter',
                 ),
                 decoration: _inputDecoration(
-                  hint: _titleHintFor(_selectedCategory),
+                  hint: 'Contoh: Minta jemput di Bandara Mopah',
                   counter: '${_titleController.text.characters.length}/$_maxTitleLength',
                 ),
                 validator: (value) {
@@ -309,35 +299,6 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
     );
   }
 
-  Widget _buildCategoryChip(TicketCategory category) {
-    final isSelected = _selectedCategory == category;
-    return ChoiceChip(
-      label: Text(
-        _categoryLabel(category),
-        style: TextStyle(
-          fontSize: AppTypography.sizeCaption,
-          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          color: isSelected ? AppColors.textWhite : AppColors.textPrimary,
-          fontFamily: 'Inter',
-        ),
-      ),
-      selected: isSelected,
-      selectedColor: AppColors.primaryNavy,
-      backgroundColor: AppColors.surfaceLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.control),
-        side: BorderSide(
-          color: isSelected ? AppColors.primaryNavy : AppColors.borderSubtle,
-        ),
-      ),
-      showCheckmark: false,
-      onSelected: (selected) {
-        if (!selected) return;
-        setState(() => _selectedCategory = category);
-      },
-    );
-  }
-
   InputDecoration _inputDecoration({required String hint, required String counter}) {
     const radius = BorderRadius.all(Radius.circular(AppRadius.control));
     return InputDecoration(
@@ -400,37 +361,5 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
         ],
       ),
     );
-  }
-
-  /// Contoh judul mengikuti jenis bantuan yang dipilih, supaya pelanggan tidak
-  /// menulis "tanya" atau "kendala" saja.
-  String _titleHintFor(TicketCategory category) {
-    switch (category) {
-      case TicketCategory.reservasi:
-        return 'Contoh: Minta jemput di Bandara Mopah';
-      case TicketCategory.pembayaran:
-        return 'Contoh: Bukti transfer belum diverifikasi';
-      case TicketCategory.kendaraan:
-        return 'Contoh: AC tidak dingin sejak kemarin';
-      case TicketCategory.layananSopir:
-        return 'Contoh: Supir datang terlambat';
-      case TicketCategory.lainnya:
-        return 'Contoh: Apakah bisa sewa tiga hari saja?';
-    }
-  }
-
-  String _categoryLabel(TicketCategory category) {
-    switch (category) {
-      case TicketCategory.reservasi:
-        return 'Jadwal & Reservasi';
-      case TicketCategory.pembayaran:
-        return 'Pembayaran & Biaya';
-      case TicketCategory.kendaraan:
-        return 'Kondisi Armada';
-      case TicketCategory.layananSopir:
-        return 'Layanan Sopir';
-      case TicketCategory.lainnya:
-        return 'Pertanyaan Umum';
-    }
   }
 }

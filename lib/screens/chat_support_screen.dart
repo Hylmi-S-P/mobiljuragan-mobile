@@ -330,8 +330,8 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
     if (currentBooking != null) {
       screenTitle = currentBooking.vehicle.name;
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke · balas 06.00-22.00 WIT'
-          : 'Asisten AI MobilJuragan · membalas otomatis';
+          ? 'Admin Operasional Merauke'
+          : 'Asisten AI MobilJuragan';
     } else if (activeTicket != null) {
       screenTitle = (liveTicket ?? activeTicket).title;
       if (isTicketFinal) {
@@ -340,14 +340,14 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
         screenSubtitle = 'Tiket selesai · riwayat tersimpan';
       } else {
         screenSubtitle = isHandedOff
-            ? 'Staf Operasional Merauke · balas 06.00-22.00 WIT'
-            : 'Asisten AI MobilJuragan · membalas otomatis';
+            ? 'Admin Operasional Merauke'
+            : 'Asisten AI MobilJuragan';
       }
     } else {
       screenTitle = 'Bantuan MobilJuragan';
       screenSubtitle = isHandedOff
-          ? 'Staf Operasional Merauke · balas 06.00-22.00 WIT'
-          : 'Asisten AI MobilJuragan · membalas otomatis';
+          ? 'Admin Operasional Merauke'
+          : 'Asisten AI MobilJuragan';
     }
 
     return Scaffold(
@@ -438,42 +438,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       resizeToAvoidBottomInset: true,
       body: Column(
         children: [
-          // Banner Tiket Bantuan HANYA muncul jika layar ini dibuka untuk tiket keluhan
-          if (activeTicket != null) _buildTicketSummaryBanner(liveTicket ?? activeTicket),
-
-          if (isHandedOff && !isTicketFinal)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: const BoxDecoration(
-                color: AppColors.statusInfoBg,
-                border: Border(
-                  bottom: BorderSide(color: AppColors.statusInfoBorder),
-                ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.support_agent_rounded,
-                    size: 16,
-                    color: AppColors.statusInfoFg,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Ditangani oleh Staf Operasional Merauke',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeCaption,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.statusInfoFg,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           // Card Aksi Pembayaran HANYA muncul jika layar ini dibuka untuk pesanan sewa mobil
           if (currentBooking != null)
             _buildBookingPaymentCard(currentBooking, support, bookingCtrl),
@@ -708,7 +672,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                       style: AppTypography.pageTitle,
                     ),
                     content: const Text(
-                      'Pastikan Anda sudah mentransfer sesuai nominal tagihan. Laporan akan diteruskan ke staf untuk verifikasi bukti masuk.',
+                      'Pastikan Anda sudah mentransfer sesuai nominal tagihan. Laporan akan diteruskan ke admin untuk verifikasi bukti masuk.',
                       style: TextStyle(
                         fontSize: AppTypography.sizeBody,
                         color: AppColors.textSecondary,
@@ -755,7 +719,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                     content: Text(
                       support.pesanBelumTerkirim
                           ? 'Laporan belum terkirim. Periksa koneksi lalu coba lagi.'
-                          : 'Laporan sudah dikirim. Staf akan memeriksa pembayaran Anda.',
+                          : 'Laporan sudah dikirim. Admin akan memeriksa pembayaran Anda.',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: AppTypography.sizeBody,
@@ -781,40 +745,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
               child: const Text('Sudah Bayar', style: AppTypography.captionBold),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  /// Keterangan konteks tiket di atas percakapan.
-  ///
-  /// Isinya hanya yang tidak terbaca dari layar lain: kategori dan status.
-  /// Judul tiket sudah menjadi judul header, jadi mengulangnya di sini membuat
-  /// satu layar menampilkan hal yang sama dua kali.
-  Widget _buildTicketSummaryBanner(SupportTicketModel ticket) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      decoration: const BoxDecoration(
-        color: AppColors.cardWhite,
-        border: Border(bottom: BorderSide(color: AppColors.borderSubtle, width: 1)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.label_outline_rounded, size: 14, color: AppColors.textMuted),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              '${ticket.categoryLabel} · ${ticket.status}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                color: AppColors.textSecondary,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -897,9 +827,10 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       return _buildSystemNotice(msg);
     }
 
+    final waktuLokal = msg.timestamp.toLocal();
     final jam =
-        '${msg.timestamp.hour.toString().padLeft(2, '0')}.'
-        '${msg.timestamp.minute.toString().padLeft(2, '0')}';
+        '${waktuLokal.hour.toString().padLeft(2, '0')}.'
+        '${waktuLokal.minute.toString().padLeft(2, '0')}';
 
     /* Sudut bubble: sisi dekat pengirim mengecil saat pesan menyambung, supaya
        rangkaian terbaca sebagai satu blok, bukan tumpukan kotak terpisah. */
@@ -1150,7 +1081,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                 fontFamily: 'Inter',
               ),
               decoration: InputDecoration(
-                hintText: isHandedOff ? 'Tulis pesan untuk staf operasional' : 'Tulis pesan',
+                hintText: isHandedOff ? 'Tulis pesan untuk admin operasional' : 'Tulis pesan',
                 counterText: _messageController.text.length >= 400
                     ? '${_messageController.text.length}/500'
                     : '',

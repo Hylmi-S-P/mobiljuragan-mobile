@@ -177,12 +177,12 @@ class SupportTicketModel {
       status: parseStatus(json['status']?.toString()),
       handledBy: json['handledBy']?.toString(),
       handoverAt: json['handoverAt'] != null
-          ? DateTime.tryParse(json['handoverAt'].toString())
+          ? DateTime.tryParse(json['handoverAt'].toString())?.toLocal()
           : null,
       bookingId: json['bookingId']?.toString(),
       bookingCode: (json['booking'] as Map<String, dynamic>?)?['bookingCode']?.toString(),
       createdAt: json['createdAt'] != null
-          ? (DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now())
+          ? (DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now())
           : DateTime.now(),
       tersimpanDiServer: true,
     );
@@ -252,7 +252,7 @@ class ChatMessageModel {
 
     final rawDate = json['sentAt']?.toString() ?? json['createdAt']?.toString();
     final parsedDate = rawDate != null
-        ? (DateTime.tryParse(rawDate) ?? DateTime.now())
+        ? (DateTime.tryParse(rawDate)?.toLocal() ?? DateTime.now())
         : DateTime.now();
 
     return ChatMessageModel(

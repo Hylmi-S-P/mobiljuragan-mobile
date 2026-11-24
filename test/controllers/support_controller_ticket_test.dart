@@ -166,7 +166,8 @@ void main() {
       expect(controller.tickets.length, equals(initialLength + 1));
       final createdTicket = controller.tickets.first;
       expect(createdTicket.id, equals('tck-srv-999'));
-      expect(createdTicket.title, contains('TKT-20261022-0099'));
+      expect(createdTicket.title, equals('Penjemputan Bandara'));
+      expect(createdTicket.ticketNumber, equals('TKT-20261022-0099'));
     });
 
     test('createTicket menandai tiket gagal kirim dan bisa dibuang kembali', () async {

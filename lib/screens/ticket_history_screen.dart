@@ -41,7 +41,7 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
-        title: 'Riwayat Bantuan',
+        title: 'Riwayat Tiket Selesai',
         stepSubtitle: 'Arsip Tiket & Sesi Chat Selesai',
         showBackButton: true,
       ),
@@ -248,16 +248,19 @@ class _TicketHistoryScreenState extends State<TicketHistoryScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    'ID: ${ticket.displayTicketNumber} • ${ticket.categoryLabel}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeTiny,
-                      color: AppColors.textSecondary,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+                  child: ticket.bookingCode != null
+                      ? Text(
+                          'Pesanan ${ticket.bookingCode}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: AppTypography.sizeTiny,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryTeal,
+                            fontFamily: 'Inter',
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
                 const SizedBox(width: 8),
                 const Row(
