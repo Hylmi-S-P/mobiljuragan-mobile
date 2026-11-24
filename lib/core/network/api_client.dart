@@ -31,25 +31,38 @@ class ApiClient {
         _secureStorage = secureStorage ?? SecureStorageService();
 
   /// Penangan terpusat untuk sesi yang ditolak server (HTTP 401/403).
-  ///
-  /// Dipasang sekali oleh [AuthController] saat aplikasi dimulai. Sebelum ini,
-  /// token yang sudah kedaluwarsa hanya membuat setiap layar gagal satu per
-  /// satu: pengguna tetap terlihat "masuk" padahal seluruh permintaannya
-  /// ditolak, dan tidak pernah dikembalikan ke Guest Mode.
   static Future<void> Function()? onUnauthorized;
+
+  /// Penangan terpusat yang membawa kode status dan pesan penolakan server.
+  static Future<void> Function(
+    int statusCode,
+    String? errorCode,
+    String? errorMessage,
+  )? onSessionRejected;
 
   /// Menghindari pemanggilan berulang saat beberapa permintaan gagal bersamaan.
   static bool _sedangMenanganiTolak = false;
 
-  void _laporTidakBerwenang() {
-    final handler = onUnauthorized;
-    if (handler == null || _sedangMenanganiTolak) return;
+  void _laporTidakBerwenang({
+    required int statusCode,
+    String? errorCode,
+    String? errorMessage,
+  }) {
+    final detailedHandler = onSessionRejected;
+    final legacyHandler = onUnauthorized;
+    if ((detailedHandler == null && legacyHandler == null) ||
+        _sedangMenanganiTolak) {
+      return;
+    }
 
     /* Handler sengaja tidak ditunggu: pemanggilnya sedang menerima galat dan
        harus tetap mendapat [ApiException] yang sama seperti sebelumnya. */
     _sedangMenanganiTolak = true;
+    final Future<void> kerja = detailedHandler != null
+        ? detailedHandler(statusCode, errorCode, errorMessage)
+        : legacyHandler!();
     unawaited(
-      handler()
+      kerja
           .catchError((Object galat) {
             if (kDebugMode) {
               debugPrint('Gagal membersihkan sesi yang ditolak: ${galat.runtimeType}');
@@ -87,7 +100,7 @@ class ApiClient {
           .get(uri, headers: headers)
           .timeout(ApiConstants.timeoutDuration);
 
-      return _handleResponse(response);
+      return _handleResponse(response, requiresAuth: requiresAuth);
     } on SocketException {
       throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
     } on TimeoutException {
@@ -126,7 +139,7 @@ class ApiClient {
 
       final streamed = await _client.send(request).timeout(timeout ?? ApiConstants.timeoutDuration);
       final response = await http.Response.fromStream(streamed);
-      return _handleResponse(response);
+      return _handleResponse(response, requiresAuth: requiresAuth);
     } on SocketException {
       throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
     } on TimeoutException {
@@ -152,7 +165,7 @@ class ApiClient {
           .post(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(timeout ?? ApiConstants.timeoutDuration);
 
-      return _handleResponse(response);
+      return _handleResponse(response, requiresAuth: requiresAuth);
     } on SocketException {
       throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
     } on TimeoutException {
@@ -173,7 +186,7 @@ class ApiClient {
           .patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(ApiConstants.timeoutDuration);
 
-      return _handleResponse(response);
+      return _handleResponse(response, requiresAuth: requiresAuth);
     } on SocketException {
       throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
     } on TimeoutException {
@@ -184,7 +197,7 @@ class ApiClient {
     }
   }
 
-  dynamic _handleResponse(http.Response response) {
+  dynamic _handleResponse(http.Response response, {bool requiresAuth = false}) {
     dynamic decoded;
     try {
       decoded = jsonDecode(response.body);
@@ -198,18 +211,32 @@ class ApiClient {
       }
       return decoded;
     } else {
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        _laporTidakBerwenang();
-      }
-
-      String errorMessage = 'Permintaan gagal (${response.statusCode})';
+      String? errorCode;
+      String? serverMessage;
       if (decoded is Map<String, dynamic>) {
+        final rawError = decoded['error'];
+        if (rawError is Map && rawError['code'] != null) {
+          errorCode = rawError['code'].toString();
+        } else if (decoded['code'] != null) {
+          errorCode = decoded['code'].toString();
+        }
+
         if (decoded.containsKey('message') && decoded['message'] != null) {
-          errorMessage = decoded['message'].toString();
-        } else if (decoded['error'] is Map && decoded['error']['message'] != null) {
-          errorMessage = decoded['error']['message'].toString();
+          serverMessage = decoded['message'].toString();
+        } else if (rawError is Map && rawError['message'] != null) {
+          serverMessage = rawError['message'].toString();
         }
       }
+
+      if (requiresAuth && (response.statusCode == 401 || response.statusCode == 403)) {
+        _laporTidakBerwenang(
+          statusCode: response.statusCode,
+          errorCode: errorCode,
+          errorMessage: serverMessage,
+        );
+      }
+
+      final errorMessage = serverMessage ?? 'Permintaan gagal (${response.statusCode})';
       throw ApiException(
         errorMessage,
         statusCode: response.statusCode,

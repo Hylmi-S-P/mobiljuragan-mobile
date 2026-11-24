@@ -87,6 +87,7 @@ void main() async {
     settingsService: settingsService,
   );
   ApiClient.onUnauthorized = authController.logout;
+  ApiClient.onSessionRejected = authController.tanganiSesiDitolak;
   unawaited(authController.initSession());
 
   // Set system overlay style untuk status bar yang bersih dan transparan
@@ -162,14 +163,88 @@ void main() async {
 }
 
 /// Root Widget MobilJuragan Mobile App
-class MobilJuraganApp extends StatelessWidget {
+class MobilJuraganApp extends StatefulWidget {
   const MobilJuraganApp({super.key});
+
+  @override
+  State<MobilJuraganApp> createState() => _MobilJuraganAppState();
+}
+
+class _MobilJuraganAppState extends State<MobilJuraganApp>
+    with WidgetsBindingObserver {
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+  AuthController? _auth;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AuthController? berikutnya;
+    try {
+      berikutnya = Provider.of<AuthController>(context, listen: false);
+    } on ProviderNotFoundException {
+      berikutnya = null;
+    }
+
+    if (!identical(_auth, berikutnya)) {
+      _auth?.removeListener(_cekPesanSesiBerakhir);
+      _auth = berikutnya;
+      _auth?.addListener(_cekPesanSesiBerakhir);
+      _cekPesanSesiBerakhir();
+    }
+  }
+
+  void _cekPesanSesiBerakhir() {
+    final auth = _auth;
+    if (auth == null || !auth.adaPesanSesiBerakhir) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final messenger = _scaffoldMessengerKey.currentState;
+      if (messenger == null) return;
+      final pesan = _auth?.konsumsiPesanSesiBerakhir();
+      if (pesan == null || pesan.isEmpty) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(pesan),
+            backgroundColor: AppColors.statusCancelled,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final auth = _auth;
+      if (auth != null) {
+        unawaited(auth.periksaSesiJikaAktif());
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _auth?.removeListener(_cekPesanSesiBerakhir);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MobilJuragan Mobile',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: AppTheme.lightTheme,
       home: const SplashScreen(),
     );

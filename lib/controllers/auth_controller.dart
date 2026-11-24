@@ -73,12 +73,14 @@ class AuthController extends ChangeNotifier {
   /// Status pemulihan sesi saat aplikasi dibuka.
   StatusBootSesi _bootState = StatusBootSesi.memuat;
 
-  /// Sedang menjalankan proses keluar akun.
-  ///
-  /// Menahan ketukan ganda pada tombol keluar. Sebelumnya dua ketukan beruntun
-  /// menjalankan dua rangkaian pembersihan sekaligus, dan yang kedua bisa
-  /// menghapus token milik sesi baru bila pengguna sempat masuk kembali.
+  /// Menahan ketukan ganda pada tombol keluar.
   bool _isLoggingOut = false;
+
+  /// Pesan satu kali ketika sesi diputus paksa oleh server (misal akun dinonaktifkan).
+  String? _pesanSesiBerakhir;
+
+  /// Waktu pemeriksaan sesi aktif terakhir agar tab switch tidak membanjiri server.
+  DateTime? _terakhirCekSesi;
 
   AuthController({
     this.repository,
@@ -100,6 +102,14 @@ class AuthController extends ChangeNotifier {
   bool get isLoadingOtp => _isLoadingOtp;
   StatusBootSesi get bootState => _bootState;
   bool get isLoggingOut => _isLoggingOut;
+  bool get adaPesanSesiBerakhir => _pesanSesiBerakhir != null;
+
+  /// Mengambil pesan penolakan sesi satu kali lalu mengosongkannya.
+  String? konsumsiPesanSesiBerakhir() {
+    final pesan = _pesanSesiBerakhir;
+    _pesanSesiBerakhir = null;
+    return pesan;
+  }
 
   /// Memulihkan sesi pengguna dari Secure Storage saat aplikasi pertama kali dibuka (Guest Mode jika belum login)
   Future<void> initSession() async {
@@ -177,6 +187,8 @@ class AuthController extends ChangeNotifier {
     _currentUser = user;
     _isLoggedIn = user != null;
     _hasSecureToken = user != null && hasToken;
+    _pesanSesiBerakhir = null;
+    _terakhirCekSesi = null;
     _bootState = StatusBootSesi.siap;
     notifyListeners();
   }
@@ -202,6 +214,8 @@ class AuthController extends ChangeNotifier {
   /// Membaca ulang pemilik cache dari secure storage lalu membuang cache akun
   /// lain, supaya halaman riwayat tidak menampilkan pesanan pemilik sebelumnya.
   Future<void> _onSessionStarted() async {
+    _pesanSesiBerakhir = null;
+    _terakhirCekSesi = DateTime.now();
     final bookingRepo = bookingRepository;
     if (bookingRepo == null) return;
     await bookingRepo.refreshSession();
@@ -708,8 +722,11 @@ class AuthController extends ChangeNotifier {
         _isLoggedIn = true;
         _hasSecureToken = true;
       } else {
-        /* Token tidak lagi sah (mis. kata sandi diganti di perangkat lain).
-           Kembali ke mode tamu tanpa mempertahankan identitas lama. */
+        if (_isLoggingOut) return;
+        if (_isLoggedIn || _hasSecureToken) {
+          await logout();
+          return;
+        }
         _currentUser = null;
         _isLoggedIn = false;
         _hasSecureToken = false;
@@ -718,6 +735,44 @@ class AuthController extends ChangeNotifier {
       // Gagal jaringan: pertahankan data yang sudah tampil.
     }
     notifyListeners();
+  }
+
+  /// Menangani penolakan sesi terpusat dari [ApiClient] (HTTP 401/403).
+  Future<void> tanganiSesiDitolak(
+    int statusCode,
+    String? errorCode,
+    String? serverMessage,
+  ) async {
+    if (!_isLoggedIn && !_hasSecureToken) return;
+
+    final teksServer = serverMessage?.trim() ?? '';
+    final teksRendah = teksServer.toLowerCase();
+    if (errorCode == 'ACCOUNT_INACTIVE' || teksRendah.contains('dinonaktifkan')) {
+      _pesanSesiBerakhir =
+          'Akun Anda dinonaktifkan oleh admin. Sesi telah diakhiri.';
+    } else if (teksServer.isNotEmpty) {
+      _pesanSesiBerakhir = teksServer;
+    } else {
+      _pesanSesiBerakhir = 'Sesi Anda telah berakhir. Silakan masuk kembali.';
+    }
+
+    await logout();
+  }
+
+  /// Memeriksa keabsahan sesi aktif secara ringan saat resume atau pindah tab.
+  Future<void> periksaSesiJikaAktif({
+    Duration jedaMinimal = const Duration(seconds: 8),
+  }) async {
+    if (!_isLoggedIn || _isLoggingOut || repository == null) return;
+
+    final sekarang = DateTime.now();
+    final terakhir = _terakhirCekSesi;
+    if (terakhir != null && sekarang.difference(terakhir) < jedaMinimal) {
+      return;
+    }
+
+    _terakhirCekSesi = sekarang;
+    await segarkanProfil();
   }
 
   /// Masuk memakai kata sandi.

@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'help_center_screen.dart';
@@ -28,6 +31,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _currentTabIndex = widget.initialTabIndex;
   }
 
+  void _periksaSesiDiLatar() {
+    try {
+      final auth = Provider.of<AuthController>(context, listen: false);
+      unawaited(auth.periksaSesiJikaAktif());
+    } on ProviderNotFoundException {
+      // Pengujian widget terisolasi dapat merender shell tanpa AuthController.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,6 +52,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               setState(() {
                 _currentTabIndex = 1;
               });
+              _periksaSesiDiLatar();
             },
           ),
           const VehicleSelectionScreen(showBottomNav: true),
@@ -48,6 +61,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               setState(() {
                 _currentTabIndex = 1;
               });
+              _periksaSesiDiLatar();
             },
           ),
           const HelpCenterScreen(),
@@ -59,6 +73,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           setState(() {
             _currentTabIndex = index;
           });
+          _periksaSesiDiLatar();
         },
       ),
     );
