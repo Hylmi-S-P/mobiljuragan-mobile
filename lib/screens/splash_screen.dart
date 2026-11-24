@@ -4,10 +4,8 @@ import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../theme/app_colors.dart';
 import 'main_navigation_screen.dart';
-import '../theme/app_typography.dart';
 
-/// Halaman SplashScreen modern peningkatan dari Frame Loading (1346:167)
-/// Menampilkan emblem branding MobilJuragan dengan animasi halus
+/// Halaman SplashScreen dengan latar navy dan ikon mobil MobilJuragan.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -142,89 +140,11 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               );
             },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Emblem Icon MobilJuragan
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: AppColors.navyLight,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.navyDark.withValues(alpha: 0.4),
-                        blurRadius: 28,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned(
-                          top: 20,
-                          child: Icon(
-                            Icons.directions_car_rounded,
-                            size: 34,
-                            color: Colors.white.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        const Text(
-                          'MJ',
-                          style: TextStyle(
-                            fontSize: AppTypography.sizeBrand,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // Nama Brand
-                const Text(
-                  'MobilJuragan',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBrandName,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Subteks Wilayah Operasional Merauke
-                Text(
-                  'Rental Mobil Terpercaya Merauke, Papua Selatan',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBodyLarge,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: 0.2,
-                    color: Colors.white.withValues(alpha: 0.72),
-                  ),
-                ),
-                const SizedBox(height: 48),
-
-                // Progress Indicator Ringan
-                SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.8,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primaryTeal.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ],
+            child: const Icon(
+              Icons.directions_car_rounded,
+              size: 72,
+              color: Colors.white,
+              semanticLabel: 'MobilJuragan',
             ),
           ),
         ),
