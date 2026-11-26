@@ -51,26 +51,12 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
   String? _errorMessage;
 
   @override
-  void initState() {
-    super.initState();
-    /* Penghitung karakter ikut berubah saat mengetik. */
-    _titleController.addListener(_refreshCounters);
-    _descriptionController.addListener(_refreshCounters);
-  }
-
-  @override
   void dispose() {
-    _titleController.removeListener(_refreshCounters);
-    _descriptionController.removeListener(_refreshCounters);
     _titleController.dispose();
     _descriptionController.dispose();
     _titleFocus.dispose();
     _descriptionFocus.dispose();
     super.dispose();
-  }
-
-  void _refreshCounters() {
-    if (mounted) setState(() {});
   }
 
   AuthController? _bacaAuthOpsional() {
@@ -158,9 +144,6 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final judulTerisi = _titleController.text.trim().isNotEmpty;
-    final deskripsiLength = _descriptionController.text.trim().length;
-
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
       appBar: const CustomAppBar(
@@ -191,59 +174,71 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
 
               _buildLabel('Judul'),
               const SizedBox(height: 6),
-              TextFormField(
-                controller: _titleController,
-                focusNode: _titleFocus,
-                textInputAction: TextInputAction.next,
-                textCapitalization: TextCapitalization.sentences,
-                inputFormatters: [LengthLimitingTextInputFormatter(_maxTitleLength)],
-                onFieldSubmitted: (_) => _descriptionFocus.requestFocus(),
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  fontFamily: 'Inter',
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _titleController,
+                builder: (context, titleValue, _) => TextFormField(
+                  controller: _titleController,
+                  focusNode: _titleFocus,
+                  textInputAction: TextInputAction.next,
+                  textCapitalization: TextCapitalization.sentences,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(_maxTitleLength),
+                  ],
+                  onFieldSubmitted: (_) => _descriptionFocus.requestFocus(),
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    fontFamily: 'Inter',
+                  ),
+                  decoration: _inputDecoration(
+                    hint: 'Contoh: Minta jemput di Bandara Mopah',
+                    counter:
+                        '${titleValue.text.characters.length}/$_maxTitleLength',
+                  ),
+                  validator: (value) {
+                    final judul = value?.trim() ?? '';
+                    if (judul.isEmpty) return 'Judul belum diisi.';
+                    if (judul.length < 5) {
+                      return 'Judul terlalu pendek. Tulis minimal 5 karakter.';
+                    }
+                    return null;
+                  },
                 ),
-                decoration: _inputDecoration(
-                  hint: 'Contoh: Minta jemput di Bandara Mopah',
-                  counter: '${_titleController.text.characters.length}/$_maxTitleLength',
-                ),
-                validator: (value) {
-                  final judul = value?.trim() ?? '';
-                  if (judul.isEmpty) return 'Judul belum diisi.';
-                  if (judul.length < 5) return 'Judul terlalu pendek. Tulis minimal 5 karakter.';
-                  return null;
-                },
               ),
               const SizedBox(height: 18),
 
               _buildLabel('Detail'),
               const SizedBox(height: 6),
-              TextFormField(
-                controller: _descriptionController,
-                focusNode: _descriptionFocus,
-                maxLines: 6,
-                minLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                keyboardType: TextInputType.multiline,
-                inputFormatters: [LengthLimitingTextInputFormatter(_maxDescriptionLength)],
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  height: 1.45,
-                  fontFamily: 'Inter',
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _descriptionController,
+                builder: (context, descValue, _) => TextFormField(
+                  controller: _descriptionController,
+                  focusNode: _descriptionFocus,
+                  maxLines: 6,
+                  minLines: 5,
+                  textCapitalization: TextCapitalization.sentences,
+                  keyboardType: TextInputType.multiline,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(_maxDescriptionLength),
+                  ],
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    height: 1.45,
+                    fontFamily: 'Inter',
+                  ),
+                  decoration: _inputDecoration(
+                    hint: 'Contoh: Saya rencana sewa Avanza lepas kunci tanggal 5, '
+                        'bisa dijemput di Bandara Mopah?',
+                    counter: '${descValue.text.trim().length}/$_maxDescriptionLength',
+                  ),
+                  validator: (value) {
+                    final detail = value?.trim() ?? '';
+                    if (detail.isEmpty) return 'Detail belum diisi.';
+                    if (detail.length < _minDescriptionLength) {
+                      return 'Detail terlalu pendek. Tulis minimal $_minDescriptionLength karakter.';
+                    }
+                    return null;
+                  },
                 ),
-                decoration: _inputDecoration(
-                  hint: 'Contoh: Saya rencana sewa Avanza lepas kunci tanggal 5, '
-                      'bisa dijemput di Bandara Mopah?',
-                  counter:
-                      '$deskripsiLength/$_maxDescriptionLength',
-                ),
-                validator: (value) {
-                  final detail = value?.trim() ?? '';
-                  if (detail.isEmpty) return 'Detail belum diisi.';
-                  if (detail.length < _minDescriptionLength) {
-                    return 'Detail terlalu pendek. Tulis minimal $_minDescriptionLength karakter.';
-                  }
-                  return null;
-                },
               ),
 
               if (_errorMessage != null) ...[
@@ -252,33 +247,47 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
               ],
 
               const SizedBox(height: 24),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: (_isSubmitting || !judulTerisi) ? null : _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    foregroundColor: AppColors.textWhite,
-                    disabledBackgroundColor: AppColors.borderMedium,
-                    disabledForegroundColor: AppColors.textWhite,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(
-                          _errorMessage == null ? 'Kirim Tiket' : 'Kirim Ulang',
-                          style: const TextStyle(
-                            fontSize: AppTypography.sizeTitle,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Inter',
-                          ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _titleController,
+                builder: (context, titleValue, _) {
+                  final judulTerisi = titleValue.text.trim().isNotEmpty;
+                  return SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed:
+                          (_isSubmitting || !judulTerisi) ? null : _handleSubmit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryNavy,
+                        foregroundColor: AppColors.textWhite,
+                        disabledBackgroundColor: AppColors.borderMedium,
+                        disabledForegroundColor: AppColors.textWhite,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                ),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              _errorMessage == null
+                                  ? 'Kirim Tiket'
+                                  : 'Kirim Ulang',
+                              style: const TextStyle(
+                                fontSize: AppTypography.sizeTitle,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Inter',
+                              ),
+                            ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

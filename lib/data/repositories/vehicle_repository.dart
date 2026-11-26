@@ -26,6 +26,7 @@ class VehicleRepository {
   /// spesifik. Penanda favorit selalu diikat ke nilai ini supaya akun lain di
   /// perangkat yang sama tidak ikut melihat pilihannya.
   String? _userId;
+  Future<bool>? _syncInFlight;
 
   VehicleRepository({
     required this.vehicleDao,
@@ -100,7 +101,20 @@ class VehicleRepository {
   ///
   /// Menggunakan Database Transaction (Atomic Write) agar penulisan batch multi-baris aman.
   /// Jika offline atau koneksi gagal, data lokal tetap dipertahankan tanpa error yang memblokir UI.
-  Future<bool> syncFromBackend({bool force = false}) async {
+  Future<bool> syncFromBackend({bool force = false}) {
+    if (_syncInFlight != null && !force) {
+      return _syncInFlight!;
+    }
+    final inFlight = _jalankanSyncBackend(force: force);
+    _syncInFlight = inFlight;
+    return inFlight.whenComplete(() {
+      if (identical(_syncInFlight, inFlight)) {
+        _syncInFlight = null;
+      }
+    });
+  }
+
+  Future<bool> _jalankanSyncBackend({required bool force}) async {
     final lastSync = settingsService.getLastSyncTime() ?? 0;
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
 

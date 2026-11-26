@@ -34,6 +34,8 @@ android {
             // Untuk kebutuhan demo PBL kuliah, penandatanganan rilis sementara
             // masih memakai kunci debug bawaan Flutter agar build APK tetap praktis.
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

@@ -2739,6 +2739,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $VehiclesTable vehicles = $VehiclesTable(this);
   late final $FavoritesTable favorites = $FavoritesTable(this);
   late final $BookingsTable bookings = $BookingsTable(this);
+  late final Index idxVehiclesCategory = Index(
+    'idx_vehicles_category',
+    'CREATE INDEX idx_vehicles_category ON vehicles (category)',
+  );
+  late final Index idxFavoritesUserVehicle = Index(
+    'idx_favorites_user_vehicle',
+    'CREATE INDEX idx_favorites_user_vehicle ON favorites (user_id, vehicle_id)',
+  );
+  late final Index idxBookingsUserCreated = Index(
+    'idx_bookings_user_created',
+    'CREATE INDEX idx_bookings_user_created ON bookings (user_id, created_at)',
+  );
   late final VehicleDao vehicleDao = VehicleDao(this as AppDatabase);
   late final BookingDao bookingDao = BookingDao(this as AppDatabase);
   @override
@@ -2749,6 +2761,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     vehicles,
     favorites,
     bookings,
+    idxVehiclesCategory,
+    idxFavoritesUserVehicle,
+    idxBookingsUserCreated,
   ];
 }
 

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 /// Skema tabel SQLite lokal Drift untuk entitas katalog armada kendaraan
+@TableIndex(name: 'idx_vehicles_category', columns: {#category})
 class Vehicles extends Table {
   /// Pengenal unik armada (contoh: 'avanza-g-putih' atau UUID backend)
   TextColumn get id => text()();

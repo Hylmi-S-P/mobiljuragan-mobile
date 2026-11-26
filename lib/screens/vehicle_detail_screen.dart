@@ -163,6 +163,8 @@ class VehicleDetailScreen extends StatelessWidget {
         child: GambarKendaraan(
           sumber: currentVehicle.detailImageUrl ?? currentVehicle.imageUrl,
           fit: BoxFit.contain,
+          lebarLogis: 360,
+          tinggiLogis: 170,
           cadangan: const Center(
             child: Icon(
               Icons.directions_car,

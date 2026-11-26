@@ -94,8 +94,14 @@ class ApiConstants {
   static const String documentTemplatePdfEndpoint =
       '/documents/template/surat-pernyataan-lepas-kunci.pdf';
 
+  // Endpoint Media
+  static const String mediaEndpoint = '/media';
+
   // Durasi timeout HTTP request umum
   static const Duration timeoutDuration = Duration(seconds: 8);
+
+  /// Timeout unggahan berkas multipart (bukti transfer, KTP, SIM, surat).
+  static const Duration uploadTimeoutDuration = Duration(seconds: 45);
 
   /// Timeout khusus asisten AI.
   ///

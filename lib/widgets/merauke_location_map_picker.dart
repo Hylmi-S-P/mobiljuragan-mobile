@@ -125,6 +125,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _searchFocus.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -279,6 +280,13 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
   }
 
   Widget _buildMiniPreview() {
+    if (!widget.isWithDriver) {
+      return _buildStaticOfficeCard(
+        borderRadius: BorderRadius.circular(10),
+        compact: true,
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: SizedBox(
@@ -286,7 +294,8 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
         width: double.infinity,
         child: Stack(
           children: [
-            FlutterMap(
+            RepaintBoundary(
+              child: FlutterMap(
               options: MapOptions(
                 initialCenter: _currentCenter,
                 initialZoom: 13.8,
@@ -315,6 +324,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                   ],
                 ),
               ],
+            ),
             ),
             if (widget.showOverlayBanner)
               Positioned(
@@ -575,10 +585,79 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
     );
   }
 
+  Widget _buildStaticOfficeCard({
+    required BorderRadius borderRadius,
+    bool compact = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(compact ? 12 : 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: borderRadius,
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.tealLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.store_mall_directory_outlined,
+              color: AppColors.primaryTeal,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.selectedLocationName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBody,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Inter',
+                  ),
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Jl. Pendidikan, Mandala, Merauke • Serah terima unit & verifikasi berkas fisik di kantor operasional.',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMapCanvas({
     required double height,
     required BorderRadius borderRadius,
   }) {
+    if (!widget.isWithDriver) {
+      return _buildStaticOfficeCard(borderRadius: borderRadius);
+    }
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: SizedBox(
@@ -586,7 +665,8 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
         width: double.infinity,
         child: Stack(
           children: [
-            FlutterMap(
+            RepaintBoundary(
+              child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
                 initialCenter: _currentCenter,
@@ -674,6 +754,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                   ],
                 ),
               ],
+            ),
             ),
 
             // Kontrol Zoom & Pusatkan di pojok kanan bawah (sejajar agar tidak bertabrakan dengan tombol Perbesar)
@@ -866,8 +947,9 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                       width: double.infinity,
                       child: Stack(
                         children: [
-                          FlutterMap(
-                            options: MapOptions(
+                          RepaintBoundary(
+                            child: FlutterMap(
+                              options: MapOptions(
                               initialCenter: _currentCenter,
                               initialZoom: 14.5,
                               minZoom: 11.5,
@@ -947,6 +1029,7 @@ class _MeraukeLocationMapPickerState extends State<MeraukeLocationMapPicker> {
                                 ],
                               ),
                             ],
+                          ),
                           ),
                           if (widget.isWithDriver)
                             Positioned(

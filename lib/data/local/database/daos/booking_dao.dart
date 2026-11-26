@@ -122,10 +122,28 @@ class BookingDao extends DatabaseAccessor<AppDatabase> with _$BookingDaoMixin {
 
   /// Transaksi Database Atomik (Atomic Write) untuk daftar pesanan
   Future<void> upsertBookingsBatch(List<BookingsCompanion> entries) async {
+    if (entries.isEmpty) return;
+    await batch((b) {
+      b.insertAllOnConflictUpdate(bookings, entries);
+    });
+  }
+
+  /// Menyinkronkan pesanan milik [owner] dalam 1 transaksi atomik (bersihkan
+  /// milik akun lain, batch upsert pesanan baru, lalu buang pesanan usang)
+  /// agar listener stream UI tidak berkedip berkali-kali.
+  Future<void> syncOwnedBookingsAtomically({
+    required String owner,
+    required List<BookingsCompanion> entries,
+    required List<String> keepIds,
+  }) async {
     await transaction(() async {
-      for (final entry in entries) {
-        await into(bookings).insertOnConflictUpdate(entry);
+      await deleteBookingsNotOwnedBy(owner);
+      if (entries.isNotEmpty) {
+        await batch((b) {
+          b.insertAllOnConflictUpdate(bookings, entries);
+        });
       }
+      await deleteBookingsOwnedByExcept(owner, keepIds);
     });
   }
 

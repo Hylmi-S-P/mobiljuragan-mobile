@@ -1,7 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../controllers/auth_controller.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'help_center_screen.dart';
@@ -24,20 +21,21 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentTabIndex;
+  final Set<int> _tabSudahDibuka = <int>{};
 
   @override
   void initState() {
     super.initState();
     _currentTabIndex = widget.initialTabIndex;
+    _tabSudahDibuka.add(_currentTabIndex);
   }
 
-  void _periksaSesiDiLatar() {
-    try {
-      final auth = Provider.of<AuthController>(context, listen: false);
-      unawaited(auth.periksaSesiJikaAktif());
-    } on ProviderNotFoundException {
-      // Pengujian widget terisolasi dapat merender shell tanpa AuthController.
-    }
+  void _pindahTab(int index) {
+    if (_currentTabIndex == index && _tabSudahDibuka.contains(index)) return;
+    setState(() {
+      _currentTabIndex = index;
+      _tabSudahDibuka.add(index);
+    });
   }
 
   @override
@@ -47,34 +45,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       body: IndexedStack(
         index: _currentTabIndex,
         children: [
-          HomeScreen(
-            onNavigateToPesan: () {
-              setState(() {
-                _currentTabIndex = 1;
-              });
-              _periksaSesiDiLatar();
-            },
-          ),
-          const VehicleSelectionScreen(showBottomNav: true),
-          OrderHistoryScreen(
-            onNavigateToPesan: () {
-              setState(() {
-                _currentTabIndex = 1;
-              });
-              _periksaSesiDiLatar();
-            },
-          ),
-          const HelpCenterScreen(),
+          _tabSudahDibuka.contains(0)
+              ? HomeScreen(onNavigateToPesan: () => _pindahTab(1))
+              : const SizedBox.shrink(),
+          _tabSudahDibuka.contains(1)
+              ? const VehicleSelectionScreen(showBottomNav: true)
+              : const SizedBox.shrink(),
+          _tabSudahDibuka.contains(2)
+              ? OrderHistoryScreen(onNavigateToPesan: () => _pindahTab(1))
+              : const SizedBox.shrink(),
+          _tabSudahDibuka.contains(3)
+              ? HelpCenterScreen(isActive: _currentTabIndex == 3)
+              : const SizedBox.shrink(),
         ],
       ),
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentTabIndex,
-        onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-          _periksaSesiDiLatar();
-        },
+        onTap: _pindahTab,
       ),
     );
   }

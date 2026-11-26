@@ -15,6 +15,12 @@ import 'core/network/app_config_api_service.dart';
 import 'data/local/database/app_database.dart';
 import 'data/local/preferences/app_settings_service.dart';
 import 'data/local/secure/secure_storage_service.dart';
+import 'data/remote/ai_api_service.dart';
+import 'data/remote/auth_api_service.dart';
+import 'data/remote/booking_api_service.dart';
+import 'data/remote/faq_api_service.dart';
+import 'data/remote/ticket_api_service.dart';
+import 'data/remote/vehicle_api_service.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/booking_repository.dart';
 import 'data/repositories/vehicle_repository.dart';
@@ -41,8 +47,9 @@ void main() async {
   // 2. Inisialisasi tier penyimpanan pengaturan (SharedPreferences)
   final settingsService = await AppSettingsService.create();
 
-  // 3. Inisialisasi tier penyimpanan rahasia & token (FlutterSecureStorage)
+  // 3. Inisialisasi tier penyimpanan rahasia & klien HTTP terpusat
   final secureStorage = SecureStorageService();
+  final apiClient = ApiClient(secureStorage: secureStorage);
 
   // 4. Inisialisasi tier penyimpanan terstruktur lokal (Drift SQLite)
   final appDatabase = AppDatabase();
@@ -52,7 +59,7 @@ void main() async {
      lambat. Selama belum diterima, AppConfigStore memakai nilai cadangan dan
      tagihan tetap dihitung server. */
   unawaited(
-    AppConfigApiService()
+    AppConfigApiService(apiClient)
         .fetchConfig()
         .then(AppConfigStore.terapkan)
         .catchError((Object _) {
@@ -60,16 +67,27 @@ void main() async {
         }),
   );
 
-  // 5. Inisialisasi lapisan Repository Offline-First
+  // 5. Inisialisasi layanan API dan lapisan Repository Offline-First
+  final vehicleApiService = VehicleApiService(apiClient);
+  final authApiService = AuthApiService(apiClient);
+  final bookingApiService = BookingApiService(apiClient);
+  final faqApiService = FaqApiService(apiClient);
+  final ticketApiService = TicketApiService(apiClient);
+  final aiApiService = AiApiService(apiClient);
+
   final vehicleRepo = VehicleRepository(
     vehicleDao: appDatabase.vehicleDao,
+    apiService: vehicleApiService,
     settingsService: settingsService,
     secureStorage: secureStorage,
   );
-  final authRepo = AuthRepository(secureStorage: secureStorage);
+  final authRepo = AuthRepository(
+    apiService: authApiService,
+    secureStorage: secureStorage,
+  );
   final bookingRepo = BookingRepository(
     appDatabase.bookingDao,
-    null,
+    bookingApiService,
     secureStorage,
     appDatabase.vehicleDao,
   );
@@ -107,6 +125,7 @@ void main() async {
         Provider<AppDatabase>.value(value: appDatabase),
         Provider<AppSettingsService>.value(value: settingsService),
         Provider<SecureStorageService>.value(value: secureStorage),
+        Provider<ApiClient>.value(value: apiClient),
         Provider<VehicleRepository>.value(value: vehicleRepo),
         Provider<AuthRepository>.value(value: authRepo),
         Provider<BookingRepository>.value(value: bookingRepo),
@@ -139,21 +158,39 @@ void main() async {
         ChangeNotifierProxyProvider<AuthController, BookingController>(
           create: (_) => BookingController(
             repository: bookingRepo,
+            apiService: bookingApiService,
+            idPemilik: authController.currentUser?.id,
           ),
           update: (_, auth, booking) {
             if (booking != null) {
               booking.syncIfSessionChanged(auth.currentUser?.id);
+              return booking;
             }
-            return booking ?? BookingController(repository: bookingRepo);
+            return BookingController(
+              repository: bookingRepo,
+              apiService: bookingApiService,
+              idPemilik: auth.currentUser?.id,
+            );
           },
         ),
         ChangeNotifierProxyProvider<AuthController, SupportController>(
-          create: (_) => SupportController()..fetchFaqs(),
+          create: (_) => SupportController(
+            faqApiService: faqApiService,
+            ticketApiService: ticketApiService,
+            aiApiService: aiApiService,
+            secureStorage: secureStorage,
+          )..fetchFaqs(),
           update: (_, auth, support) {
             if (support != null) {
               support.syncIfSessionChanged(auth.currentUser?.id);
+              return support;
             }
-            return support ?? (SupportController()..fetchFaqs());
+            return SupportController(
+              faqApiService: faqApiService,
+              ticketApiService: ticketApiService,
+              aiApiService: aiApiService,
+              secureStorage: secureStorage,
+            )..fetchFaqs();
           },
         ),
       ],

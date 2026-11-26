@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 /// Skema tabel SQLite lokal Drift untuk entitas pemesanan sewa mobil pelanggan
+@TableIndex(name: 'idx_bookings_user_created', columns: {#userId, #createdAt})
 class Bookings extends Table {
   /// Kode pemesanan unik (contoh: 'MKQ-2026-001' atau UUID/bookingCode dari backend)
   TextColumn get id => text()();

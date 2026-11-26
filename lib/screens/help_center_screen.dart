@@ -17,8 +17,13 @@ import '../theme/app_typography.dart';
 /// Halaman Pusat Bantuan Pelanggan dan Layanan Operasional Merauke (Frame 09)
 class HelpCenterScreen extends StatefulWidget {
   final bool showBackButton;
+  final bool isActive;
 
-  const HelpCenterScreen({super.key, this.showBackButton = false});
+  const HelpCenterScreen({
+    super.key,
+    this.showBackButton = false,
+    this.isActive = true,
+  });
 
   @override
   State<HelpCenterScreen> createState() => _HelpCenterScreenState();
@@ -29,15 +34,15 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
   String _selectedCategory = 'Semua';
   String? _expandedFaqId;
   Timer? _ticketsPollingTimer;
+  bool _sedangDiDepan = true;
   final PageController _activeTicketPageController = PageController();
   int _activeTicketPage = 0;
 
   /*
    * Daftar tiket disegarkan berkala sebagai jaring pengaman, bukan sebagai
-   * sumber utama. Perubahan status yang penting sudah datang lewat WebSocket
+   * sumber utama. Perubahan status yang penting sudah datang lewat SSE
    * saat percakapan dibuka, dan pelanggan bisa menarik daftar untuk menyegarkan
-   * sendiri. Menyegarkan tiap lima detik berarti mengunduh ulang seluruh daftar
-   * tiket beserta pesannya — mahal untuk perubahan yang jarang.
+   * sendiri. Menyegarkan hanya berjalan saat tab aktif dan aplikasi di depan.
    */
   static const Duration _jedaSegarkanTiket = Duration(seconds: 30);
 
@@ -47,16 +52,32 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
     WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final support = context.read<SupportController>();
-        support.fetchFaqs();
-        if (context.read<AuthController>().isLoggedIn) {
-          support.fetchTickets();
-        }
+      if (!mounted) return;
+      final support = context.read<SupportController>();
+      support.fetchFaqs();
+      if (widget.isActive && context.read<AuthController>().isLoggedIn) {
+        support.fetchTickets();
       }
     });
 
-    _mulaiSegarkanTiket();
+    if (widget.isActive) {
+      _mulaiSegarkanTiket();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HelpCenterScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      if (mounted && context.read<AuthController>().isLoggedIn) {
+        context.read<SupportController>().fetchTickets();
+      }
+      if (_sedangDiDepan) {
+        _mulaiSegarkanTiket();
+      }
+    } else if (oldWidget.isActive && !widget.isActive) {
+      _hentikanSegarkanTiket();
+    }
   }
 
   @override
@@ -77,21 +98,26 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
      * Saat kembali ke depan, daftar disegarkan sekali lalu jadwal dilanjutkan.
      */
     if (state == AppLifecycleState.resumed) {
-      if (mounted && context.read<AuthController>().isLoggedIn) {
-        context.read<SupportController>().fetchTickets();
+      _sedangDiDepan = true;
+      if (widget.isActive) {
+        if (mounted && context.read<AuthController>().isLoggedIn) {
+          context.read<SupportController>().fetchTickets();
+        }
+        _mulaiSegarkanTiket();
       }
-      _mulaiSegarkanTiket();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
+      _sedangDiDepan = false;
       _hentikanSegarkanTiket();
     }
   }
 
   void _mulaiSegarkanTiket() {
     _hentikanSegarkanTiket();
+    if (!widget.isActive || !_sedangDiDepan) return;
     _ticketsPollingTimer = Timer.periodic(_jedaSegarkanTiket, (_) {
-      if (!mounted) return;
+      if (!mounted || !widget.isActive || !_sedangDiDepan) return;
       if (context.read<AuthController>().isLoggedIn) {
         context.read<SupportController>().fetchTickets();
       }
@@ -137,40 +163,60 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
             ]);
           },
           color: AppColors.primaryNavy,
-          child: SingleChildScrollView(
+          child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenH,
-              vertical: 16,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Solusi kendala sewa armada dan layanan operasional Merauke.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBodyLarge,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH,
+                  16,
+                  AppSpacing.screenH,
+                  0,
+                ),
+                sliver: const SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Solusi kendala sewa armada dan layanan operasional Merauke.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBodyLarge,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      SizedBox(height: 18),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 18),
-
-                // Seksi 1: Pertanyaan Populer (FAQ)
-                _buildFaqSection(faqs, categories),
-                const SizedBox(height: 24),
-
-                // Seksi 2: Tiket Bantuan Saya (hanya saat akun terhubung)
-                if (isLoggedIn) ...[
-                  _buildUserTicketsSection(support),
-                  const SizedBox(height: 24),
-                ],
-
-                // Seksi 3: Saluran Bantuan
-                _buildSupportChannelsSection(),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenH,
+                ),
+                sliver: _buildFaqSliver(faqs, categories),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenH,
+                  24,
+                  AppSpacing.screenH,
+                  20,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isLoggedIn) ...[
+                        _buildUserTicketsSection(support),
+                        const SizedBox(height: 24),
+                      ],
+                      _buildSupportChannelsSection(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -398,125 +444,156 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
     );
   }
 
-  Widget _buildFaqSection(List<FaqModel> faqs, List<String> categories) {
-    return Container(
-      padding: const EdgeInsets.all(16),
+  Widget _buildFaqSliver(List<FaqModel> faqs, List<String> categories) {
+    return DecoratedSliver(
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Wrap: jumlah topik turun ke baris berikutnya saat ukuran teks
-          // sistem diperbesar, bukan meluber ke kanan.
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              const Text(
-                'Pertanyaan Populer',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeTitle,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              Text(
-                '${faqs.length} Topik',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primaryTeal,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildCategoryChips(categories),
-          const SizedBox(height: 12),
-          const Divider(color: AppColors.borderSubtle, height: 1),
-          if (faqs.isEmpty) ...[
-            const SizedBox(height: 20),
-            const Center(
-              child: Text(
-                'Belum ada topik bantuan untuk kategori ini. Silakan hubungi CS langsung.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: AppTypography.sizeBody, color: AppColors.textSecondary),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ] else ...[
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: faqs.length,
-              separatorBuilder: (_, _) => const Divider(color: AppColors.borderSubtle, height: 1),
-              itemBuilder: (context, index) {
-                final faq = faqs[index];
-                final faqKey = faq.id.isNotEmpty ? faq.id : faq.question;
-                final isExpanded = _expandedFaqId == faqKey;
-
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      _expandedFaqId = isExpanded ? null : faqKey;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                faq.question,
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeBody,
-                                  fontWeight: isExpanded ? FontWeight.w700 : FontWeight.w500,
-                                  color: isExpanded ? AppColors.primaryNavy : AppColors.textPrimary,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              isExpanded ? Icons.expand_less : Icons.expand_more,
-                              color: isExpanded ? AppColors.primaryNavy : AppColors.textSecondary,
-                              size: 20,
-                            ),
-                          ],
+      sliver: SliverPadding(
+        padding: const EdgeInsets.all(16),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Wrap: jumlah topik turun ke baris berikutnya saat ukuran teks
+                  // sistem diperbesar, bukan meluber ke kanan.
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      const Text(
+                        'Pertanyaan Populer',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeTitle,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          fontFamily: 'Inter',
                         ),
-                        if (isExpanded) ...[
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2, right: 8),
-                            child: Text(
-                              faq.answer,
-                              style: const TextStyle(
-                                fontSize: AppTypography.sizeBody,
-                                height: 1.45,
-                                color: AppColors.textSecondary,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                      ),
+                      Text(
+                        '${faqs.length} Topik',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryTeal,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                  const SizedBox(height: 12),
+                  _buildCategoryChips(categories),
+                  const SizedBox(height: 12),
+                  const Divider(color: AppColors.borderSubtle, height: 1),
+                ],
+              ),
             ),
+            if (faqs.isEmpty)
+              const SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    SizedBox(height: 20),
+                    Center(
+                      child: Text(
+                        'Belum ada topik bantuan untuk kategori ini. Silakan hubungi CS langsung.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                  ],
+                ),
+              )
+            else
+              SliverList.builder(
+                itemCount: faqs.length,
+                itemBuilder: (context, index) {
+                  final faq = faqs[index];
+                  final faqKey = faq.id.isNotEmpty ? faq.id : faq.question;
+                  final isExpanded = _expandedFaqId == faqKey;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (index > 0)
+                        const Divider(color: AppColors.borderSubtle, height: 1),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _expandedFaqId = isExpanded ? null : faqKey;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      faq.question,
+                                      style: TextStyle(
+                                        fontSize: AppTypography.sizeBody,
+                                        fontWeight: isExpanded
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isExpanded
+                                            ? AppColors.primaryNavy
+                                            : AppColors.textPrimary,
+                                        fontFamily: 'Inter',
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    isExpanded
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
+                                    color: isExpanded
+                                        ? AppColors.primaryNavy
+                                        : AppColors.textSecondary,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                              if (isExpanded) ...[
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 2,
+                                    right: 8,
+                                  ),
+                                  child: Text(
+                                    faq.answer,
+                                    style: const TextStyle(
+                                      fontSize: AppTypography.sizeBody,
+                                      height: 1.45,
+                                      color: AppColors.textSecondary,
+                                      fontFamily: 'Inter',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
           ],
-        ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 
@@ -125,7 +126,9 @@ class TicketSocket {
         ..headers[HttpHeaders.acceptHeader] = 'text/event-stream'
         ..headers[HttpHeaders.cacheControlHeader] = 'no-cache';
 
-      final respons = await klien.send(permintaan);
+      final respons = await klien
+          .send(permintaan)
+          .timeout(const Duration(seconds: 10));
 
       if (_dihentikan) {
         klien.close();
@@ -265,13 +268,15 @@ class TicketSocket {
     _penyambungUlang?.cancel();
     _percobaan += 1;
 
-    /* Jeda naik dua kali lipat tiap kegagalan, dibatasi 30 detik. */
-    final jeda = (_jedaDasarMs * (1 << (_percobaan - 1).clamp(0, 4))).clamp(
+    /* Jeda naik dua kali lipat tiap kegagalan ditambah jitter acak 0-499 ms
+       supaya sambung ulang tidak serentak menghantam server. */
+    final jedaBase = (_jedaDasarMs * (1 << (_percobaan - 1).clamp(0, 4))).clamp(
       _jedaDasarMs,
       _jedaMaksimalMs,
     );
+    final jitterMs = math.Random().nextInt(500);
 
-    _penyambungUlang = Timer(Duration(milliseconds: jeda), () {
+    _penyambungUlang = Timer(Duration(milliseconds: jedaBase + jitterMs), () {
       _sambung(ticketId: ticketId, onEvent: onEvent, onError: onError);
     });
   }

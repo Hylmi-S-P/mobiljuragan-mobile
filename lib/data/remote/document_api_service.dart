@@ -30,7 +30,7 @@ class DocumentApiService {
 
   DocumentApiService([ApiClient? client, http.Client? httpClient])
       : _client = client ?? ApiClient(),
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? ApiClient.sharedHttpClient;
 
   /// Mengambil keterangan dokumen resmi yang sedang aktif.
   ///
@@ -166,6 +166,7 @@ class DocumentApiService {
       '${ApiConstants.bookingsEndpoint}/$bookingId/documents',
       files: files,
       requiresAuth: true,
+      timeout: ApiConstants.uploadTimeoutDuration,
     );
 
     if (response is Map) {

@@ -26,7 +26,8 @@ class ChatSupportScreen extends StatefulWidget {
   State<ChatSupportScreen> createState() => _ChatSupportScreenState();
 }
 
-class _ChatSupportScreenState extends State<ChatSupportScreen> {
+class _ChatSupportScreenState extends State<ChatSupportScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -74,6 +75,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
         _keyboardScrollTimer?.cancel();
@@ -182,7 +184,25 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final support = _supportController;
+    final tiket = _tiketAktif;
+    if (support == null || tiket == null || _disposed) return;
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      support.berhentiDengarkanTiket(tiket.id);
+    } else if (state == AppLifecycleState.resumed) {
+      if (_ticketFinal == null) {
+        _sambungkanTiket(tiket);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _disposed = true;
     /* Sambungan peristiwa harus ditutup saat layar ditinggalkan. Tanpa ini,
          sambungan tetap hidup di latar belakang dan terus memakai baterai
@@ -1051,86 +1071,102 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       return _buildClosedComposer(finalTicket);
     }
 
-    final adaTeks = _messageController.text.trim().isNotEmpty;
-    final bolehKirim =
-        adaTeks && (isHandedOff || !controller.isAiThinking(conversationKey));
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _messageController,
+      builder: (context, value, _) {
+        final adaTeks = value.text.trim().isNotEmpty;
+        final bolehKirim =
+            adaTeks && (isHandedOff || !controller.isAiThinking(conversationKey));
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              focusNode: _focusNode,
-              maxLength: 500,
-              minLines: 1,
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
-              keyboardType: TextInputType.multiline,
-              /* Enter mengirim, seperti aplikasi pesan pada umumnya. Di layar
-                 sentuh, baris baru tetap bisa lewat tombol enter di keyboard
-                 fisik dengan Shift. */
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _handleSendMessage(controller),
-              onChanged: (_) => setState(() {}),
-              style: const TextStyle(
-                fontSize: AppTypography.sizeBodyLarge,
-                height: 1.4,
-                fontFamily: 'Inter',
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  focusNode: _focusNode,
+                  maxLength: 500,
+                  minLines: 1,
+                  maxLines: 4,
+                  textCapitalization: TextCapitalization.sentences,
+                  keyboardType: TextInputType.multiline,
+                  /* Enter mengirim, seperti aplikasi pesan pada umumnya. Di layar
+                     sentuh, baris baru tetap bisa lewat tombol enter di keyboard
+                     fisik dengan Shift. */
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _handleSendMessage(controller),
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeBodyLarge,
+                    height: 1.4,
+                    fontFamily: 'Inter',
+                  ),
+                  decoration: InputDecoration(
+                    hintText: isHandedOff
+                        ? 'Tulis pesan untuk admin operasional'
+                        : 'Tulis pesan',
+                    counterText: value.text.length >= 400
+                        ? '${value.text.length}/500'
+                        : '',
+                    hintStyle: const TextStyle(
+                      fontSize: AppTypography.sizeBodyLarge,
+                      color: AppColors.textMuted,
+                      fontFamily: 'Inter',
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceLight,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: AppColors.accent,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              decoration: InputDecoration(
-                hintText: isHandedOff ? 'Tulis pesan untuk admin operasional' : 'Tulis pesan',
-                counterText: _messageController.text.length >= 400
-                    ? '${_messageController.text.length}/500'
-                    : '',
-                hintStyle: const TextStyle(
-                  fontSize: AppTypography.sizeBodyLarge,
-                  color: AppColors.textMuted,
-                  fontFamily: 'Inter',
-                ),
-                filled: true,
-                fillColor: AppColors.surfaceLight,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+              const SizedBox(width: 8),
+              /* Tombol kirim hanya menyala saat ada isi. Sebelumnya selalu menyala
+                 dan menekannya tanpa teks tidak melakukan apa pun. */
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Material(
+                  color: bolehKirim
+                      ? AppColors.primaryNavy
+                      : AppColors.surfaceLight,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: bolehKirim ? () => _handleSendMessage(controller) : null,
+                    child: Icon(
+                      Icons.send_rounded,
+                      size: 19,
+                      color: bolehKirim
+                          ? AppColors.textWhite
+                          : AppColors.textMuted,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 8),
-          /* Tombol kirim hanya menyala saat ada isi. Sebelumnya selalu menyala
-             dan menekannya tanpa teks tidak melakukan apa pun. */
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: Material(
-              color: bolehKirim ? AppColors.primaryNavy : AppColors.surfaceLight,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: bolehKirim ? () => _handleSendMessage(controller) : null,
-                child: Icon(
-                  Icons.send_rounded,
-                  size: 19,
-                  color: bolehKirim ? AppColors.textWhite : AppColors.textMuted,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

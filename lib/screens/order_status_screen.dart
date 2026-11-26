@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -89,7 +88,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   /// sehingga layar akun lama bisa menampilkan pesanan akun lain.
   String? _pemilikSesiPolling;
 
-  final DocumentApiService _documentApiService = DocumentApiService();
+  late final DocumentApiService _documentApiService = DocumentApiService(_sharedApiClient());
+  Future<Map<String, dynamic>>? _statementTemplateFuture;
   BookingDocumentModel? _bookingDocument;
   bool _isUploadingDocument = false;
   /* Berkas yang dipilih tapi belum dikirim.
@@ -103,9 +103,20 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   Uint8List? _draftKtpBytes;
   Uint8List? _draftSimBytes;
 
-  final PaymentApiService _paymentApiService = PaymentApiService();
+  late final PaymentApiService _paymentApiService = PaymentApiService(_sharedApiClient());
   PaymentModel? _payment;
   bool _isLepasKunciDocsCollapsed = true;
+
+  ApiClient? _sharedApiClient() {
+    try {
+      return Provider.of<ApiClient>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get _isLayananDenganSupir =>
+      (widget.booking ?? _bookingController?.activeBooking)?.withDriver == true;
 
   bool get isProofRejected => _payment?.isFailed == true;
 
@@ -127,7 +138,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     _bookingController?.addListener(_pantauPerubahanPemilikSesi);
     WidgetsBinding.instance.addObserver(this);
     _checkAndStartPolling();
-    _loadBookingDocuments();
+    if (!_isLayananDenganSupir) {
+      _loadBookingDocuments();
+    }
     _loadPayment();
   }
 
@@ -151,7 +164,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
     if (state == AppLifecycleState.resumed) {
       if (!_pollingFinished) _startStatusPolling();
       _loadPayment();
-      _loadBookingDocuments();
+      if (!_isLayananDenganSupir) {
+        _loadBookingDocuments();
+      }
     } else {
       _pollingTimer?.cancel();
     }
@@ -917,6 +932,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   child: GambarKendaraan(
                     sumber: booking.vehicle.imageUrl,
                     fit: BoxFit.cover,
+                    lebarLogis: 44,
+                    tinggiLogis: 32,
                     cadangan: const Icon(
                       Icons.directions_car_filled_outlined,
                       size: 20,
@@ -1412,6 +1429,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                   child: GambarKendaraan(
                     sumber: booking.vehicle.imageUrl,
                     fit: BoxFit.cover,
+                    lebarLogis: 44,
+                    tinggiLogis: 32,
                     cadangan: const Icon(
                       Icons.directions_car_filled_outlined,
                       size: 20,
@@ -1646,6 +1665,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
                     child: GambarKendaraan(
                       sumber: booking.vehicle.imageUrl,
                       fit: BoxFit.contain,
+                      lebarLogis: 64,
+                      tinggiLogis: 50,
                       cadangan: const Icon(
                         Icons.directions_car,
                         color: AppColors.textSecondary,
@@ -3174,7 +3195,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       color: const Color(0xFFF1F5F9),
       padding: const EdgeInsets.all(16),
       child: FutureBuilder<Map<String, dynamic>>(
-        future: _documentApiService.fetchStatementTemplateText(),
+        future: _statementTemplateFuture ??=
+            _documentApiService.fetchStatementTemplateText(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -4742,36 +4764,13 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
         booking.status == BookingStatus.verifikasiKantor ||
         booking.status == BookingStatus.mobilSiapDigunakan;
 
-    /* Potongan pembatalan oleh pelanggan ditetapkan server sebesar Rp 50.000
-       tetap, bukan persentase. Angka di layar ini hanya pratinjau; nominal yang
-       benar-benar dicatat tetap berasal dari server setelah pembatalan diproses. */
     const potonganBatal = 50000;
     final refundAmount = isPaid
         ? (booking.totalCost - potonganBatal).clamp(0, booking.totalCost)
         : 0;
     final penaltyAmount = isPaid ? booking.totalCost - refundAmount : 0;
-
-    String selectedReason = 'Perubahan rencana atau jadwal perjalanan';
-    final customReasonController = TextEditingController();
-
-    /* Rekening tujuan diisi di sini karena hanya pelanggan yang tahu ke mana
-       uangnya harus dikembalikan. Isian dan aturannya dipakai bersama dengan
-       form klaim refund lewat `RefundAccountForm`. */
-    final namaAkun = context.read<AuthController>().currentUser?.name.trim() ?? '';
-    RefundAccountDraft draftRekening = const RefundAccountDraft(
-      bankName: '',
-      accountNumber: '',
-      accountHolderName: '',
-    );
-
-    final List<String> reasonOptions = [
-      'Perubahan rencana atau jadwal perjalanan',
-      'Salah memilih tanggal, jam, atau lokasi sewa',
-      'Ingin mengganti unit mobil atau model sewa',
-      'Menemukan alternatif transportasi lain',
-      'Alasan lainnya',
-    ];
-
+    final namaAkun =
+        context.read<AuthController>().currentUser?.name.trim() ?? '';
     final isUnverifiedPayment =
         booking.paymentStatus == 'PENDING_VERIFICATION' ||
         _payment?.status == PaymentStatus.pendingVerification ||
@@ -4782,370 +4781,63 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
       title: isPaid ? 'Ajukan Pembatalan & Refund' : 'Batalkan Pesanan',
       subtitle: 'Kode reservasi: ${booking.id}',
       icon: Icons.receipt_long_outlined,
-      child: StatefulBuilder(
-        builder: (sheetContext, setModalState) {
-          final isOtherSelected = selectedReason == 'Alasan lainnya';
+      child: _CancellationBottomSheetContent(
+        booking: booking,
+        isPaid: isPaid,
+        isUnverifiedPayment: isUnverifiedPayment,
+        penaltyAmount: penaltyAmount,
+        refundAmount: refundAmount,
+        namaAkun: namaAkun,
+        formatRupiah: _formatRupiah,
+        onConfirm: (sheetContext, finalReason, draftRekening) async {
+          final controller = context.read<BookingController>();
+          final messenger = ScaffoldMessenger.of(context);
+          VehicleController? vehicleController;
+          try {
+            vehicleController = context.read<VehicleController>();
+          } catch (_) {}
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Transparansi ketentuan pembatalan
-              if (isPaid) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 16,
-                            color: AppColors.primaryTeal,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Ketentuan Pengembalian Dana',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBody,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        isUnverifiedPayment
-                            ? 'Bukti pembayaran Anda masih menunggu verifikasi admin. Pengembalian dana akan diproses setelah dana masuk dikonfirmasi, dipotong biaya pembatalan Rp 50.000.'
-                            : 'Pengembalian dana dipotong biaya pembatalan tetap sebesar Rp 50.000 dari total pembayaran yang masuk.',
-                        style: const TextStyle(
-                          fontSize: AppTypography.sizeCaption,
-                          color: AppColors.textSecondary,
-                          fontFamily: 'Inter',
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Total Pembayaran:',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          Text(
-                            'Rp ${_formatRupiah(booking.totalCost)}',
-                            style: AppTypography.captionStrong,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Biaya Pembatalan:',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              color: AppColors.statusDangerFg,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                          Text(
-                            '-Rp ${_formatRupiah(penaltyAmount)}',
-                            style: const TextStyle(
-                              fontSize: AppTypography.sizeCaption,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.statusDangerFg,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      const Divider(height: 1, color: AppColors.borderSubtle),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              isUnverifiedPayment
-                                  ? 'Estimasi Dana Dikembalikan:'
-                                  : 'Dana Dikembalikan:',
-                              style: TextStyle(
-                                fontSize: AppTypography.sizeBody,
-                                fontWeight: FontWeight.w700,
-                                color: isUnverifiedPayment
-                                    ? AppColors.statusWarningFg
-                                    : AppColors.statusSuccessFg,
-                                fontFamily: 'Inter',
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Rp ${_formatRupiah(refundAmount)}',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBodyLarge,
-                              fontWeight: FontWeight.w800,
-                              color: isUnverifiedPayment
-                                  ? AppColors.statusWarningFg
-                                  : AppColors.statusSuccessFg,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          Navigator.pop(sheetContext);
+
+          final galatBatal = await controller.cancelBooking(
+            bookingId: booking.id,
+            reason: finalReason,
+            bankName: isPaid ? draftRekening.bankName : null,
+            accountNumber: isPaid ? draftRekening.accountNumber : null,
+            accountHolderName: isPaid ? draftRekening.accountHolderName : null,
+          );
+
+          if (galatBatal != null) {
+            messenger.showSnackBar(
+              SnackBar(
+                backgroundColor: const Color(0xFFDC2626),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 16),
+                content: Text(galatBatal, style: AppTypography.bodyStrong),
+              ),
+            );
+            return;
+          }
 
-                RefundAccountForm(
-                  initialHolderName: namaAkun,
-                  onChanged: (draft) {
-                    setModalState(() => draftRekening = draft);
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
+          // Segera sinkronkan katalog armada agar badge ketersediaan langsung kembali Tersedia
+          vehicleController?.refreshCatalog(force: true);
 
-                    // Akibat pembatalan untuk pesanan yang belum dibayar. Tanpa
-                    // penjelasan ini pelanggan mengira pembatalan tidak
-                    // berpengaruh apa pun, padahal armada langsung dilepas.
-                    if (!isPaid) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.borderSubtle),
-                        ),
-                        child: const Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Armada akan dilepas kembali, sehingga Anda bisa mengajukan sewa lain. Batas sewa aktif Anda 2 mobil sekaligus. Tindakan ini tidak bisa dibatalkan.',
-                                style: TextStyle(
-                                  fontSize: AppTypography.sizeCaption,
-                                  color: AppColors.textSecondary,
-                                  fontFamily: 'Inter',
-                                  height: 1.3,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    const Text(
-                      'Pilih Alasan Pembatalan',
-                      style: TextStyle(
-                        fontSize: AppTypography.sizeBodyLarge,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    ...reasonOptions.map((reason) {
-                      final isSelected = selectedReason == reason;
-                      return InkWell(
-                        onTap: () {
-                          setModalState(() {
-                            selectedReason = reason;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 18,
-                                height: 18,
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppColors.primaryNavy
-                                        : AppColors.textSecondary.withValues(alpha: 0.5),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: isSelected
-                                    ? Center(
-                                        child: Container(
-                                          width: 9,
-                                          height: 9,
-                                          decoration: const BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: AppColors.primaryNavy,
-                                          ),
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  reason,
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeBody,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                    color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-
-                    if (isOtherSelected) ...[
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: customReasonController,
-                        maxLength: 300,
-                        maxLines: 2,
-                        decoration: InputDecoration(
-                          hintText: 'Tuliskan alasan spesifik pembatalan Anda...',
-                          hintStyle: const TextStyle(fontSize: AppTypography.sizeCaption, color: AppColors.textSecondary),
-                          contentPadding: const EdgeInsets.all(12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 20),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(sheetContext),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(44),
-                              foregroundColor: AppColors.textPrimary,
-                              side: const BorderSide(
-                                color: AppColors.borderSubtle,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text(
-                              'Tetap Lanjutkan',
-                              style: AppTypography.bodyStrong,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              final finalReason = isOtherSelected && customReasonController.text.trim().isNotEmpty
-                                  ? customReasonController.text.trim()
-                                  : selectedReason;
-
-                              if (isPaid) {
-                                final galat = validasiRefundAccount(draftRekening);
-                                if (galat != null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(galat),
-                                      backgroundColor: const Color(0xFFDC2626),
-                                    ),
-                                  );
-                                  return;
-                                }
-                              }
-
-                              final controller = context.read<BookingController>();
-                              final messenger = ScaffoldMessenger.of(context);
-                              VehicleController? vehicleController;
-                              try {
-                                vehicleController = context.read<VehicleController>();
-                              } catch (_) {}
-
-                              Navigator.pop(sheetContext);
-
-                              final galatBatal = await controller.cancelBooking(
-                                bookingId: booking.id,
-                                reason: finalReason,
-                                bankName: isPaid ? draftRekening.bankName : null,
-                                accountNumber: isPaid ? draftRekening.accountNumber : null,
-                                accountHolderName: isPaid ? draftRekening.accountHolderName : null,
-                              );
-
-                              if (galatBatal != null) {
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: const Color(0xFFDC2626),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    content: Text(galatBatal, style: AppTypography.bodyStrong),
-                                  ),
-                                );
-                                return;
-                              }
-
-                              // Segera sinkronkan katalog armada agar badge ketersediaan langsung kembali Tersedia
-                              vehicleController?.refreshCatalog(force: true);
-
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  backgroundColor: const Color(0xFF16A34A),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  content: Text(
-                                    isPaid
-                                        ? 'Pengajuan pembatalan & refund berhasil dikirim.'
-                                        : 'Pesanan ${booking.id} berhasil dibatalkan.',
-                                    style: AppTypography.bodyStrong,
-                                  ),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(44),
-                              backgroundColor: const Color(0xFFDC2626),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              isPaid ? 'Konfirmasi Refund' : 'Ya, Batalkan',
-                              style: AppTypography.bodyBold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-            ],
+          messenger.showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              content: Text(
+                isPaid
+                    ? 'Pengajuan pembatalan & refund berhasil dikirim.'
+                    : 'Pesanan ${booking.id} berhasil dibatalkan.',
+                style: AppTypography.bodyStrong,
+              ),
+            ),
           );
         },
       ),
@@ -5367,6 +5059,381 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> with WidgetsBindi
   }
 }
 
+class _CancellationBottomSheetContent extends StatefulWidget {
+  final BookingModel booking;
+  final bool isPaid;
+  final bool isUnverifiedPayment;
+  final int penaltyAmount;
+  final int refundAmount;
+  final String namaAkun;
+  final String Function(int) formatRupiah;
+  final Future<void> Function(
+    BuildContext sheetContext,
+    String reason,
+    RefundAccountDraft draftRekening,
+  ) onConfirm;
+
+  const _CancellationBottomSheetContent({
+    required this.booking,
+    required this.isPaid,
+    required this.isUnverifiedPayment,
+    required this.penaltyAmount,
+    required this.refundAmount,
+    required this.namaAkun,
+    required this.formatRupiah,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_CancellationBottomSheetContent> createState() =>
+      _CancellationBottomSheetContentState();
+}
+
+class _CancellationBottomSheetContentState
+    extends State<_CancellationBottomSheetContent> {
+  static const List<String> _reasonOptions = [
+    'Perubahan rencana atau jadwal perjalanan',
+    'Salah memilih tanggal, jam, atau lokasi sewa',
+    'Ingin mengganti unit mobil atau model sewa',
+    'Menemukan alternatif transportasi lain',
+    'Alasan lainnya',
+  ];
+
+  String _selectedReason = _reasonOptions.first;
+  final TextEditingController _customReasonController = TextEditingController();
+  RefundAccountDraft _draftRekening = const RefundAccountDraft(
+    bankName: '',
+    accountNumber: '',
+    accountHolderName: '',
+  );
+
+  @override
+  void dispose() {
+    _customReasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOtherSelected = _selectedReason == 'Alasan lainnya';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.isPaid) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: AppColors.primaryTeal,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Ketentuan Pengembalian Dana',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBody,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.isUnverifiedPayment
+                      ? 'Bukti pembayaran Anda masih menunggu verifikasi admin. Pengembalian dana akan diproses setelah dana masuk dikonfirmasi, dipotong biaya pembatalan Rp 50.000.'
+                      : 'Pengembalian dana dipotong biaya pembatalan tetap sebesar Rp 50.000 dari total pembayaran yang masuk.',
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'Inter',
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total Pembayaran:',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        color: AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    Text(
+                      'Rp ${widget.formatRupiah(widget.booking.totalCost)}',
+                      style: AppTypography.captionStrong,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Biaya Pembatalan:',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        color: AppColors.statusDangerFg,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                    Text(
+                      '-Rp ${widget.formatRupiah(widget.penaltyAmount)}',
+                      style: const TextStyle(
+                        fontSize: AppTypography.sizeCaption,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.statusDangerFg,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Divider(height: 1, color: AppColors.borderSubtle),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.isUnverifiedPayment
+                            ? 'Estimasi Dana Dikembalikan:'
+                            : 'Dana Dikembalikan:',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          fontWeight: FontWeight.w700,
+                          color: widget.isUnverifiedPayment
+                              ? AppColors.statusWarningFg
+                              : AppColors.statusSuccessFg,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Rp ${widget.formatRupiah(widget.refundAmount)}',
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBodyLarge,
+                        fontWeight: FontWeight.w800,
+                        color: widget.isUnverifiedPayment
+                            ? AppColors.statusWarningFg
+                            : AppColors.statusSuccessFg,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          RefundAccountForm(
+            initialHolderName: widget.namaAkun,
+            onChanged: (draft) {
+              setState(() => _draftRekening = draft);
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (!widget.isPaid) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Armada akan dilepas kembali, sehingga Anda bisa mengajukan sewa lain. Batas sewa aktif Anda 2 mobil sekaligus. Tindakan ini tidak bisa dibatalkan.',
+                    style: TextStyle(
+                      fontSize: AppTypography.sizeCaption,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        const Text(
+          'Pilih Alasan Pembatalan',
+          style: TextStyle(
+            fontSize: AppTypography.sizeBodyLarge,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            fontFamily: 'Inter',
+          ),
+        ),
+        const SizedBox(height: 6),
+        ..._reasonOptions.map((reason) {
+          final isSelected = _selectedReason == reason;
+          return InkWell(
+            onTap: () {
+              setState(() {
+                _selectedReason = reason;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primaryNavy
+                            : AppColors.textSecondary.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? Center(
+                            child: Container(
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.primaryNavy,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      reason,
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeBody,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+        if (isOtherSelected) ...[
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _customReasonController,
+            maxLength: 300,
+            maxLines: 2,
+            decoration: InputDecoration(
+              hintText: 'Tuliskan alasan spesifik pembatalan Anda...',
+              hintStyle: const TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                color: AppColors.textSecondary,
+              ),
+              contentPadding: const EdgeInsets.all(12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  foregroundColor: AppColors.textPrimary,
+                  side: const BorderSide(color: AppColors.borderSubtle),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Tetap Lanjutkan',
+                  style: AppTypography.bodyStrong,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  final customText = _customReasonController.text.trim();
+                  final finalReason =
+                      isOtherSelected && customText.isNotEmpty
+                          ? customText
+                          : _selectedReason;
+
+                  if (widget.isPaid) {
+                    final galat = validasiRefundAccount(_draftRekening);
+                    if (galat != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(galat),
+                          backgroundColor: const Color(0xFFDC2626),
+                        ),
+                      );
+                      return;
+                    }
+                  }
+
+                  widget.onConfirm(context, finalReason, _draftRekening);
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  backgroundColor: const Color(0xFFDC2626),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  widget.isPaid ? 'Konfirmasi Refund' : 'Ya, Batalkan',
+                  style: AppTypography.bodyBold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 /// Modal lembar pembayaran dinamis dengan integrasi Dynamic QRIS (EMVCo),
 /// rincian tarif apa adanya dari server, countdown timer kedaluwarsa, tombol cek status otomatis,
 /// dan ketahanan offline saat server backend tidak dapat dijangkau.
@@ -5386,6 +5453,16 @@ class OnlinePaymentSheetModal extends StatefulWidget {
 
 class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     with WidgetsBindingObserver {
+  static const int _maxProofBytes = 5 * 1024 * 1024;
+  static final Uint8List _sampleProofBytes = Uint8List.fromList(const <int>[
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+    0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+    0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+  ]);
+
   int _selectedTab = 0; // 0: QRIS Dinamis, 1: Transfer Bank
   String _selectedBank = 'Bank BRI';
   bool _isCheckingStatus = false;
@@ -5402,19 +5479,30 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   /// menetapkan 2 jam. Akibatnya hitungan mundur tidak pernah mencerminkan
   /// tagihan sebenarnya dan ikut ter-reset setiap widget dibuat ulang.
   DateTime? _expiresAt;
-
-  /// Label hitungan mundur terakhir yang digambar, supaya `setState` hanya
-  /// dipanggil ketika angkanya benar-benar berubah.
-  String? _lastCountdownLabel;
+  bool _wasExpired = false;
+  late final ValueNotifier<String> _countdownLabel = ValueNotifier<String>(
+    _formatCountdown(),
+  );
 
   late int _baseAmount;
   late int _totalAmount;
   late String _qrisPayload;
 
-  final PaymentApiService _apiService = PaymentApiService();
+  ApiClient? _sharedApiClient() {
+    try {
+      return Provider.of<ApiClient>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  late final PaymentApiService _apiService = PaymentApiService(
+    _sharedApiClient(),
+  );
   final TextEditingController _senderNameController = TextEditingController();
   String? _proofFileName;
-  String? _proofBase64;
+  XFile? _proofFile;
+  Uint8List? _proofBytes;
   /// Ukuran berkas sebenarnya; dipakai menampilkan "… KB" tanpa mengarang angka.
   int? _proofSizeBytes;
   bool _isSubmittingProof = false;
@@ -5433,27 +5521,27 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     _qrisPayload = PaymentModel.generateDynamicQris(_totalAmount);
 
     WidgetsBinding.instance.addObserver(this);
-    // Nama pengirim menentukan aktif/tidaknya tombol kirim; tanpa listener,
-    // tombol baru berubah setelah ada setState lain.
-    _senderNameController.addListener(_onSenderNameChanged);
     _startCountdown();
     _initPayment();
   }
 
-  void _onSenderNameChanged() {
-    if (mounted) setState(() {});
-  }
-
-  /// Ticker milik State ini; angka yang ditampilkan diturunkan dari `_expiresAt`
-  /// milik server, jadi tidak bisa "kembali" hanya karena widget dibangun ulang.
+  /// Ticker terisolasi lewat ValueNotifier supaya QR code dan seluruh sheet
+  /// tidak perlu dibangun ulang setiap detik.
   void _startCountdown() {
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final label = _formatCountdown();
-      if (label == _lastCountdownLabel) return;
-      _lastCountdownLabel = label;
-      setState(() {});
+      if (label != _countdownLabel.value) {
+        _countdownLabel.value = label;
+      }
+      final expiresAt = _expiresAt;
+      final expiredNow =
+          expiresAt != null && expiresAt.isBefore(DateTime.now());
+      if (expiredNow != _wasExpired) {
+        _wasExpired = expiredNow;
+        setState(() {});
+      }
     });
   }
 
@@ -5490,6 +5578,9 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
              lebih baik menampilkan "Menunggu tagihan" daripada waktu karangan
              yang membuat pelanggan mengira masih punya 12 jam. */
           _expiresAt = active.expiresAt;
+          _wasExpired =
+              _expiresAt != null && _expiresAt!.isBefore(DateTime.now());
+          _countdownLabel.value = _formatCountdown();
           if (active.qrisPayload != null && active.qrisPayload!.isNotEmpty) {
             _qrisPayload = active.qrisPayload!;
           }
@@ -5764,7 +5855,7 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   Future<void> _submitPaymentProof() async {
     if (_isSubmittingProof) return;
     final isQris = _selectedTab == 0;
-    if (_proofBase64 == null) {
+    if (_proofFile == null && _proofBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(isQris
@@ -5805,9 +5896,16 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
             : 'Transfer via $_selectedBank oleh $senderName',
       );
 
+      final uploadFile = _proofFile ??
+          XFile.fromData(
+            _proofBytes!,
+            name: _proofFileName ?? 'bukti_pembayaran.jpg',
+          );
+      final mediaId = await _apiService.uploadPaymentProofMedia(uploadFile);
+
       final updatedPayment = await _apiService.uploadPaymentProof(
         paymentId: currentPayment.id,
-        proofImageUrl: _proofBase64!,
+        proofMediaId: mediaId,
         senderAccount: senderName,
         bankName: isQris ? 'QRIS Dinamis' : _selectedBank,
       );
@@ -5843,7 +5941,6 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
         if (_payment != null) {
           final mockOffline = _payment!.copyWith(
             status: PaymentStatus.pendingVerification,
-            proofImageUrl: _proofBase64,
           );
           widget.onPaymentUpdated?.call(mockOffline);
         }
@@ -5892,7 +5989,8 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
       setState(() {
         _proofFileName = isQris ? 'screenshot_qris_sample.jpg' : 'struk_transfer_sample.jpg';
-        _proofBase64 = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...';
+        _proofFile = null;
+        _proofBytes = _sampleProofBytes;
         _proofSizeBytes = 245 * 1024;
       });
       return;
@@ -5973,20 +6071,31 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     try {
       final XFile? file = await _paymentImagePicker.pickImage(
         source: source,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 85,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 75,
       );
 
       if (file == null) return;
 
       final bytes = await file.readAsBytes();
-      final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-
       if (!mounted) return;
+      if (bytes.length > _maxProofBytes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Ukuran gambar melebihi batas 5 MB. Pilih foto lain yang lebih kecil.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _proofFileName = file.name;
-        _proofBase64 = base64String;
+        _proofFile = file;
+        _proofBytes = bytes;
         _proofSizeBytes = bytes.length;
       });
 
@@ -6031,14 +6140,13 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
+    _countdownLabel.dispose();
     _senderNameController.dispose();
 
-    /* Bukti pembayaran dibuang dari memori bersama layar.
-       `_proofBase64` adalah salinan utuh berkas bukti transfer — bisa berisi
-       nomor rekening dan nama pemilik rekening. Membiarkannya menempel pada
-       objek state yang sudah dilepas membuat data itu tetap ada di timbunan
-       memori sampai pengumpul sampah kebetulan menyapunya. */
-    _proofBase64 = null;
+    /* Bukti pembayaran dibuang dari memori bersama layar agar salinan gambar
+       bukti transfer tidak tertahan lebih lama di memori. */
+    _proofFile = null;
+    _proofBytes = null;
     _proofFileName = null;
 
     super.dispose();
@@ -6234,42 +6342,49 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
   /// Tombol kirim bukti bayar. Hanya hidup saat nama pengirim dan berkas sudah
   /// lengkap, supaya pelanggan tidak baru tahu kekurangannya setelah menekan.
   Widget _buildSubmitProofButton({required bool isExpired}) {
-    return SizedBox(
-      width: double.infinity,
-      height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
-      child: ElevatedButton(
-        onPressed: (_isSubmittingProof || isExpired || !_isProofFormComplete)
-            ? null
-            : _submitPaymentProof,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryNavy,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color(0xFFCBD5E1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          elevation: 0,
-        ),
-        child: _isSubmittingProof
-            ? const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _senderNameController,
+      builder: (context, senderValue, _) {
+        final formComplete =
+            _proofFileName != null && senderValue.text.trim().isNotEmpty;
+        return SizedBox(
+          width: double.infinity,
+          height: (46 * MediaQuery.textScalerOf(context).scale(1)).clamp(46, 92),
+          child: ElevatedButton(
+            onPressed: (_isSubmittingProof || isExpired || !formComplete)
+                ? null
+                : _submitPaymentProof,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFFCBD5E1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            child: _isSubmittingProof
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Mengirim bukti…', style: TextStyle(fontSize: AppTypography.sizeBody)),
+                    ],
+                  )
+                : Text(
+                    isExpired ? 'Batas waktu berakhir' : 'Kirim Bukti Pembayaran',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeBody,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Inter',
+                    ),
                   ),
-                  SizedBox(width: 8),
-                  Text('Mengirim bukti…', style: TextStyle(fontSize: AppTypography.sizeBody)),
-                ],
-              )
-            : Text(
-                isExpired ? 'Batas waktu berakhir' : 'Kirim Bukti Pembayaran',
-                style: const TextStyle(
-                  fontSize: AppTypography.sizeBody,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Inter',
-                ),
-              ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -6284,32 +6399,32 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
     final Color foreground;
     final Color border;
     final IconData icon;
-    final String label;
+    final String? staticLabel;
 
     if (isWaitingVerification) {
       background = const Color(0xFFF0FDF4);
       foreground = const Color(0xFF15803D);
       border = const Color(0xFFBBF7D0);
       icon = Icons.verified_outlined;
-      label = 'Menunggu verifikasi';
+      staticLabel = 'Menunggu verifikasi';
     } else if (isRejected) {
       background = const Color(0xFFFEF2F2);
       foreground = const Color(0xFFDC2626);
       border = const Color(0xFFFECACA);
       icon = Icons.error_outline_rounded;
-      label = 'Bukti Ditolak';
+      staticLabel = 'Bukti Ditolak';
     } else if (isExpired) {
       background = const Color(0xFFFEF2F2);
       foreground = const Color(0xFFDC2626);
       border = const Color(0xFFFECACA);
       icon = Icons.schedule;
-      label = 'Kedaluwarsa';
+      staticLabel = 'Kedaluwarsa';
     } else {
       background = const Color(0xFFFFFBEB);
       foreground = const Color(0xFFB45309);
       border = const Color(0xFFFDE68A);
       icon = Icons.schedule;
-      label = _formatCountdown();
+      staticLabel = null;
     }
 
     return Container(
@@ -6324,15 +6439,29 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
         children: [
           Icon(icon, size: 14, color: foreground),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: AppTypography.sizeCaption,
-              fontWeight: FontWeight.w700,
-              color: foreground,
-              fontFamily: 'Inter',
+          if (staticLabel != null)
+            Text(
+              staticLabel,
+              style: TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w700,
+                color: foreground,
+                fontFamily: 'Inter',
+              ),
+            )
+          else
+            ValueListenableBuilder<String>(
+              valueListenable: _countdownLabel,
+              builder: (_, label, _) => Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  fontWeight: FontWeight.w700,
+                  color: foreground,
+                  fontFamily: 'Inter',
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -6469,20 +6598,22 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: QrImageView(
-                  data: _qrisPayload.isNotEmpty
-                      ? _qrisPayload
-                      : PaymentModel.officialGopayQris,
-                  version: QrVersions.auto,
-                  size: 190.0,
-                  backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: AppColors.primaryNavy,
-                  ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
-                    color: AppColors.primaryNavy,
+                child: RepaintBoundary(
+                  child: QrImageView(
+                    data: _qrisPayload.isNotEmpty
+                        ? _qrisPayload
+                        : PaymentModel.officialGopayQris,
+                    version: QrVersions.auto,
+                    size: 190.0,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: AppColors.primaryNavy,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: AppColors.primaryNavy,
+                    ),
                   ),
                 ),
               ),
@@ -6719,27 +6850,30 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
         ),
         const SizedBox(height: 10),
         _buildProofPicker(isQris),
-        if (!_isProofFormComplete) ...[
-          const SizedBox(height: 8),
-          Text(
-            _proofFileName == null
-                ? 'Unggah bukti pembayaran untuk melanjutkan.'
-                : 'Isi nama pengirim untuk melanjutkan.',
-            style: const TextStyle(
-              fontSize: AppTypography.sizeBody,
-              color: AppColors.textSecondary,
-              fontFamily: 'Inter',
-            ),
-          ),
-        ],
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _senderNameController,
+          builder: (_, senderValue, _) {
+            final complete =
+                _proofFileName != null && senderValue.text.trim().isNotEmpty;
+            if (complete) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _proofFileName == null
+                    ? 'Unggah bukti pembayaran untuk melanjutkan.'
+                    : 'Isi nama pengirim untuk melanjutkan.',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
-
-  /// Form dianggap lengkap bila nama pengirim terisi dan berkas sudah dipilih —
-  /// keduanya wajib di backend.
-  bool get _isProofFormComplete =>
-      _proofFileName != null && _senderNameController.text.trim().isNotEmpty;
 
   /// Kotak pemilih berkas menggunakan UnifiedDocumentUploader agar seragam
   /// dengan seluruh unggahan dokumen lain di aplikasi.
@@ -6754,32 +6888,20 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
       subtitle: hasFile ? sizeInfo : 'Foto atau tangkapan layar · JPG/PNG · maks 5 MB',
       state: hasFile ? DocumentUploadState.previewSelected : DocumentUploadState.empty,
       icon: hasFile ? Icons.receipt_long_rounded : Icons.add_photo_alternate_outlined,
-      previewBytes: hasFile ? _proofPreviewBytes : null,
+      previewBytes: hasFile ? _proofBytes : null,
       actionLabel: hasFile ? 'Ganti' : 'Unggah',
       onAction: () => _pickPaymentProof(isQris),
       onRemove: hasFile
           ? () {
               setState(() {
                 _proofFileName = null;
-                _proofBase64 = null;
+                _proofFile = null;
+                _proofBytes = null;
                 _proofSizeBytes = null;
               });
             }
           : null,
     );
-  }
-
-  /// Isi berkas bukti untuk pratinjau; null kalau data tidak bisa didekode.
-  Uint8List? get _proofPreviewBytes {
-    final raw = _proofBase64;
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final commaIndex = raw.indexOf(',');
-      final payload = raw.startsWith('data:') && commaIndex >= 0 ? raw.substring(commaIndex + 1) : raw;
-      return base64Decode(payload);
-    } catch (_) {
-      return null;
-    }
   }
 
   String _formatFileSize(int bytes) {
@@ -6907,7 +7029,8 @@ class _OnlinePaymentSheetModalState extends State<OnlinePaymentSheetModal>
                   setState(() {
                     _isProofUploaded = false;
                     _proofFileName = null;
-                    _proofBase64 = null;
+                    _proofFile = null;
+                    _proofBytes = null;
                     _proofSizeBytes = null;
                   });
                 },

@@ -39,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 400),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animController.forward();
 
-    _minimumTimer = Timer(const Duration(milliseconds: 2100), () {
+    _minimumTimer = Timer(const Duration(milliseconds: 250), () {
       _waktuMinimumSelesai = true;
       _cobaPindah();
     });
@@ -110,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
-        transitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 180),
       ),
     );
   }

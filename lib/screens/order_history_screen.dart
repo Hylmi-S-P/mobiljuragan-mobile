@@ -49,31 +49,38 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => bookingController.refreshFromRemote(),
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenH,
-            vertical: 16,
-          ),
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSubtitleHeader(),
-            const SizedBox(height: 14),
-            _buildSegmentedControl(
-              activeCount: activeBookings.length,
-              completedCount: completedBookings.length,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screenH,
+                16,
+                AppSpacing.screenH,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSubtitleHeader(),
+                    const SizedBox(height: 14),
+                    _buildSegmentedControl(
+                      activeCount: activeBookings.length,
+                      completedCount: completedBookings.length,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            if (_selectedSegment == 0) ...[
-              _buildActiveSection(activeBookings),
-            ] else ...[
-              _buildCompletedSection(completedBookings),
-            ],
-            const SizedBox(height: 32),
+            ..._buildActiveOrCompletedSlivers(
+              activeBookings: activeBookings,
+              completedBookings: completedBookings,
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
-      ),
       ),
     );
   }
@@ -208,48 +215,68 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  /// Bagian Pesanan Berjalan
-  Widget _buildActiveSection(List<BookingModel> activeBookings) {
-    if (activeBookings.isEmpty) {
-      return OrderEmptyState(
-        title: 'Tidak Ada Pesanan Berjalan',
-        description:
-            'Saat ini Anda tidak memiliki jadwal sewa unit yang sedang aktif. Silakan pilih armada untuk keperluan perjalanan Anda di Merauke.',
-        ctaText: 'Pesan Mobil Sekarang',
-        onCtaPressed: () {
-          if (widget.onNavigateToPesan != null) {
-            widget.onNavigateToPesan!();
-          } else {
-            Navigator.pop(context);
-          }
-        },
-      );
+  List<Widget> _buildActiveOrCompletedSlivers({
+    required List<BookingModel> activeBookings,
+    required List<BookingModel> completedBookings,
+  }) {
+    if (_selectedSegment == 0) {
+      if (activeBookings.isEmpty) {
+        return [
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+            sliver: SliverToBoxAdapter(
+              child: OrderEmptyState(
+                title: 'Tidak Ada Pesanan Berjalan',
+                description:
+                    'Saat ini Anda tidak memiliki jadwal sewa unit yang sedang aktif. Silakan pilih armada untuk keperluan perjalanan Anda di Merauke.',
+                ctaText: 'Pesan Mobil Sekarang',
+                onCtaPressed: () {
+                  if (widget.onNavigateToPesan != null) {
+                    widget.onNavigateToPesan!();
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ),
+          ),
+        ];
+      }
+
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+          sliver: SliverList.builder(
+            itemCount: activeBookings.length,
+            itemBuilder: (context, index) => RepaintBoundary(
+              child: _buildBookingCard(activeBookings[index], isActive: true),
+            ),
+          ),
+        ),
+      ];
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: activeBookings
-          .map((booking) => _buildBookingCard(booking, isActive: true))
-          .toList(),
-    );
-  }
-
-  /// Bagian Riwayat Selesai
-  Widget _buildCompletedSection(List<BookingModel> completedBookings) {
     if (completedBookings.isEmpty) {
-      return OrderEmptyState(
-        title: 'Belum Ada Riwayat Selesai',
-        description:
-            'Semua transaksi sewa armada yang telah rampung dan dikembalikan ke kantor MobilJuragan Merauke akan tersimpan di sini.',
-        ctaText: 'Mulai Sewa Pertama',
-        onCtaPressed: () {
-          if (widget.onNavigateToPesan != null) {
-            widget.onNavigateToPesan!();
-          } else {
-            Navigator.pop(context);
-          }
-        },
-      );
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+          sliver: SliverToBoxAdapter(
+            child: OrderEmptyState(
+              title: 'Belum Ada Riwayat Selesai',
+              description:
+                  'Semua transaksi sewa armada yang telah rampung dan dikembalikan ke kantor MobilJuragan Merauke akan tersimpan di sini.',
+              ctaText: 'Mulai Sewa Pertama',
+              onCtaPressed: () {
+                if (widget.onNavigateToPesan != null) {
+                  widget.onNavigateToPesan!();
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ),
+        ),
+      ];
     }
 
     const filterOptions = ['Semua', 'Sewa Selesai', 'Refund', 'Dibatalkan'];
@@ -269,82 +296,97 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       }
     }).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DaftarGeserHorizontal(
-          padding: EdgeInsets.zero,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: filterOptions.map((label) {
-              final selected = _completedFilter == label;
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: label == filterOptions.last ? 0 : 8,
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+        sliver: SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DaftarGeserHorizontal(
+                padding: EdgeInsets.zero,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: filterOptions.map((label) {
+                    final selected = _completedFilter == label;
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: label == filterOptions.last ? 0 : 8,
+                      ),
+                      child: ChoiceChip(
+                        label: Text(label),
+                        selected: selected,
+                        onSelected: (_) =>
+                            setState(() => _completedFilter = label),
+                        selectedColor: AppColors.primaryNavy,
+                        backgroundColor: AppColors.cardWhite,
+                        side: BorderSide(
+                          color: selected
+                              ? AppColors.primaryNavy
+                              : AppColors.borderMedium,
+                        ),
+                        labelStyle: TextStyle(
+                          fontSize: AppTypography.sizeCaption,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? Colors.white : AppColors.textPrimary,
+                          fontFamily: 'Inter',
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                      ),
+                    );
+                  }).toList(),
                 ),
-                child: ChoiceChip(
-                  label: Text(label),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _completedFilter = label),
-                  selectedColor: AppColors.primaryNavy,
-                  backgroundColor: AppColors.cardWhite,
-                  side: BorderSide(
-                    color: selected
-                        ? AppColors.primaryNavy
-                        : AppColors.borderMedium,
+              ),
+              const SizedBox(height: 14),
+              if (filtered.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardWhite,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    border: Border.all(color: AppColors.borderSubtle),
                   ),
-                  labelStyle: TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : AppColors.textPrimary,
-                    fontFamily: 'Inter',
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Belum ada riwayat pada kategori ini.',
+                        style: TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () =>
+                            setState(() => _completedFilter = 'Semua'),
+                        child: const Text(
+                          'Tampilkan Semua',
+                          style: AppTypography.bodyBold,
+                        ),
+                      ),
+                    ],
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  materialTapTargetSize: MaterialTapTargetSize.padded,
                 ),
-              );
-            }).toList(),
+            ],
           ),
         ),
-        const SizedBox(height: 14),
-        if (filtered.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.cardWhite,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border.all(color: AppColors.borderSubtle),
+      ),
+      if (filtered.isNotEmpty)
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+          sliver: SliverList.builder(
+            itemCount: filtered.length,
+            itemBuilder: (context, index) => RepaintBoundary(
+              child: _buildBookingCard(filtered[index], isActive: false),
             ),
-            child: Column(
-              children: [
-                const Text(
-                  'Belum ada riwayat pada kategori ini.',
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => setState(() => _completedFilter = 'Semua'),
-                  child: const Text(
-                    'Tampilkan Semua',
-                    style: AppTypography.bodyBold,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ...filtered.map(
-            (booking) => _buildBookingCard(booking, isActive: false),
           ),
-      ],
-    );
+        ),
+    ];
   }
 
   /// Kartu Pesanan Reusable (Frame 08: Card Pesanan Berjalan & Riwayat Selesai)
@@ -432,6 +474,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         child: GambarKendaraan(
                           sumber: vehicle.imageUrl,
                           fit: BoxFit.contain,
+                          lebarLogis: 60,
+                          tinggiLogis: 48,
                           cadangan: const Icon(
                             Icons.directions_car,
                             color: AppColors.textSecondary,

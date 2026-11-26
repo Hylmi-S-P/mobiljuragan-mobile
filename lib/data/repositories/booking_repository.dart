@@ -27,6 +27,8 @@ class BookingRepository {
   /// storage setiap kali sesi berubah, jadi satu perangkat tidak pernah
   /// menampilkan riwayat pesanan akun lain.
   String? _userId;
+  Future<List<BookingModel>>? _syncInFlight;
+  String? _syncInFlightOwner;
 
   /// [vehicleDao] dipakai untuk membaca nama/plat unit dari tabel `vehicles`,
   /// [secureStorage] dipakai untuk mengetahui pemilik cache yang aktif.
@@ -183,8 +185,13 @@ class BookingRepository {
     Map<String, VehicleModel>? vehicleMap,
   ]) async* {
     if (vehicleMap == null) await _muatPetaKendaraan();
-    final map = vehicleMap ?? _defaultVehicleMap;
     await for (final driftList in _bookingDao.watchAllBookings(userId: _userId)) {
+      if (vehicleMap == null &&
+          _vehicleDao != null &&
+          driftList.any((e) => !_petaKendaraan.containsKey(e.vehicleId))) {
+        await _muatPetaKendaraan();
+      }
+      final map = vehicleMap ?? _defaultVehicleMap;
       yield _ownedRows(driftList)
           .map((entry) {
             final vehicle = _resolveVehicle(
@@ -204,8 +211,13 @@ class BookingRepository {
     Map<String, VehicleModel>? vehicleMap,
   ]) async* {
     if (vehicleMap == null) await _muatPetaKendaraan();
-    final map = vehicleMap ?? _defaultVehicleMap;
     await for (final driftList in _bookingDao.watchActiveBookings(userId: _userId)) {
+      if (vehicleMap == null &&
+          _vehicleDao != null &&
+          driftList.any((e) => !_petaKendaraan.containsKey(e.vehicleId))) {
+        await _muatPetaKendaraan();
+      }
+      final map = vehicleMap ?? _defaultVehicleMap;
       yield _ownedRows(driftList)
           .map((entry) {
             final vehicle = _resolveVehicle(
@@ -333,6 +345,28 @@ class BookingRepository {
   /// Sinkronisasi seluruh daftar pesanan pelanggan dari backend REST API ke SQLite lokal
   Future<List<BookingModel>> syncAllBookingsFromRemote([
     Map<String, VehicleModel>? vehicleMap,
+  ]) {
+    if (vehicleMap == null &&
+        _syncInFlight != null &&
+        _syncInFlightOwner == _userId) {
+      return _syncInFlight!;
+    }
+    final trackedOwner = _userId;
+    final inFlight = _jalankanSyncAllBookings(vehicleMap);
+    if (vehicleMap == null) {
+      _syncInFlight = inFlight;
+      _syncInFlightOwner = trackedOwner;
+    }
+    return inFlight.whenComplete(() {
+      if (identical(_syncInFlight, inFlight)) {
+        _syncInFlight = null;
+        _syncInFlightOwner = null;
+      }
+    });
+  }
+
+  Future<List<BookingModel>> _jalankanSyncAllBookings([
+    Map<String, VehicleModel>? vehicleMap,
   ]) async {
     final map = vehicleMap ?? _defaultVehicleMap;
     final owner = await refreshSession();
@@ -348,15 +382,9 @@ class BookingRepository {
          ada di perangkat mungkin milik akun yang sesinya belum terbaca. */
       if (owner == null) return [];
 
-      /* Baris milik akun lain dibuang lebih dulu, lalu baris milik akun ini
-         yang tidak lagi dikirim server ikut dibuang. Tidak memakai
-         `clearAllBookings()`: cara lama menghapus seluruh tabel, termasuk baris
-         tamu, dan tetap menyisakan riwayat akun yang sudah dihapus di server
-         ketika pengambilan datanya gagal. */
-      await _bookingDao.deleteBookingsNotOwnedBy(owner);
-
-      final List<BookingModel> synced = [];
-      final idsDariServer = <String>{};
+      final synced = <BookingModel>[];
+      final companions = <BookingsCompanion>[];
+      final idsDariServer = <String>[];
       for (final item in list) {
         if (item is! Map) continue;
         final json = Map<String, dynamic>.from(item);
@@ -372,14 +400,17 @@ class BookingRepository {
         );
         if (vehicle == null) continue;
         final model = BookingModel.fromJson(json, vehicle);
-        await _bookingDao.insertOrUpdateBooking(
-          _ownedFor(model.toCompanion(), owner),
-        );
+        companions.add(_ownedFor(model.toCompanion(), owner));
         idsDariServer.add(model.id);
         synced.add(model);
       }
 
-      await _bookingDao.deleteBookingsOwnedByExcept(owner, idsDariServer.toList());
+      if (_userId != owner) return [];
+      await _bookingDao.syncOwnedBookingsAtomically(
+        owner: owner,
+        entries: companions,
+        keepIds: idsDariServer,
+      );
       return synced;
     } on ApiException catch (e) {
       /* Server menyatakan sesi ini tidak berlaku lagi (akun dihapus, token

@@ -191,6 +191,10 @@ void main() {
         rejectedOrder,
       ]);
 
+      tester.view.physicalSize = const Size(800, 1800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(
         ChangeNotifierProvider<BookingController>.value(
           value: controller,

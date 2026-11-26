@@ -10,6 +10,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorageService {
   final FlutterSecureStorage _storage;
 
+  /* Cache memori berlingkup instance: mengurangi pembacaan Keystore/Keychain
+     berulang saat header Authorization dibuat berdekatan, namun tetap
+     terisolasi per instance sehingga antar-pengujian tidak saling membocorkan
+     token. Seluruh cache dikosongkan seketika di [clearAuth]. */
+  String? _cachedAccessToken;
+  bool _accessTokenLoaded = false;
+  String? _cachedUserId;
+  bool _userIdLoaded = false;
+  String? _cachedTokenExpiry;
+  bool _tokenExpiryLoaded = false;
+
   SecureStorageService([FlutterSecureStorage? storage])
       : _storage = storage ??
             const FlutterSecureStorage(
@@ -72,15 +83,23 @@ class SecureStorageService {
     DateTime? kedaluwarsa,
   }) async {
     await _storage.write(key: _keyAccessToken, value: accessToken);
+    _cachedAccessToken = accessToken;
+    _accessTokenLoaded = true;
     if (refreshToken != null) {
       await _storage.write(key: _keyRefreshToken, value: refreshToken);
     }
     final batas = kedaluwarsa ?? kedaluwarsaDariToken(accessToken);
     if (batas != null) {
+      final batasStr = batas.toUtc().millisecondsSinceEpoch.toString();
       await _storage.write(
         key: _keyTokenExpiry,
-        value: batas.toUtc().millisecondsSinceEpoch.toString(),
+        value: batasStr,
       );
+      _cachedTokenExpiry = batasStr;
+      _tokenExpiryLoaded = true;
+    } else {
+      _cachedTokenExpiry = null;
+      _tokenExpiryLoaded = false;
     }
   }
 
@@ -118,7 +137,11 @@ class SecureStorageService {
 
   /// Mengambil access token aktif
   Future<String?> getAccessToken() async {
-    return await _storage.read(key: _keyAccessToken);
+    if (_accessTokenLoaded) return _cachedAccessToken;
+    final value = await _storage.read(key: _keyAccessToken);
+    _cachedAccessToken = value;
+    _accessTokenLoaded = true;
+    return value;
   }
 
   /// Mengambil refresh token aktif
@@ -135,6 +158,8 @@ class SecureStorageService {
     String? gender,
   }) async {
     await _storage.write(key: _keyUserId, value: userId);
+    _cachedUserId = userId;
+    _userIdLoaded = true;
     if (nik != null && nik.isNotEmpty) {
       await _storage.write(key: _keyUserNik, value: nik);
     }
@@ -147,7 +172,13 @@ class SecureStorageService {
     }
   }
 
-  Future<String?> getUserId() async => await _storage.read(key: _keyUserId);
+  Future<String?> getUserId() async {
+    if (_userIdLoaded) return _cachedUserId;
+    final value = await _storage.read(key: _keyUserId);
+    _cachedUserId = value;
+    _userIdLoaded = true;
+    return value;
+  }
   Future<String?> getUserNik() async => await _storage.read(key: _keyUserNik);
   Future<String?> getUserPhone() async => await _storage.read(key: _keyUserPhone);
   Future<String?> getUserName() async => await _storage.read(key: _keyUserName);
@@ -162,7 +193,14 @@ class SecureStorageService {
     final token = await getAccessToken();
     if (token == null || token.isEmpty) return false;
 
-    final batas = await _storage.read(key: _keyTokenExpiry);
+    final String? batas;
+    if (_tokenExpiryLoaded) {
+      batas = _cachedTokenExpiry;
+    } else {
+      batas = await _storage.read(key: _keyTokenExpiry);
+      _cachedTokenExpiry = batas;
+      _tokenExpiryLoaded = true;
+    }
     if (batas == null || batas.isEmpty) {
       /* Token lama yang disimpan sebelum versi ini tidak punya catatan waktu.
          Server tetap memverifikasinya pada permintaan pertama, jadi token itu
@@ -199,6 +237,12 @@ class SecureStorageService {
 
   /// Menghapus seluruh kredensial rahasia saat keluar (Logout)
   Future<void> clearAuth() async {
+    _cachedAccessToken = null;
+    _accessTokenLoaded = false;
+    _cachedUserId = null;
+    _userIdLoaded = false;
+    _cachedTokenExpiry = null;
+    _tokenExpiryLoaded = false;
     await _storage.delete(key: _keyAccessToken);
     await _storage.delete(key: _keyRefreshToken);
     await _storage.delete(key: _keyUserId);

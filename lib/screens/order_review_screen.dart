@@ -37,6 +37,23 @@ class OrderReviewScreen extends StatefulWidget {
 }
 
 class _OrderReviewScreenState extends State<OrderReviewScreen> {
+  late DocumentApiService _documentApiService;
+  bool _serviceInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_serviceInitialized) return;
+    _serviceInitialized = true;
+    ApiClient? sharedClient;
+    try {
+      sharedClient = Provider.of<ApiClient>(context, listen: false);
+    } catch (_) {
+      sharedClient = null;
+    }
+    _documentApiService = DocumentApiService(sharedClient);
+  }
+
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingController>();
@@ -147,6 +164,8 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                   child: GambarKendaraan(
                     sumber: vehicle.imageUrl,
                     fit: BoxFit.contain,
+                    lebarLogis: 64,
+                    tinggiLogis: 52,
                     cadangan: const Icon(
                       Icons.directions_car,
                       color: AppColors.textSecondary,
@@ -512,7 +531,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
   Future<void> _unduhTemplateSurat(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final berkas = await DocumentApiService().downloadStatementTemplatePdf();
+      final berkas = await _documentApiService.downloadStatementTemplatePdf();
       final path = await BerkasUnduhan.simpanDanBagikan(
         isi: berkas.isi,
         namaBerkas: berkas.namaBerkas,
