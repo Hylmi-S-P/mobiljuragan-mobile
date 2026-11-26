@@ -626,25 +626,6 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
                                 fontFamily: 'Inter',
                               ),
                             ),
-                            if (isFree) ...[
-                              const SizedBox(width: 5),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: AppColors.badgeGreenBg,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'GRATIS',
-                                  style: TextStyle(
-                                    fontSize: AppTypography.sizeMicro,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.badgeGreenText,
-                                    fontFamily: 'Inter',
-                                  ),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
