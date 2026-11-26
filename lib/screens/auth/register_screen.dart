@@ -46,13 +46,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _passwordTouched = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  late final TapGestureRecognizer _toggleAgreementRecognizer;
   late final TapGestureRecognizer _termsTapRecognizer;
 
   @override
   void initState() {
     super.initState();
+    _toggleAgreementRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        setState(() {
+          _agreementChecked = !_agreementChecked;
+        });
+      };
     _termsTapRecognizer = TapGestureRecognizer()
-      ..onTap = () => LegalTermsSheet.showAkunDanPrivasi(context);
+      ..onTap = () => LegalTermsSheet.showSyaratDanKetentuan(context);
     _passwordController.addListener(_refreshPasswordState);
     _passwordConfirmController.addListener(_refreshPasswordState);
   }
@@ -63,6 +70,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _toggleAgreementRecognizer.dispose();
     _termsTapRecognizer.dispose();
     _passwordController.removeListener(_refreshPasswordState);
     _passwordConfirmController.removeListener(_refreshPasswordState);
@@ -742,65 +750,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildAgreementCheckbox() {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _agreementChecked = !_agreementChecked;
-        });
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: Checkbox(
-                value: _agreementChecked,
-                activeColor: AppColors.primaryTeal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                onChanged: (val) {
-                  setState(() {
-                    _agreementChecked = val ?? false;
-                  });
-                },
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: Checkbox(
+              value: _agreementChecked,
+              activeColor: AppColors.primaryTeal,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              onChanged: (val) {
+                setState(() {
+                  _agreementChecked = val ?? false;
+                });
+              },
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text.rich(
-                TextSpan(
-                  style: const TextStyle(
-                    fontSize: AppTypography.sizeCaption,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                    fontFamily: 'Inter',
-                  ),
-                  children: [
-                    const TextSpan(
-                      text: 'Saya menyatakan data di atas benar dan menyetujui ',
-                    ),
-                    TextSpan(
-                      text: 'Syarat Layanan & Privasi Akun',
-                      recognizer: _termsTapRecognizer,
-                      style: const TextStyle(
-                        color: AppColors.primaryNavy,
-                        fontWeight: FontWeight.w700,
-                        decoration: TextDecoration.underline,
-                        decorationColor: AppColors.primaryNavy,
-                      ),
-                    ),
-                    const TextSpan(
-                      text: '.',
-                    ),
-                  ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeCaption,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                  fontFamily: 'Inter',
                 ),
+                children: [
+                  TextSpan(
+                    text: 'Saya menyatakan data di atas benar dan menyetujui ',
+                    recognizer: _toggleAgreementRecognizer,
+                  ),
+                  TextSpan(
+                    text: 'Syarat dan Ketentuan Pengguna MobilJuragan',
+                    recognizer: _termsTapRecognizer,
+                    style: const TextStyle(
+                      color: AppColors.primaryNavy,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.primaryNavy,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: '.',
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

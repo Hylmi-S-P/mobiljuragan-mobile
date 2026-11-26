@@ -41,13 +41,19 @@ class OrderReviewScreen extends StatefulWidget {
 class _OrderReviewScreenState extends State<OrderReviewScreen> {
   late DocumentApiService _documentApiService;
   bool _serviceInitialized = false;
+  late final TapGestureRecognizer _toggleAgreementRecognizer;
   late final TapGestureRecognizer _termsTapRecognizer;
 
   @override
   void initState() {
     super.initState();
+    _toggleAgreementRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        final booking = context.read<BookingController>();
+        booking.setAgreementChecked(!booking.agreementChecked);
+      };
     _termsTapRecognizer = TapGestureRecognizer()
-      ..onTap = () => LegalTermsSheet.showSewaUnit(context);
+      ..onTap = () => LegalTermsSheet.showSyaratDanKetentuan(context);
   }
 
   @override
@@ -66,6 +72,7 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
 
   @override
   void dispose() {
+    _toggleAgreementRecognizer.dispose();
     _termsTapRecognizer.dispose();
     super.dispose();
   }
@@ -410,64 +417,62 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
   }
 
   Widget _buildAgreementCheckbox(BookingController booking) {
-    return Material(
-      color: AppColors.cardWhite,
-      borderRadius: BorderRadius.circular(AppRadius.control),
-      child: InkWell(
-        onTap: () => booking.setAgreementChecked(!booking.agreementChecked),
+    return Container(
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(AppRadius.control),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.control),
-            border: Border.all(color: AppColors.borderSubtle, width: 1),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: Checkbox(
+              value: booking.agreementChecked,
+              activeColor: AppColors.primaryNavy,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (val) {
+                booking.setAgreementChecked(val ?? !booking.agreementChecked);
+              },
+            ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: booking.agreementChecked,
-                  activeColor: AppColors.primaryNavy,
-                  onChanged: (val) {
-                    if (val != null) booking.setAgreementChecked(val);
-                  },
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w400,
+                  height: 1.45,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'Inter',
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text.rich(
+                children: [
                   TextSpan(
-                    style: const TextStyle(
-                      fontSize: AppTypography.sizeBody,
-                      fontWeight: FontWeight.w400,
-                      height: 1.4,
-                      color: AppColors.textPrimary,
-                      fontFamily: 'Inter',
-                    ),
-                    children: [
-                      const TextSpan(text: 'Saya menyetujui '),
-                      TextSpan(
-                        text: 'syarat dan ketentuan rental MobilJuragan',
-                        recognizer: _termsTapRecognizer,
-                        style: const TextStyle(
-                          color: AppColors.primaryNavy,
-                          fontWeight: FontWeight.w700,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AppColors.primaryNavy,
-                        ),
-                      ),
-                      const TextSpan(text: '.'),
-                    ],
+                    text: 'Saya menyetujui ',
+                    recognizer: _toggleAgreementRecognizer,
                   ),
-                ),
+                  TextSpan(
+                    text: 'Syarat dan Ketentuan Pengguna MobilJuragan',
+                    recognizer: _termsTapRecognizer,
+                    style: const TextStyle(
+                      color: AppColors.primaryNavy,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.primaryNavy,
+                      height: 1.45,
+                    ),
+                  ),
+                  const TextSpan(text: '.'),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
