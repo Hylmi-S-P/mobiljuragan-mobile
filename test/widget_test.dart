@@ -7,7 +7,8 @@ void main() {
   testWidgets('MobilJuraganApp renders smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const MobilJuraganApp());
     expect(find.byType(SplashScreen), findsOneWidget);
-    expect(find.byIcon(Icons.directions_car_rounded), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.bySemanticsLabel('MobilJuragan'), findsOneWidget);
     expect(find.text('MobilJuragan'), findsNothing);
   });
 }

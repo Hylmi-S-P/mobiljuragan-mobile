@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
-import '../theme/app_colors.dart';
 import 'main_navigation_screen.dart';
 
-/// Halaman SplashScreen dengan latar navy dan ikon mobil MobilJuragan.
+/// Halaman SplashScreen dengan latar navy dan logo MobilJuragan.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -15,9 +15,10 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
+  static const Color _splashBackground = Color(0xFF142B4F);
+
+  late final AnimationController _animController;
+  late final Animation<double> _fadeAnimation;
 
   /* Dua syarat berpindah layar: waktu tampil minimum sudah lewat, dan status
      boot sesi sudah selesai. Dulu hanya syarat pertama yang ada, sehingga
@@ -33,32 +34,20 @@ class _SplashScreenState extends State<SplashScreen>
 
   /// Menahan perpindahan agar tidak terjadi dua kali.
   bool _sudahBerpindah = false;
+  bool _preloadDimulai = false;
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 350),
     );
-
-    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeOutBack,
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
     );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeIn,
-      ),
-    );
-
-    _animController.forward();
-
-    _minimumTimer = Timer(const Duration(milliseconds: 2100), () {
+    _minimumTimer = Timer(const Duration(milliseconds: 650), () {
       _waktuMinimumSelesai = true;
       _cobaPindah();
     });
@@ -67,6 +56,15 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_preloadDimulai) {
+      _preloadDimulai = true;
+      precacheImage(
+        const AssetImage('assets/images/logo-mj-splash.webp'),
+        context,
+      ).catchError((Object _) {}).whenComplete(() {
+        if (mounted) _animController.forward();
+      });
+    }
 
     /* Penyedia dibaca dengan aman: pengujian widget memasang SplashScreen
        tanpa MultiProvider, dan aplikasi tidak boleh gagal hanya karena itu.
@@ -110,7 +108,7 @@ class _SplashScreenState extends State<SplashScreen>
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
-        transitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }
@@ -125,25 +123,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primaryNavy,
-      body: SafeArea(
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _animController,
-            builder: (context, child) {
-              return Opacity(
-                opacity: _fadeAnimation.value,
-                child: Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: child,
-                ),
-              );
-            },
-            child: const Icon(
-              Icons.directions_car_rounded,
-              size: 72,
-              color: Colors.white,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: _splashBackground,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _splashBackground,
+        body: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            alwaysIncludeSemantics: true,
+            child: Image.asset(
+              'assets/images/logo-mj-splash.webp',
+              width: 184,
+              height: 184,
+              fit: BoxFit.contain,
               semanticLabel: 'MobilJuragan',
             ),
           ),
