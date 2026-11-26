@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,20 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Penangkap galat global agar kegagalan UI maupun asinkron tertangani aman
+  // tanpa mencetak detail sensitif di build rilis.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (kDebugMode) {
+      FlutterError.presentError(details);
+    }
+  };
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    if (kDebugMode) {
+      debugPrint('Galat asinkron aplikasi: ${error.runtimeType}');
+    }
+    return true;
+  };
 
   /* 1. Inisialisasi layanan notifikasi sistem perangkat di latar belakang.
      Meminta izin notifikasi Android 13+ sebelum runApp() bisa menahan frame
