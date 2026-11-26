@@ -279,7 +279,7 @@ class _MobilJuraganAppState extends State<MobilJuraganApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MobilJuragan Mobile',
+      title: 'MobilJuragan',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: AppTheme.lightTheme,

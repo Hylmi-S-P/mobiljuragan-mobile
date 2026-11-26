@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'help_center_screen.dart';
@@ -40,28 +41,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      body: IndexedStack(
-        index: _currentTabIndex,
-        children: [
-          _tabSudahDibuka.contains(0)
-              ? HomeScreen(onNavigateToPesan: () => _pindahTab(1))
-              : const SizedBox.shrink(),
-          _tabSudahDibuka.contains(1)
-              ? const VehicleSelectionScreen(showBottomNav: true)
-              : const SizedBox.shrink(),
-          _tabSudahDibuka.contains(2)
-              ? OrderHistoryScreen(onNavigateToPesan: () => _pindahTab(1))
-              : const SizedBox.shrink(),
-          _tabSudahDibuka.contains(3)
-              ? HelpCenterScreen(isActive: _currentTabIndex == 3)
-              : const SizedBox.shrink(),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: AppColors.cardWhite,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentTabIndex,
-        onTap: _pindahTab,
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBackground,
+        body: IndexedStack(
+          index: _currentTabIndex,
+          children: [
+            _tabSudahDibuka.contains(0)
+                ? HomeScreen(onNavigateToPesan: () => _pindahTab(1))
+                : const SizedBox.shrink(),
+            _tabSudahDibuka.contains(1)
+                ? const VehicleSelectionScreen(showBottomNav: true)
+                : const SizedBox.shrink(),
+            _tabSudahDibuka.contains(2)
+                ? OrderHistoryScreen(onNavigateToPesan: () => _pindahTab(1))
+                : const SizedBox.shrink(),
+            _tabSudahDibuka.contains(3)
+                ? HelpCenterScreen(isActive: _currentTabIndex == 3)
+                : const SizedBox.shrink(),
+          ],
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: _currentTabIndex,
+          onTap: _pindahTab,
+        ),
       ),
     );
   }
