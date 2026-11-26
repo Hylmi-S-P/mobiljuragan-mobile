@@ -8,9 +8,11 @@ import 'standard_bottom_sheet.dart';
 enum JenisKetentuanLegal {
   akunDanPrivasi,
   sewaUnit,
+  syaratDanKetentuan,
 }
 
-/// Modal terpusat untuk Kebijakan Privasi & Akun serta Syarat & Ketentuan Sewa.
+/// Modal terpusat untuk Syarat & Ketentuan Pengguna MobilJuragan serta
+/// Kebijakan Privasi & Akun.
 ///
 /// Seluruh teks legal disimpan di satu berkas ini agar konsisten antara layar
 /// Pendaftaran Akun, Opsi Rental, Tinjau Pesanan, dan Profil Pengguna.
@@ -21,20 +23,27 @@ class LegalTermsSheet {
     BuildContext context, {
     required JenisKetentuanLegal jenis,
   }) {
-    final bool isSewa = jenis == JenisKetentuanLegal.sewaUnit;
-    final String pembukaan =
-        isSewa ? _pembukaanSewaUnit : _pembukaanAkunDanPrivasi;
-    final List<_PasalLegal> daftarPasal =
-        isSewa ? _pasalSewaUnit : _pasalAkunDanPrivasi;
+    final bool isSyaratKetentuan =
+        jenis == JenisKetentuanLegal.syaratDanKetentuan ||
+        jenis == JenisKetentuanLegal.sewaUnit;
+    final String pembukaan = isSyaratKetentuan
+        ? _pembukaanSyaratDanKetentuan
+        : _pembukaanAkunDanPrivasi;
+    final List<_PasalLegal> daftarPasal = isSyaratKetentuan
+        ? _pasalSyaratDanKetentuan
+        : _pasalAkunDanPrivasi;
 
     return StandardBottomSheet.show<void>(
       context: context,
-      title: isSewa
-          ? 'Syarat & Ketentuan Sewa'
+      title: isSyaratKetentuan
+          ? 'Syarat & Ketentuan Pengguna'
           : 'Syarat Layanan & Privasi Akun',
       subtitle: 'MobilJuragan · Merauke',
-      icon: isSewa ? Icons.description_outlined : Icons.privacy_tip_outlined,
+      icon: isSyaratKetentuan
+          ? Icons.description_outlined
+          : Icons.privacy_tip_outlined,
       child: _KontenKetentuanLegal(
+        salamPembuka: isSyaratKetentuan ? _salamSyaratDanKetentuan : null,
         pembukaan: pembukaan,
         daftarPasal: daftarPasal,
       ),
@@ -69,19 +78,26 @@ class LegalTermsSheet {
     );
   }
 
+  static Future<void> showSyaratDanKetentuan(BuildContext context) {
+    return show(context, jenis: JenisKetentuanLegal.syaratDanKetentuan);
+  }
+
   static Future<void> showAkunDanPrivasi(BuildContext context) {
     return show(context, jenis: JenisKetentuanLegal.akunDanPrivasi);
   }
 
   static Future<void> showSewaUnit(BuildContext context) {
-    return show(context, jenis: JenisKetentuanLegal.sewaUnit);
+    return showSyaratDanKetentuan(context);
   }
+
+  static const String _salamSyaratDanKetentuan =
+      'Selamat datang di MobilJuragan!';
+
+  static const String _pembukaanSyaratDanKetentuan =
+      'Syarat dan Ketentuan ini mengatur penggunaan platform MobilJuragan, termasuk website, aplikasi, layanan pemesanan kendaraan, serta fitur lain yang tersedia di dalam platform. Dengan mengakses, mendaftar, atau menggunakan layanan MobilJuragan, pengguna dianggap telah membaca, memahami, dan menyetujui seluruh Syarat dan Ketentuan yang berlaku.';
 
   static const String _pembukaanAkunDanPrivasi =
       'Dengan mendaftarkan akun, mengakses, atau menggunakan aplikasi MobilJuragan, Pengguna menyatakan telah membaca, memahami, dan menyetujui untuk terikat secara hukum oleh seluruh ketentuan di bawah ini. Apabila Pengguna tidak menyetujui salah satu ketentuan, Pengguna wajib menghentikan pendaftaran maupun penggunaan layanan.';
-
-  static const String _pembukaanSewaUnit =
-      'Syarat & Ketentuan Penyewaan Kendaraan ini merupakan perjanjian yang sah dan mengikat secara hukum antara MobilJuragan (Penyedia Jasa) dan pelanggan yang mengajukan maupun menggunakan jasa penyewaan (Penyewa). Dengan mencentang kotak persetujuan pada halaman Tinjau Pesanan, Penyewa tunduk pada seluruh ketentuan di bawah ini.';
 
   static const List<_PasalLegal> _pasalAkunDanPrivasi = [
     _PasalLegal(
@@ -147,82 +163,161 @@ class LegalTermsSheet {
     ),
   ];
 
-  static const List<_PasalLegal> _pasalSewaUnit = [
+  static const List<_PasalLegal> _pasalSyaratDanKetentuan = [
     _PasalLegal(
-      judul: 'Pasal 1: Ruang Lingkup & Definisi',
+      judul: '1. Definisi',
       butir: [
-        'Perjanjian Sewa mencakup penyewaan kendaraan bermotor milik/kelolaan Penyedia Jasa di wilayah Merauke, Papua Selatan, baik dengan mode layanan Lepas Kunci maupun Dengan Sopir.',
-        'Penyewa adalah pemegang akun terdaftar yang namanya tercantum pada pengajuan pesanan dan bertanggung jawab atas kepatuhan terhadap perjanjian ini, termasuk atas tindakan seluruh penumpang yang ikut dalam kendaraan selama masa sewa.',
+        'MobilJuragan adalah platform digital yang menyediakan layanan informasi, pemesanan, pengelolaan, dan penyewaan kendaraan.',
+        'Pengguna adalah setiap individu yang mengakses, mendaftar, atau menggunakan layanan MobilJuragan.',
+        'Penyewa adalah pengguna yang melakukan pemesanan atau penyewaan kendaraan melalui MobilJuragan.',
+        'Pemilik Kendaraan adalah individu atau pihak yang menyediakan kendaraan untuk disewakan melalui platform MobilJuragan.',
+        'Pengemudi adalah individu yang bertugas mengemudikan kendaraan dalam layanan yang menggunakan pengemudi.',
+        'Platform adalah website, aplikasi, dan sistem digital MobilJuragan.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 2: Pemesanan, Konfirmasi Biaya Final, & Pembayaran',
+      judul: '2. Ketentuan Penggunaan Platform',
+      bernomor: true,
       butir: [
-        'Pengajuan pesanan yang dikirimkan melalui aplikasi merupakan permohonan reservasi dan baru bersifat mengikat penuh setelah diperiksa dan disetujui oleh admin operasional Penyedia Jasa.',
-        'Nominal tarif pada halaman Tinjau Pesanan merupakan estimasi awal. Biaya final (termasuk penyesuaian jam layanan apabila ada maupun potongan promo yang sah) ditetapkan dan dikonfirmasi oleh admin operasional sebelum Penyewa diminta melakukan pembayaran.',
-        'Pembayaran dilakukan ke rekening/saluran resmi Penyedia Jasa yang tercantum di aplikasi dengan mengunggah bukti pembayaran untuk diverifikasi secara manual oleh admin operasional.',
-        'Penyerahan unit hanya dapat dilaksanakan setelah status pembayaran diverifikasi oleh admin operasional serta seluruh persyaratan mode layanan dinyatakan lengkap dan sah.',
+        'Pengguna wajib memberikan informasi yang benar, akurat, lengkap, dan terkini saat melakukan pendaftaran maupun transaksi.',
+        'Pengguna wajib menjaga kerahasiaan akun, kata sandi, serta informasi akses lainnya.',
+        'Pengguna dilarang menggunakan platform untuk kegiatan yang melanggar hukum, melakukan penipuan, atau merugikan pihak lain.',
+        'MobilJuragan berhak membatasi, menangguhkan, atau menghentikan akses pengguna apabila ditemukan pelanggaran terhadap Syarat dan Ketentuan ini.',
+        'Pengguna bertanggung jawab atas segala aktivitas yang dilakukan melalui akun miliknya.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 3: Ketentuan Khusus Mode Layanan',
+      judul: '3. Ketentuan Pemesanan Kendaraan',
+      bernomor: true,
       butir: [
-        'Mode Sewa Lepas Kunci: Penyewa wajib mengunggah 3 berkas yang jelas dan sesuai aslinya melalui Status Pesanan, yaitu (a) foto e-KTP asli berlaku atas nama Penyewa, (b) foto SIM A aktif sesuai identitas Penyewa, dan (c) foto Surat Pernyataan Penyewa yang diunduh dari template aplikasi, dicetak A4, diisi lengkap, dibubuhi meterai berlaku, serta ditandatangani basah.',
-        'Pada mode Lepas Kunci, saat serah terima unit Penyewa wajib hadir sendiri dan menunjukkan e-KTP fisik asli serta SIM A fisik asli untuk pencocokan ulang oleh petugas kantor MobilJuragan Merauke. Kendaraan hanya boleh dikemudikan oleh Penyewa yang telah diverifikasi dan disetujui.',
-        'Mode Layanan Dengan Sopir: pengemudi yang bertugas adalah staf tetap Penyedia Jasa yang terikat SOP dan kode etik perusahaan, dengan jam kerja operasional harian 12 jam per hari sesuai jadwal sewa.',
-        'Kebutuhan tambahan jam sopir di luar 12 jam per hari wajib dikonfirmasi durasi dan biayanya bersama admin operasional sebelum dilaksanakan. Pada mode ini Penyewa tidak memerlukan unggahan berkas Lepas Kunci, dan koordinasi penjemputan dilakukan melalui Chat CS resmi di aplikasi.',
+        'Pemesanan kendaraan dilakukan melalui fitur pesan yang tersedia pada platform MobilJuragan.',
+        'Pengguna wajib memastikan informasi pemesanan telah sesuai, termasuk jenis kendaraan, tanggal penyewaan, durasi, jenis penyewaan dengan pengemudi atau tidak, lokasi penjemputan, dan lokasi pengembalian.',
+        'Pemesanan dianggap berhasil setelah mendapatkan konfirmasi dari admin sesuai prosedur pemesanan yang berlaku.',
+        'Pengguna wajib memenuhi persyaratan penyewaan yang ditentukan oleh MobilJuragan.',
+        'Pemesanan dapat menggunakan layanan kendaraan dengan pengemudi maupun tanpa pengemudi, sesuai ketersediaan layanan.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 4: Larangan Umum & Kepatuhan Hukum (Berlaku Semua Mode)',
+      judul: '4. Ketentuan Pembayaran',
+      bernomor: true,
       butir: [
-        'Seluruh larangan pada pasal ini berlaku penuh tanpa pengecualian bagi Penyewa maupun seluruh penumpang pada semua mode layanan (baik Lepas Kunci maupun Dengan Sopir).',
-        'Bebas Narkotika, Psikotropika, & Alkohol: dilarang keras membawa, menyimpan, mengedarkan, mengonsumsi, ataupun mengemudi di bawah pengaruh narkotika, psikotropika, obat terlarang, zat adiktif ilegal, atau minuman beralkohol di dalam maupun dengan menggunakan kendaraan Penyedia Jasa.',
-        'Larangan Tindak Pidana & Barang Ilegal: dilarang keras menggunakan kendaraan untuk tindakan melanggar hukum, kejahatan, penadahan, penyelundupan, atau mengangkut barang ilegal, berbahaya, maupun hasil tindak pidana.',
-        'Larangan Pemindahtanganan & Penyalahgunaan Unit: dilarang keras menggadaikan, menjual, menyewakan kembali, memindahtangankan penguasaan, melepas perangkat keamanan, atau mengubah komponen maupun dokumen resmi kendaraan (STNK/pelat nomor).',
-        'Larangan Penggunaan Tidak Wajar: dilarang menggunakan kendaraan untuk balapan, uji kecepatan, mengangkut muatan/penumpang melebihi kapasitas aman pabrikan, atau melintasi medan yang merusak kendaraan di luar kewajaran.',
-        'Sanksi Penghentian Sepihak & Penegakan Hukum: apabila terdapat bukti atau indikasi kuat pelanggaran terhadap Pasal 4 ini, Penyedia Jasa berhak penuh menghentikan masa sewa seketika secara sepihak, menarik kembali unit kendaraan (atau memerintahkan pengemudi menghentikan perjalanan pada mode Dengan Sopir), menolak pengembalian dana sewa yang telah berjalan, serta melaporkan pelanggaran kepada aparat penegak hukum yang berwenang.',
+        'Pengguna wajib melakukan pembayaran sesuai nominal, metode, dan batas waktu yang ditentukan dalam proses pemesanan.',
+        'Harga sewa yang ditampilkan pada platform dapat berbeda berdasarkan jenis kendaraan, durasi sewa, lokasi, layanan tambahan, maupun ketentuan lainnya.',
+        'Biaya tambahan, apabila ada, akan diinformasikan kepada pengguna sebelum atau selama proses transaksi sesuai ketentuan layanan.',
+        'Pengguna bertanggung jawab memastikan pembayaran dilakukan melalui metode pembayaran yang sah dan tersedia pada platform.',
+        'Bukti pembayaran wajib disimpan oleh pengguna apabila diperlukan untuk proses verifikasi atau penyelesaian kendala transaksi.',
+        'Pemesanan yang belum memenuhi ketentuan pembayaran dapat dibatalkan atau tidak diproses lebih lanjut.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 5: Wilayah Operasional, Bahan Bakar, & Serah Terima',
+      judul: '5. Ketentuan Penggunaan Kendaraan',
+      bernomor: true,
       butir: [
-        'Kendaraan hanya diizinkan beroperasi di wilayah Kota Merauke dan area sekitarnya sesuai kesepakatan rute pada reservasi.',
-        'Pada saat serah terima maupun pengembalian unit (khususnya Lepas Kunci), kondisi fisik kendaraan, perlengkapan standar, posisi indikator bahan bakar, dan dokumen STNK/kunci diperiksa dan dicatat bersama petugas Penyedia Jasa.',
-        'Kendaraan wajib dikembalikan dengan posisi indikator bahan bakar sekurang-kurangnya sama dengan kondisi saat serah terima awal.',
+        'Kendaraan hanya boleh digunakan untuk keperluan yang sah dan tidak bertentangan dengan hukum yang berlaku.',
+        'Pengguna wajib menggunakan kendaraan sesuai peruntukan dan menjaga kendaraan selama masa penyewaan.',
+        'Pengguna dilarang menggunakan kendaraan untuk kegiatan ilegal, balapan, mengangkut barang terlarang, membawa muatan berlebih, atau kegiatan yang dapat membahayakan keselamatan.',
+        'Pengguna dilarang memindahtangankan, menyewakan kembali, atau memberikan kendaraan kepada pihak lain tanpa persetujuan pihak yang berwenang.',
+        'Pengguna wajib mematuhi peraturan lalu lintas yang berlaku.',
+        'Pengguna bertanggung jawab atas biaya yang timbul akibat pelanggaran lalu lintas, penggunaan kendaraan yang tidak sesuai ketentuan, atau tindakan yang dilakukan selama masa penyewaan, sesuai dengan ketentuan dan bukti yang berlaku.',
+        'Pengguna wajib mengembalikan kendaraan sesuai waktu, lokasi, dan kondisi yang telah disepakati, kecuali terdapat persetujuan perubahan dari pihak terkait.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 6: Tanggung Jawab Kerusakan, Kehilangan, & Pelanggaran',
+      judul: '6. Pemeriksaan dan Kondisi Kendaraan',
+      bernomor: true,
       butir: [
-        'Pada mode Lepas Kunci, selama kendaraan berada dalam penguasaan Penyewa terhitung sejak serah terima hingga pengembalian resmi kepada petugas, Penyewa bertanggung jawab penuh atas keamanan, keutuhan unit, kunci kendaraan, dan STNK.',
-        'Penyewa bertanggung jawab atas segala biaya perbaikan kerusakan, kehilangan bagian/perlengkapan kendaraan, maupun kerugian akibat kelalaian Penyewa atau pengemudi tidak sah selama masa penguasaan unit.',
-        'Segala denda pelanggaran lalu lintas, tilang elektronik (ETLE), maupun sanksi administratif lalu lintas selama masa penggunaan Lepas Kunci menjadi beban penuh Penyewa.',
-        'Apabila terjadi kecelakaan lalu lintas, gangguan berat, atau kehilangan/tindak kejahatan terhadap kendaraan, Penyewa wajib segera menghentikan pengoperasian bila membahayakan keselamatan, menjaga dokumentasi lokasi bila memungkinkan, dan menghubungi admin melalui Chat CS sesegera mungkin.',
+        'Pengguna disarankan melakukan pemeriksaan kendaraan sebelum dan setelah masa penyewaan.',
+        'Pemeriksaan dapat meliputi kondisi fisik kendaraan, kebersihan, bahan bakar, kelengkapan kendaraan, serta kondisi komponen lainnya.',
+        'Pengguna disarankan mendokumentasikan kondisi kendaraan melalui foto atau video saat serah terima.',
+        'Kerusakan, kehilangan, atau ketidaksesuaian kondisi kendaraan wajib segera dilaporkan kepada pemilik kendaraan atau pihak MobilJuragan.',
+        'Pengguna tidak bertanggung jawab atas kerusakan yang telah ada sebelum kendaraan diserahkan, sepanjang dapat dibuktikan.',
+        'Kerusakan yang terjadi selama masa penyewaan akan ditangani berdasarkan penyebab, bukti, kesepakatan, dan ketentuan tanggung jawab yang berlaku.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 7: Pembatalan & Pengembalian Dana (Refund)',
+      judul: '7. Ketentuan Pembatalan dan Perubahan Pemesanan',
+      bernomor: true,
       butir: [
-        'Pembatalan pesanan yang dilakukan sebelum adanya dana pembayaran masuk tidak dikenakan biaya pembatalan.',
-        'Apabila Penyewa membatalkan pesanan setelah pembayaran masuk, pengembalian dana dikenakan potongan tetap sebesar Rp 50.000 untuk keperluan biaya admin bank dan administrasi dari total dana pembayaran yang masuk. Apabila total pembayaran kurang dari atau sama dengan nominal potongan tersebut, tidak ada kelebihan penagihan kepada Penyewa.',
-        'Apabila pesanan dibatalkan atau ditolak oleh admin operasional atau sistem Penyedia Jasa setelah pembayaran masuk, dana dikembalikan 100% penuh tanpa potongan.',
-        'Apabila bukti transfer sudah diunggah tetapi belum selesai diverifikasi saat pembatalan terjadi, proses pengembalian dana dijalankan setelah dana masuk terkonfirmasi pada mutasi rekening kantor Penyedia Jasa.',
-        'Penyewa wajib mengisi data rekening bank tujuan yang valid di dalam aplikasi untuk keperluan penyaluran refund, dan dapat memantau status serta bukti transfer pengembalian dana melalui halaman Status Pesanan.',
+        'Pesanan otomatis batal ketika pengguna membayarkan harga sewa melebihi dari batas waktu pembayaran (1 hari).',
+        'Jika membatalkan pesanan yang sudah dikonfirmasi berhasil, maka akan dikembalikan dana sesuai dengan nominal yang dibayarkan melalui mekanisme yang tersedia.',
+        'Perubahan jadwal, durasi, kendaraan, maupun lokasi penyewaan bergantung pada ketersediaan dan persetujuan pihak terkait.',
+        'Apabila kendaraan tidak dapat disediakan oleh pihak penyedia karena keadaan tertentu, pengguna berhak memperoleh informasi mengenai alternatif layanan atau penyelesaian transaksi.',
+        'Ketentuan pengembalian dana, apabila berlaku, akan diproses sesuai kebijakan transaksi dan metode pembayaran yang digunakan.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 8: Barang Pribadi, Keadaan Kahar, & Batasan Tanggung Jawab',
+      judul: '8. Keterlambatan dan Perpanjangan Sewa',
+      bernomor: true,
       butir: [
-        'Penyewa bertanggung jawab memeriksa dan mengamankan seluruh barang pribadi di dalam kendaraan sebelum mengakhiri perjalanan atau mengembalikan armada. Penyedia Jasa tidak bertanggung jawab atas kehilangan atau tertinggalnya barang pribadi milik Penyewa maupun penumpang.',
-        'Masing-masing pihak dibebaskan dari tuntutan keterlambatan atau kegagalan pemenuhan kewajiban apabila disebabkan secara langsung oleh Keadaan Kahar (Force Majeure) seperti bencana alam, banjir, huru-hara, kebijakan darurat pemerintah, atau pemutusan akses jalan di luar kendali wajar para pihak.',
+        'Pengguna wajib mengembalikan kendaraan sesuai waktu yang telah disepakati.',
+        'Perpanjangan masa sewa wajib diajukan sebelum masa penyewaan berakhir.',
+        'Perpanjangan sewa hanya dapat dilakukan setelah mendapatkan persetujuan pihak terkait.',
+        'Keterlambatan pengembalian kendaraan dapat dikenakan biaya tambahan sesuai ketentuan penyewaan yang telah diinformasikan.',
+        'Pengguna wajib menginformasikan apabila terjadi kendala yang menyebabkan keterlambatan pengembalian kendaraan.',
       ],
     ),
     _PasalLegal(
-      judul: 'Pasal 9: Penyelesaian Perselisihan & Hukum yang Berlaku',
+      judul: '9. Tanggung Jawab Pengguna',
+      paragraf: ['Pengguna bertanggung jawab untuk:'],
+      bernomor: true,
       butir: [
-        'Perjanjian ini tunduk pada dan ditafsirkan berdasarkan hukum Negara Kesatuan Republik Indonesia.',
-        'Setiap perbedaan pendapat atau perselisihan yang timbul dari pelaksanaan perjanjian ini diselesaikan terlebih dahulu melalui musyawarah untuk mufakat melalui saluran resmi Pusat Bantuan, Tiket Bantuan, dan Chat CS MobilJuragan, atau di kantor operasional MobilJuragan Merauke sebelum menempuh jalur hukum sesuai ketentuan yang berlaku.',
+        'Memberikan informasi yang benar selama menggunakan platform.',
+        'Menjaga kendaraan dan menggunakannya secara wajar.',
+        'Mematuhi ketentuan penyewaan dan peraturan lalu lintas.',
+        'Menanggung biaya yang timbul akibat tindakan, kelalaian, atau pelanggaran yang menjadi tanggung jawabnya selama masa penyewaan.',
+        'Melaporkan kecelakaan, kerusakan, kehilangan, atau kejadian lain yang berkaitan dengan kendaraan sesegera mungkin.',
+        'Tidak melakukan tindakan yang merugikan MobilJuragan, pemilik kendaraan, pengemudi, maupun pengguna lainnya.',
+      ],
+    ),
+    _PasalLegal(
+      judul: '10. Tanggung Jawab MobilJuragan',
+      bernomor: true,
+      butir: [
+        'MobilJuragan berupaya menyediakan platform yang dapat digunakan secara aman, nyaman, dan sesuai fungsi layanan.',
+        'MobilJuragan berupaya menyediakan informasi layanan dan kendaraan yang ditampilkan pada platform berdasarkan data yang tersedia.',
+        'MobilJuragan dapat membantu pengguna dalam menangani kendala pemesanan, komunikasi, maupun pengaduan terkait layanan.',
+        'MobilJuragan tidak menjamin platform selalu tersedia tanpa gangguan, mengingat adanya pemeliharaan sistem, gangguan teknis, jaringan, maupun keadaan lain di luar kendali.',
+        'MobilJuragan akan berupaya menangani pengaduan dan permasalahan transaksi secara wajar serta sesuai ketentuan yang berlaku.',
+      ],
+    ),
+    _PasalLegal(
+      judul: '11. Privasi dan Penggunaan Data',
+      bernomor: true,
+      butir: [
+        'MobilJuragan dapat mengumpulkan informasi pengguna yang diperlukan untuk pendaftaran, pemesanan, pembayaran, verifikasi, dan penyediaan layanan.',
+        'Informasi pengguna akan digunakan sesuai tujuan layanan, kebijakan privasi, serta ketentuan perlindungan data pribadi yang berlaku.',
+        'MobilJuragan berupaya menjaga keamanan informasi pengguna dari akses, penggunaan, atau pengungkapan yang tidak sah.',
+        'Pengguna dapat diminta memberikan informasi tambahan apabila diperlukan untuk verifikasi identitas, keamanan transaksi, atau penanganan kendala layanan.',
+      ],
+    ),
+    _PasalLegal(
+      judul: '12. Keadaan di Luar Kendali (Force Majeure)',
+      paragraf: [
+        'MobilJuragan maupun pihak terkait tidak dapat dianggap bertanggung jawab atas keterlambatan atau kegagalan pelaksanaan layanan yang disebabkan oleh keadaan di luar kendali wajar, termasuk bencana alam, kebakaran, gangguan jaringan, gangguan sistem, kebijakan pemerintah, kerusuhan, kecelakaan, atau keadaan lain yang tidak dapat dicegah secara wajar.',
+        'Pihak terkait akan berupaya memberikan informasi dan melakukan penanganan yang diperlukan atas dampak keadaan tersebut.',
+      ],
+    ),
+    _PasalLegal(
+      judul: '13. Perubahan Syarat dan Ketentuan',
+      paragraf: [
+        'MobilJuragan berhak memperbarui, mengubah, atau menyesuaikan Syarat dan Ketentuan ini dari waktu ke waktu sesuai kebutuhan layanan maupun ketentuan hukum yang berlaku.',
+        'Perubahan akan diinformasikan melalui platform atau media komunikasi yang tersedia. Pengguna diharapkan membaca dan memahami perubahan yang berlaku sebelum melanjutkan penggunaan layanan.',
+      ],
+    ),
+    _PasalLegal(
+      judul: '14. Penyelesaian Perselisihan',
+      bernomor: true,
+      butir: [
+        'Apabila terjadi perselisihan terkait penggunaan layanan MobilJuragan, para pihak akan berupaya menyelesaikannya terlebih dahulu melalui musyawarah.',
+        'Apabila penyelesaian secara musyawarah tidak tercapai, perselisihan akan diselesaikan melalui mekanisme hukum yang berlaku di Republik Indonesia.',
+        'Seluruh penggunaan platform dan transaksi yang dilakukan melalui MobilJuragan tunduk pada hukum yang berlaku di Republik Indonesia.',
+      ],
+    ),
+    _PasalLegal(
+      judul: '15. Penutup',
+      paragraf: [
+        'Dengan menggunakan platform MobilJuragan, pengguna menyatakan telah membaca, memahami, dan menyetujui seluruh Syarat dan Ketentuan yang berlaku.',
+        'Terima kasih telah menggunakan MobilJuragan. Kami berkomitmen untuk menghadirkan pengalaman penyewaan kendaraan yang lebih praktis, mudah, dan nyaman.',
       ],
     ),
   ];
@@ -230,19 +325,25 @@ class LegalTermsSheet {
 
 class _PasalLegal {
   final String judul;
+  final List<String> paragraf;
   final List<String> butir;
+  final bool bernomor;
 
   const _PasalLegal({
     required this.judul,
-    required this.butir,
+    this.paragraf = const [],
+    this.butir = const [],
+    this.bernomor = false,
   });
 }
 
 class _KontenKetentuanLegal extends StatelessWidget {
+  final String? salamPembuka;
   final String pembukaan;
   final List<_PasalLegal> daftarPasal;
 
   const _KontenKetentuanLegal({
+    this.salamPembuka,
     required this.pembukaan,
     required this.daftarPasal,
   });
@@ -253,6 +354,18 @@ class _KontenKetentuanLegal extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (salamPembuka != null) ...[
+          Text(
+            salamPembuka!,
+            style: const TextStyle(
+              fontSize: AppTypography.sizeBodyLarge,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              fontFamily: 'Inter',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.gapSm),
+        ],
         Text(
           pembukaan,
           style: const TextStyle(
@@ -275,24 +388,52 @@ class _KontenKetentuanLegal extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.gapSm),
-          for (final teks in daftarPasal[i].butir) ...[
+          for (final paragraf in daftarPasal[i].paragraf)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                paragraf,
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  height: 1.5,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          for (int j = 0; j < daftarPasal[i].butir.length; j++)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 5,
-                    height: 5,
-                    margin: const EdgeInsets.only(top: 7, right: 8),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryNavy,
-                      shape: BoxShape.circle,
+                  if (daftarPasal[i].bernomor)
+                    SizedBox(
+                      width: 22,
+                      child: Text(
+                        '${j + 1}.',
+                        style: const TextStyle(
+                          fontSize: AppTypography.sizeBody,
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                          color: AppColors.primaryNavy,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 7, right: 8),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryNavy,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
                   Expanded(
                     child: Text(
-                      teks,
+                      daftarPasal[i].butir[j],
                       style: const TextStyle(
                         fontSize: AppTypography.sizeBody,
                         height: 1.5,
@@ -304,7 +445,6 @@ class _KontenKetentuanLegal extends StatelessWidget {
                 ],
               ),
             ),
-          ],
         ],
       ],
     );

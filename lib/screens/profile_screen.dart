@@ -349,8 +349,8 @@ class ProfileScreen extends StatelessWidget {
             ],
             _buildMenuItem(
               icon: Icons.description_outlined,
-              title: 'Syarat & Ketentuan Sewa',
-              onTap: () => LegalTermsSheet.showSewaUnit(context),
+              title: 'Syarat & Ketentuan Pengguna',
+              onTap: () => LegalTermsSheet.showSyaratDanKetentuan(context),
             ),
             const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
             _buildMenuItem(
