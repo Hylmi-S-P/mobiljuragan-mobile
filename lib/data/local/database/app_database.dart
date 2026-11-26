@@ -32,9 +32,9 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Riwayat: 7 menambahkan `bookings.finalAmount`. Versi 8 memindahkan status
   /// favorit dari kolom global `vehicles.isFavorite` ke tabel `Favorites` yang
-  /// terikat pemilik.
+  /// terikat pemilik. Versi 9 menambahkan indeks komposit & kategori.
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -83,6 +83,11 @@ class AppDatabase extends _$AppDatabase {
                 [baris.read<String>('id'), sekarang],
               );
             }
+          }
+          if (from < 9) {
+            await m.createIndex(idxVehiclesCategory);
+            await m.createIndex(idxFavoritesUserVehicle);
+            await m.createIndex(idxBookingsUserCreated);
           }
         },
         beforeOpen: (details) async {
@@ -199,6 +204,8 @@ class AppDatabase extends _$AppDatabase {
   /// variabel tertutup yang tidak bisa dikirim lintas isolate.
   static void _siapkanKoneksi(CommonDatabase db) {
     db.execute('PRAGMA journal_mode = WAL;');
+    db.execute('PRAGMA synchronous = NORMAL;');
+    db.execute('PRAGMA temp_store = MEMORY;');
     db.execute('PRAGMA busy_timeout = 5000;');
     db.execute('PRAGMA foreign_keys = ON;');
   }

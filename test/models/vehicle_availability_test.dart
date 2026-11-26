@@ -24,7 +24,7 @@ void main() {
         condition: 'Siap Pakai',
         availabilityTag: 'Tersedia • Lepas Kunci',
         pricePerDay: 400000,
-        imageUrl: 'assets/images/avanza_card.png',
+        imageUrl: 'assets/images/avanza_card.webp',
       );
 
       expect(availableVehicle.isAvailable, isTrue);
@@ -41,7 +41,7 @@ void main() {
         condition: 'Sedang Beroperasi',
         availabilityTag: 'Sedang Disewa',
         pricePerDay: 550000,
-        imageUrl: 'assets/images/innova_card.png',
+        imageUrl: 'assets/images/innova_card.webp',
       );
 
       expect(bookedVehicle.isAvailable, isFalse);
@@ -107,7 +107,7 @@ void main() {
         condition: 'Siap Pakai',
         availabilityTag: 'Tersedia',
         pricePerDay: 400000,
-        imageUrl: 'assets/images/avanza_card.png',
+        imageUrl: 'assets/images/avanza_card.webp',
       );
 
       final bookedVehicle = VehicleModel(
@@ -121,7 +121,7 @@ void main() {
         condition: 'Sedang Beroperasi',
         availabilityTag: 'Sedang Disewa',
         pricePerDay: 550000,
-        imageUrl: 'assets/images/innova_card.png',
+        imageUrl: 'assets/images/innova_card.webp',
       );
 
       await tester.pumpWidget(
@@ -163,7 +163,7 @@ void main() {
         condition: 'Sedang Beroperasi',
         availabilityTag: 'Sedang Disewa',
         pricePerDay: 550000,
-        imageUrl: 'assets/images/innova_card.png',
+        imageUrl: 'assets/images/innova_card.webp',
       );
 
       await tester.pumpWidget(
@@ -208,7 +208,7 @@ void main() {
         condition: 'Siap Pakai',
         availabilityTag: 'Tersedia • Lepas Kunci',
         pricePerDay: 400000,
-        imageUrl: 'assets/images/avanza_card.png',
+        imageUrl: 'assets/images/avanza_card.webp',
       );
 
       await tester.pumpWidget(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../core/network/api_client.dart';
+import '../data/local/secure/secure_storage_service.dart';
 import '../data/remote/ai_api_service.dart';
 import '../data/remote/ai_chat_api_service.dart';
 import '../data/remote/faq_api_service.dart';
@@ -17,6 +18,7 @@ class SupportController extends ChangeNotifier {
   final FaqApiService _faqApiService;
   final TicketApiService _ticketApiService;
   final AiApiService _aiApiService;
+  final SecureStorageService? secureStorage;
 
   /// Pendengar peristiwa tiket. Satu sambungan per tiket yang sedang dibuka.
   final Map<String, TicketSocket> _aliranPeristiwa = {};
@@ -49,6 +51,7 @@ class SupportController extends ChangeNotifier {
   List<FaqModel> _faqs = const [];
   bool _isLoadingFaqs = false;
   String? _faqError;
+  Future<void>? _faqSyncInFlight;
 
   bool _isLoadingTickets = false;
   bool get isLoadingTickets => _isLoadingTickets;
@@ -128,6 +131,7 @@ class SupportController extends ChangeNotifier {
     TicketApiService? ticketApiService,
     AiApiService? aiApiService,
     AiChatApiService? aiChatApiService,
+    this.secureStorage,
   }) : _faqApiService = faqApiService ?? FaqApiService(),
        _ticketApiService = ticketApiService ?? TicketApiService(),
        _aiApiService =
@@ -159,7 +163,7 @@ class SupportController extends ChangeNotifier {
        sambungan lama ditutup lebih dulu supaya tidak menumpuk. */
     _aliranPeristiwa[ticketId]?.berhenti();
 
-    final aliran = TicketSocket();
+    final aliran = TicketSocket(secureStorage: secureStorage);
     _aliranPeristiwa[ticketId] = aliran;
 
     await aliran.mulai(
@@ -269,9 +273,22 @@ class SupportController extends ChangeNotifier {
     return ['Semua', ...categories];
   }
 
-  /// Mengambil data FAQ terbaru dari backend dengan penanganan offline graceful
-  Future<void> fetchFaqs({bool force = false}) async {
-    if (_isLoadingFaqs) return;
+  /// Mengambil data FAQ terbaru dari backend dengan deduplikasi permintaan bersamaan
+  Future<void> fetchFaqs({bool force = false}) {
+    if (_faqSyncInFlight != null && !force) {
+      return _faqSyncInFlight!;
+    }
+
+    final inFlight = _jalankanFetchFaqs();
+    _faqSyncInFlight = inFlight;
+    return inFlight.whenComplete(() {
+      if (identical(_faqSyncInFlight, inFlight)) {
+        _faqSyncInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _jalankanFetchFaqs() async {
     _isLoadingFaqs = true;
     _faqError = null;
     notifyListeners();

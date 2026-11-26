@@ -9,9 +9,13 @@ class TicketApiService {
 
   /// Mengambil daftar tiket milik pelanggan yang sedang login
   Future<List<dynamic>> fetchCustomerTickets({String? status}) async {
+    final query = <String, dynamic>{
+      'includeMessages': 'false',
+      'status': ?status,
+    };
     final response = await _client.get(
       ApiConstants.ticketsEndpoint,
-      queryParams: status != null ? {'status': status} : null,
+      queryParams: query,
       requiresAuth: true,
     );
     if (response is List) {

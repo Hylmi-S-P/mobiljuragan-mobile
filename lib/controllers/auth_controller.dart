@@ -759,9 +759,9 @@ class AuthController extends ChangeNotifier {
     await logout();
   }
 
-  /// Memeriksa keabsahan sesi aktif secara ringan saat resume atau pindah tab.
+  /// Memeriksa keabsahan sesi aktif secara ringan saat aplikasi kembali ke depan.
   Future<void> periksaSesiJikaAktif({
-    Duration jedaMinimal = const Duration(seconds: 8),
+    Duration jedaMinimal = const Duration(minutes: 2),
   }) async {
     if (!_isLoggedIn || _isLoggingOut || repository == null) return;
 

@@ -31,7 +31,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<VehicleController>().refreshCatalog(force: true);
+        context.read<VehicleController>().refreshCatalog(force: false);
       }
     });
   }
@@ -57,121 +57,168 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             child: RefreshIndicator(
               color: AppColors.primaryTeal,
               onRefresh: () => vehicleController.refreshCatalog(force: true),
-              child: SingleChildScrollView(
+              child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.screenV),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.only(top: AppSpacing.screenV),
+                    sliver: SliverToBoxAdapter(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Katalog Armada Tersedia',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.screenH,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    const Expanded(
+                                      child: Text(
+                                        'Katalog Armada Tersedia',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: AppTypography.sizeHeading,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                          fontFamily: 'Inter',
+                                        ),
+                                      ),
+                                    ),
+                                    if (vehicleController.isSyncing)
+                                      const Padding(
+                                        padding: EdgeInsets.only(left: 8),
+                                        child: SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: AppColors.accent,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Bandingkan tipe, kapasitas, dan transmisi armada untuk kenyamanan perjalanan Anda.',
                                   style: TextStyle(
-                                    fontSize: AppTypography.sizeHeading,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    fontSize: AppTypography.sizeBody,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.textSecondary,
                                     fontFamily: 'Inter',
                                   ),
                                 ),
-                              ),
-                              if (vehicleController.isSyncing)
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 8),
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.accent,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Bandingkan tipe, kapasitas, dan transmisi armada untuk kenyamanan perjalanan Anda.',
-                            style: TextStyle(
-                              fontSize: AppTypography.sizeBody,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
-                              fontFamily: 'Inter',
+                              ],
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          _buildCategoryFilterBar(vehicleController),
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildCategoryFilterBar(vehicleController),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (filteredVehicles.isEmpty)
-                            _buildEmptyState(vehicleController)
-                          else ...[
-                            /* Unit yang sedang disewa dipisah dari yang bisa dipesan.
-                               Sebelumnya keduanya bercampur, sehingga pelanggan harus
-                               membuka satu per satu untuk tahu mana yang tersedia. */
-                            if (availableVehicles.isNotEmpty) ...[
-                              _buildSectionLabel('Tersedia (${availableVehicles.length})'),
-                              ...availableVehicles.map(
-                                (vehicle) => VehicleCardItem(
-                                  vehicle: vehicle,
-                                  isSelected: vehicle.id == _selectedVehicleId,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedVehicleId = vehicle.id;
-                                    });
-                                    context.read<BookingController>().selectVehicle(
-                                      vehicle,
-                                    );
-                                  },
-                                  onToggleFavorite: () {
-                                    vehicleController.toggleFavorite(vehicle.id);
-                                  },
-                                ),
-                              ),
-                            ],
-                            if (rentedVehicles.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              _buildSectionLabel('Sedang disewa (${rentedVehicles.length})'),
-                              ...rentedVehicles.map(
-                                (vehicle) => VehicleCardItem(
-                                  vehicle: vehicle,
-                                  isSelected: vehicle.id == _selectedVehicleId,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedVehicleId = vehicle.id;
-                                    });
-                                    context.read<BookingController>().selectVehicle(vehicle);
-                                  },
-                                  onToggleFavorite: () {
-                                    vehicleController.toggleFavorite(vehicle.id);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ],
-                          const SizedBox(height: 24),
-                        ],
+                  ),
+                  if (filteredVehicles.isEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.screenH,
                       ),
-                    ),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildEmptyState(vehicleController),
+                      ),
+                    )
+                  else ...[
+                    if (availableVehicles.isNotEmpty) ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.screenH,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: _buildSectionLabel(
+                            'Tersedia (${availableVehicles.length})',
+                          ),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.screenH,
+                        ),
+                        sliver: SliverList.builder(
+                          itemCount: availableVehicles.length,
+                          itemBuilder: (context, index) {
+                            final vehicle = availableVehicles[index];
+                            return VehicleCardItem(
+                              vehicle: vehicle,
+                              isSelected: vehicle.id == _selectedVehicleId,
+                              onTap: () {
+                                setState(() {
+                                  _selectedVehicleId = vehicle.id;
+                                });
+                                context.read<BookingController>().selectVehicle(
+                                  vehicle,
+                                );
+                              },
+                              onToggleFavorite: () {
+                                vehicleController.toggleFavorite(vehicle.id);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    if (rentedVehicles.isNotEmpty) ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.screenH,
+                          8,
+                          AppSpacing.screenH,
+                          0,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: _buildSectionLabel(
+                            'Sedang disewa (${rentedVehicles.length})',
+                          ),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.screenH,
+                        ),
+                        sliver: SliverList.builder(
+                          itemCount: rentedVehicles.length,
+                          itemBuilder: (context, index) {
+                            final vehicle = rentedVehicles[index];
+                            return VehicleCardItem(
+                              vehicle: vehicle,
+                              isSelected: vehicle.id == _selectedVehicleId,
+                              onTap: () {
+                                setState(() {
+                                  _selectedVehicleId = vehicle.id;
+                                });
+                                context.read<BookingController>().selectVehicle(
+                                  vehicle,
+                                );
+                              },
+                              onToggleFavorite: () {
+                                vehicleController.toggleFavorite(vehicle.id);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ],
-                ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 24 + AppSpacing.screenV),
+                  ),
+                ],
               ),
             ),
           ),

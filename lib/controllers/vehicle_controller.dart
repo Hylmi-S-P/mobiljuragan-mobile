@@ -56,8 +56,8 @@ class VehicleController extends ChangeNotifier {
     if (repo != null) {
       await _pasangLanggananArmada(repo);
 
-      // Lakukan sinkronisasi background jika koneksi tersedia
-      unawaited(refreshCatalog(force: true));
+      // Sinkronisasi mengikuti TTL 5 menit agar pembukaan awal tidak dobel fetch.
+      unawaited(refreshCatalog(force: false));
     }
   }
 

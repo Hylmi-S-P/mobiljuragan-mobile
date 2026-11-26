@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobiljuragan_mobile/data/local/database/app_database.dart';
 import 'package:mobiljuragan_mobile/data/local/database/daos/vehicle_dao.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   late AppDatabase database;
@@ -33,7 +34,7 @@ void main() {
           availabilityTag: const Value('Tersedia'),
           isPopular: const Value(true),
           pricePerDay: const Value(400000),
-          imageUrl: const Value('assets/images/avanza_card.png'),
+          imageUrl: const Value('assets/images/avanza_card.webp'),
           isFavorite: const Value(false),
           lastFetched: Value(nowMillis),
         ),
@@ -49,7 +50,7 @@ void main() {
           availabilityTag: const Value('Tersedia'),
           isPopular: const Value(false),
           pricePerDay: const Value(900000),
-          imageUrl: const Value('assets/images/fortuner_card.png'),
+          imageUrl: const Value('assets/images/fortuner_card.webp'),
           isFavorite: const Value(true),
           lastFetched: Value(nowMillis),
         ),
@@ -87,7 +88,7 @@ void main() {
           availabilityTag: const Value('Tersedia'),
           isPopular: const Value(false),
           pricePerDay: const Value(850000),
-          imageUrl: const Value('assets/images/hilux_card.png'),
+          imageUrl: const Value('assets/images/hilux_card.webp'),
           isFavorite: const Value(false),
           lastFetched: Value(nowMillis),
         ),
@@ -154,6 +155,120 @@ void main() {
       );
       final all = await database.bookingDao.getAllBookings();
       expect(all.first.status, equals('selesai'));
+    });
+
+    test('Skema v9 mendaftarkan seluruh indeks performa di sqlite_master', () async {
+      final rows = await database.customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'index' "
+        "AND name IN ('idx_vehicles_category', 'idx_favorites_user_vehicle', 'idx_bookings_user_created')",
+      ).get();
+      final names = rows.map((r) => r.read<String>('name')).toSet();
+      expect(
+        names,
+        containsAll(<String>{
+          'idx_vehicles_category',
+          'idx_favorites_user_vehicle',
+          'idx_bookings_user_created',
+        }),
+      );
+    });
+
+    test('Migrasi v8 -> v9 membuat ketiga indeks tanpa merusak data lama', () async {
+      final raw = sqlite.sqlite3.openInMemory();
+      raw.execute('''
+        CREATE TABLE vehicles (id TEXT PRIMARY KEY, category TEXT);
+        CREATE TABLE favorites (user_id TEXT, vehicle_id TEXT, PRIMARY KEY (user_id, vehicle_id));
+        CREATE TABLE bookings (id TEXT PRIMARY KEY, user_id TEXT, created_at INTEGER);
+        PRAGMA user_version = 8;
+      ''');
+      final upgraded = AppDatabase.forTesting(NativeDatabase.opened(raw));
+      addTearDown(upgraded.close);
+
+      final rows = await upgraded.customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'index' "
+        "AND name IN ('idx_vehicles_category', 'idx_favorites_user_vehicle', 'idx_bookings_user_created')",
+      ).get();
+      expect(rows.length, equals(3));
+    });
+
+    test('gantiSeluruhArmada menghapus armada usang & favorit yatim lalu upsert batch', () async {
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await database.vehicleDao.upsertVehiclesBatch([
+        VehiclesCompanion.insert(
+          id: 'v-lama',
+          name: 'Lama',
+          plateNumber: 'PA1',
+          category: 'MPV',
+          seatCapacity: '7',
+          transmission: 'Manual',
+          bodyType: 'MPV',
+          condition: 'Baik',
+          availabilityTag: 'Tersedia',
+          pricePerDay: 400000,
+          imageUrl: 'assets/images/avanza_card.webp',
+          lastFetched: now,
+        ),
+      ]);
+      await database.vehicleDao.toggleFavorite('v-lama', userId: 'u-1');
+
+      await database.vehicleDao.gantiSeluruhArmada([
+        VehiclesCompanion.insert(
+          id: 'v-baru',
+          name: 'Baru',
+          plateNumber: 'PA2',
+          category: 'SUV',
+          seatCapacity: '7',
+          transmission: 'Matic',
+          bodyType: 'SUV',
+          condition: 'Prima',
+          availabilityTag: 'Tersedia',
+          pricePerDay: 900000,
+          imageUrl: 'assets/images/fortuner_card.webp',
+          lastFetched: now,
+        ),
+      ]);
+
+      final semua = await database.vehicleDao.getAllVehicles();
+      expect(semua.map((v) => v.id).toList(), equals(['v-baru']));
+      final fav = await database.vehicleDao.watchFavoriteVehicles(userId: 'u-1').first;
+      expect(fav, isEmpty);
+    });
+
+    test('syncOwnedBookingsAtomically membersihkan akun lain dan pesanan usang dalam 1 transaksi', () async {
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      BookingsCompanion row(String id, String? uid) => BookingsCompanion.insert(
+            id: id,
+            userId: Value(uid),
+            vehicleId: 'v-1',
+            startDate: now,
+            startTime: '09.00 WIT',
+            durationDays: 1,
+            pickupLocation: 'Bandara',
+            status: 'menungguPembayaran',
+            dailyRate: 400000,
+            serviceFee: 0,
+            paymentBank: 'BRI',
+            paymentAccountNumber: '123',
+            createdAt: now,
+            lastFetched: now,
+          );
+
+      await database.bookingDao.upsertBookingsBatch([
+        row('b-other', 'user-X'),
+        row('b-stale', 'user-A'),
+        row('b-keep', 'user-A'),
+      ]);
+
+      await database.bookingDao.syncOwnedBookingsAtomically(
+        owner: 'user-A',
+        entries: [row('b-keep', 'user-A'), row('b-new', 'user-A')],
+        keepIds: ['b-keep', 'b-new'],
+      );
+
+      final ownedA = await database.bookingDao.getAllBookings(userId: 'user-A');
+      expect(ownedA.map((b) => b.id).toSet(), equals({'b-keep', 'b-new'}));
+      final ownedX = await database.bookingDao.getAllBookings(userId: 'user-X');
+      expect(ownedX, isEmpty);
     });
   });
 }

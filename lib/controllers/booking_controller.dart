@@ -13,7 +13,7 @@ import '../models/vehicle_model.dart';
 /// Controller terpusat untuk mengelola seluruh siklus pemesanan kendaraan pelanggan
 class BookingController extends ChangeNotifier {
   final BookingRepository? repository;
-  final BookingApiService _apiService = BookingApiService();
+  final BookingApiService _apiService;
 
   // Data formulir wizard pemesanan.
   //
@@ -48,7 +48,12 @@ class BookingController extends ChangeNotifier {
   final List<BookingModel> _bookingHistory = [];
   StreamSubscription<List<BookingModel>>? _bookingsSubscription;
 
-  BookingController({this.repository}) {
+  BookingController({
+    this.repository,
+    BookingApiService? apiService,
+    String? idPemilik,
+  }) : _apiService = apiService ?? BookingApiService(),
+       _sessionUserId = idPemilik {
     _init();
   }
 
@@ -169,30 +174,29 @@ class BookingController extends ChangeNotifier {
    */
   Future<BookingModel?> ambilTarifTerbaru(String bookingId) async {
     try {
-      final daftar = await _apiService.fetchBookings();
-      for (final item in daftar) {
-        if (item is! Map) continue;
-        final json = Map<String, dynamic>.from(item);
-        if (json['id'] != bookingId) continue;
+      final json = await _apiService.fetchBookingDetail(bookingId);
+      if (json.isEmpty) return null;
 
-        final quoted = json['quotedAmount'];
-        final tarif = quoted == null ? null : int.tryParse(quoted.toString());
+      final quoted = json['quotedAmount'];
+      final tarif = quoted == null ? null : int.tryParse(quoted.toString());
+      final finalRaw = json['finalAmount'];
+      final totalAkhir =
+          finalRaw == null ? null : int.tryParse(finalRaw.toString());
 
-        /* Ambil model yang sudah ada di riwayat supaya data kendaraan dan jadwal
-           tetap utuh; yang diperbarui hanya angka tarifnya. */
-        final indeks = _bookingHistory.indexWhere((b) => b.id == bookingId);
-        if (indeks == -1) return null;
+      /* Ambil model yang sudah ada di riwayat supaya data kendaraan dan jadwal
+         tetap utuh; yang diperbarui hanya angka tarifnya. */
+      final indeks = _bookingHistory.indexWhere((b) => b.id == bookingId);
+      if (indeks == -1) return null;
 
-        final diperbarui = _bookingHistory[indeks].copyWith(
-          quotedAmount: tarif,
-        );
-        _bookingHistory[indeks] = diperbarui;
-        if (_activeBooking?.id == bookingId) _activeBooking = diperbarui;
+      final diperbarui = _bookingHistory[indeks].copyWith(
+        quotedAmount: tarif,
+        finalAmount: totalAkhir,
+      );
+      _bookingHistory[indeks] = diperbarui;
+      if (_activeBooking?.id == bookingId) _activeBooking = diperbarui;
 
-        notifyListeners();
-        return diperbarui;
-      }
-      return null;
+      notifyListeners();
+      return diperbarui;
     } catch (_) {
       return null;
     }
@@ -203,7 +207,7 @@ class BookingController extends ChangeNotifier {
     if (repo != null) {
       try {
         // Pastikan filter pemilik cache sudah terpasang sebelum membaca data.
-        await repo.refreshSession();
+        final owner = await repo.refreshSession();
         final saved = await repo.getAllBookings();
         _bookingHistory.clear();
         _bookingHistory.addAll(saved);
@@ -216,12 +220,16 @@ class BookingController extends ChangeNotifier {
             .toList();
         _activeBooking = actives.isNotEmpty ? actives.first : null;
         notifyListeners();
-      } catch (_) {}
 
-      _pasangLanggananRiwayat(repo);
+        _pasangLanggananRiwayat(repo);
 
-      // Lakukan sinkronisasi pesanan dari remote REST API ke Drift SQLite
-      unawaited(repo.syncAllBookingsFromRemote());
+        // Sinkronisasi remote hanya saat sesi pengguna aktif sudah terbaca.
+        if (owner != null) {
+          unawaited(repo.syncAllBookingsFromRemote());
+        }
+      } catch (_) {
+        _pasangLanggananRiwayat(repo);
+      }
     }
   }
 

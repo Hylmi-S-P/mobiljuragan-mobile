@@ -1,3 +1,6 @@
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+
 import '../constants/api_constants.dart';
 import '../network/api_client.dart';
 import '../../models/payment_model.dart';
@@ -70,15 +73,52 @@ class PaymentApiService {
     }
   }
 
-  /// Mengunggah URL atau referensi bukti transfer bank pelanggan
+  /// Mengunggah foto bukti transfer ke `/api/v1/media` sebagai multipart dan
+  /// mengembalikan ID media yang siap dikirim ke endpoint bukti pembayaran.
+  Future<String> uploadPaymentProofMedia(XFile file) async {
+    final bytes = await file.readAsBytes();
+    final filename = file.name.isEmpty ? 'bukti_pembayaran.jpg' : file.name;
+    final multipart = http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: filename,
+    );
+
+    final response = await _client.postMultipart(
+      ApiConstants.mediaEndpoint,
+      files: {'file': multipart},
+      fields: const {'kategori': 'PAYMENT_PROOF'},
+      requiresAuth: true,
+      timeout: ApiConstants.uploadTimeoutDuration,
+    );
+
+    if (response is Map && response['id'] != null) {
+      final mediaId = response['id'].toString().trim();
+      if (mediaId.isNotEmpty) return mediaId;
+    }
+    throw ApiException('Server tidak mengembalikan ID media bukti pembayaran.');
+  }
+
+  /// Mengunggah ID media hasil `/api/v1/media` atau tautan/base64 bukti transfer.
   Future<PaymentModel> uploadPaymentProof({
     required String paymentId,
-    required String proofImageUrl,
+    String? proofImageUrl,
+    String? proofMediaId,
     String? senderAccount,
     String? bankName,
   }) async {
+    final trimmedMediaId = proofMediaId?.trim();
+    final trimmedImageUrl = proofImageUrl?.trim();
+    if ((trimmedMediaId == null || trimmedMediaId.isEmpty) &&
+        (trimmedImageUrl == null || trimmedImageUrl.isEmpty)) {
+      throw ApiException('Bukti pembayaran wajib disertakan.');
+    }
+
     final payload = <String, dynamic>{
-      'proofImageUrl': proofImageUrl,
+      if (trimmedMediaId != null && trimmedMediaId.isNotEmpty)
+        'proofMediaId': trimmedMediaId,
+      if (trimmedImageUrl != null && trimmedImageUrl.isNotEmpty)
+        'proofImageUrl': trimmedImageUrl,
       if (senderAccount != null && senderAccount.trim().isNotEmpty)
         'senderAccount': senderAccount.trim(),
       if (bankName != null && bankName.trim().isNotEmpty)
@@ -88,6 +128,7 @@ class PaymentApiService {
     final response = await _client.post(
       '${ApiConstants.paymentsEndpoint}/$paymentId/proof',
       requiresAuth: true,
+      timeout: ApiConstants.uploadTimeoutDuration,
       body: payload,
     );
 

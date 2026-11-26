@@ -108,6 +108,10 @@ void main() {
     });
 
     testWidgets('Merender badge semantik yang konsisten dan tombol aksi sesuai urgensi', (tester) async {
+      tester.view.physicalSize = const Size(800, 1800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(createTestWidget(bookings: allTestBookings));
       await tester.pumpAndSettle();
 

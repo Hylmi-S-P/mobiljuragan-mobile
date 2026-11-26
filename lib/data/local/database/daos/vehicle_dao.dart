@@ -133,10 +133,9 @@ class VehicleDao extends DatabaseAccessor<AppDatabase>
   /// tabel Favorites, jadi tidak ada lagi kolom global yang perlu dipertahankan
   /// saat armada diperbarui dari server.
   Future<void> upsertVehiclesBatch(List<VehiclesCompanion> entries) async {
-    await transaction(() async {
-      for (final entry in entries) {
-        await into(vehicles).insertOnConflictUpdate(entry);
-      }
+    if (entries.isEmpty) return;
+    await batch((b) {
+      b.insertAllOnConflictUpdate(vehicles, entries);
     });
   }
 
@@ -146,43 +145,28 @@ class VehicleDao extends DatabaseAccessor<AppDatabase>
   /// metode ini juga MENGHAPUS baris yang tidak ada lagi di server, lalu
   /// menyisipkan sisanya dalam satu transaksi.
   ///
-  /// Kenapa perlu: dulu armada yang dihapus admin tetap tampil di aplikasi
-  /// pelanggan selamanya, karena sinkronisasi hanya menambah tanpa pernah
-  /// membuang. Kalau server mengembalikan daftar kosong, tabel lokal ikut
-  /// dikosongkan.
-  ///
   /// Penanda favorit tidak terpengaruh karena hidup di tabel Favorites. Baris
   /// favorit yang armadanya sudah hilang ikut dibersihkan agar tidak menumpuk.
   Future<void> gantiSeluruhArmada(List<VehiclesCompanion> entries) async {
     await transaction(() async {
-      final idDariServer = entries.map((entry) => entry.id.value).toSet();
+      final idDariServer = entries.map((entry) => entry.id.value).toList();
 
-      final lokal = await select(vehicles).get();
-      for (final baris in lokal) {
-        if (!idDariServer.contains(baris.id)) {
-          await (delete(
-            vehicles,
-          )..where((tbl) => tbl.id.equals(baris.id))).go();
-        }
+      if (idDariServer.isEmpty) {
+        await delete(vehicles).go();
+        await delete(favorites).go();
+        return;
       }
 
-      final favoritLokal = await select(favorites).get();
-      for (final favorit in favoritLokal) {
-        if (!idDariServer.contains(favorit.vehicleId)) {
-          await (delete(favorites)..where(
-                (tbl) =>
-                    tbl.vehicleId.equals(favorit.vehicleId) &
-                    (favorit.userId == null
-                        ? tbl.userId.isNull()
-                        : tbl.userId.equals(favorit.userId!)),
-              ))
-              .go();
-        }
-      }
+      await (delete(
+        vehicles,
+      )..where((tbl) => tbl.id.isNotIn(idDariServer))).go();
+      await (delete(
+        favorites,
+      )..where((tbl) => tbl.vehicleId.isNotIn(idDariServer))).go();
 
-      for (final entry in entries) {
-        await into(vehicles).insertOnConflictUpdate(entry);
-      }
+      await batch((b) {
+        b.insertAllOnConflictUpdate(vehicles, entries);
+      });
     });
   }
 

@@ -24,8 +24,9 @@ class VehicleCardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -149,6 +150,8 @@ class VehicleCardItem extends StatelessWidget {
                     child: GambarKendaraan(
                       sumber: vehicle.imageUrl,
                       fit: BoxFit.cover,
+                      lebarLogis: 106,
+                      tinggiLogis: 74,
                       cadangan: Center(
                         child: Icon(
                           Icons.directions_car,
@@ -164,6 +167,7 @@ class VehicleCardItem extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 

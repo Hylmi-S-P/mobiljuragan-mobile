@@ -296,7 +296,7 @@ class AppTypography {
   /// Inisial logo pada splash screen.
   static const TextStyle brandMark = TextStyle(
     fontSize: sizeBrand,
-    fontWeight: FontWeight.w900,
+    fontWeight: FontWeight.w800,
     letterSpacing: 1.5,
     fontFamily: 'Inter',
   );

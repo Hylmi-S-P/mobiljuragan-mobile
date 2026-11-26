@@ -10,6 +10,7 @@ import 'package:drift/drift.dart';
 ///
 /// `userId` dibiarkan nullable agar baris milik mode tamu tetap punya tempat,
 /// sama seperti kepemilikan pada tabel `Bookings`.
+@TableIndex(name: 'idx_favorites_user_vehicle', columns: {#userId, #vehicleId})
 class Favorites extends Table {
   TextColumn get userId => text().nullable()();
 

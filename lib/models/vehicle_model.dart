@@ -193,30 +193,30 @@ class VehicleModel {
         : null;
 
     // Pemetaan gambar aset lokal fallback
-    String cardImg = 'assets/images/avanza_card.png';
-    String? heroImg = 'assets/images/avanza_hero.png';
-    String? detailImg = 'assets/images/avanza_detail.png';
+    String cardImg = 'assets/images/avanza_card.webp';
+    String? heroImg = 'assets/images/avanza_hero.webp';
+    String? detailImg = 'assets/images/avanza_detail.webp';
 
     if (extId.contains('fortuner') ||
         rawName.toUpperCase().contains('FORTUNER')) {
-      cardImg = 'assets/images/fortuner_card.png';
+      cardImg = 'assets/images/fortuner_card.webp';
       heroImg = null;
-      detailImg = 'assets/images/fortuner_card.png';
+      detailImg = 'assets/images/fortuner_card.webp';
     } else if (extId.contains('hilux') ||
         rawName.toUpperCase().contains('HILUX')) {
-      cardImg = 'assets/images/hilux_card.png';
+      cardImg = 'assets/images/hilux_card.webp';
       heroImg = null;
-      detailImg = 'assets/images/hilux_card.png';
+      detailImg = 'assets/images/hilux_card.webp';
     } else if (extId.contains('innova') ||
         rawName.toUpperCase().contains('INNOVA')) {
-      cardImg = 'assets/images/innova_card.png';
+      cardImg = 'assets/images/innova_card.webp';
       heroImg = null;
-      detailImg = 'assets/images/innova_card.png';
+      detailImg = 'assets/images/innova_card.webp';
     } else if (extId.contains('carry') ||
         rawName.toUpperCase().contains('CARRY')) {
-      cardImg = 'assets/images/hilux_card.png';
+      cardImg = 'assets/images/hilux_card.webp';
       heroImg = null;
-      detailImg = 'assets/images/hilux_card.png';
+      detailImg = 'assets/images/hilux_card.webp';
     }
 
     /* Status ketersediaan diturunkan dari operationalStatus dan pesanan aktif.

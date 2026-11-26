@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
@@ -21,14 +22,34 @@ class ApiException implements Exception {
 
 /// Klien HTTP terpusat dengan injeksi token aman & timeout handling
 class ApiClient {
+  static final http.Client _sharedClient = http.Client();
+  static final math.Random _random = math.Random();
+
+  /// Klien HTTP bersama agar socket TLS (keep-alive) dipakai ulang lintas layanan.
+  static http.Client get sharedHttpClient => _sharedClient;
+
+  static bool get _isFlutterTest =>
+      !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+
   final http.Client _client;
+  final bool _usesSharedClient;
   final SecureStorageService _secureStorage;
+  final int _maxGetRetries;
 
   ApiClient({
     http.Client? client,
     SecureStorageService? secureStorage,
-  })  : _client = client ?? http.Client(),
-        _secureStorage = secureStorage ?? SecureStorageService();
+    int? maxGetRetries,
+  }) : _usesSharedClient = client == null,
+       _client = client ?? _sharedClient,
+       _secureStorage = secureStorage ?? SecureStorageService(),
+       _maxGetRetries = maxGetRetries ?? ((client == null && !_isFlutterTest) ? 2 : 0);
+
+  Future<void> _tungguRetry(int attempt) {
+    final baseMs = attempt == 0 ? 400 : 1200;
+    final jitterMs = _random.nextInt(151);
+    return Future<void>.delayed(Duration(milliseconds: baseMs + jitterMs));
+  }
 
   /// Penangan terpusat untuk sesi yang ditolak server (HTTP 401/403).
   static Future<void> Function()? onUnauthorized;
@@ -88,27 +109,45 @@ class ApiClient {
     return headers;
   }
 
-  /// Request GET terstandar
+  /// Request GET terstandar dengan retry terbatas untuk gangguan jaringan sementara.
   Future<dynamic> get(String path, {Map<String, dynamic>? queryParams, bool requiresAuth = false}) async {
-    try {
-      final uri = Uri.parse('${ApiConstants.baseUrl}$path').replace(
-        queryParameters: queryParams?.map((k, v) => MapEntry(k, v.toString())),
-      );
-      final headers = await _buildHeaders(requiresAuth: requiresAuth);
+    final uri = Uri.parse('${ApiConstants.baseUrl}$path').replace(
+      queryParameters: queryParams?.map((k, v) => MapEntry(k, v.toString())),
+    );
 
-      final response = await _client
-          .get(uri, headers: headers)
-          .timeout(ApiConstants.timeoutDuration);
+    for (var attempt = 0; attempt <= _maxGetRetries; attempt++) {
+      try {
+        final headers = await _buildHeaders(requiresAuth: requiresAuth);
 
-      return _handleResponse(response, requiresAuth: requiresAuth);
-    } on SocketException {
-      throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
-    } on TimeoutException {
-      throw ApiException('Koneksi waktu habis (Timeout).');
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
+        final response = await _client
+            .get(uri, headers: headers)
+            .timeout(ApiConstants.timeoutDuration);
+
+        return _handleResponse(response, requiresAuth: requiresAuth);
+      } on SocketException {
+        if (attempt < _maxGetRetries) {
+          await _tungguRetry(attempt);
+          continue;
+        }
+        throw ApiException('Tidak dapat terhubung ke server backend (Offline).');
+      } on TimeoutException {
+        if (attempt < _maxGetRetries) {
+          await _tungguRetry(attempt);
+          continue;
+        }
+        throw ApiException('Koneksi waktu habis (Timeout).');
+      } on http.ClientException catch (e) {
+        if (attempt < _maxGetRetries) {
+          await _tungguRetry(attempt);
+          continue;
+        }
+        throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
+      } catch (e) {
+        if (e is ApiException) rethrow;
+        throw ApiException(PesanGalat.ramah('Permintaan tidak dapat diselesaikan', galat: e));
+      }
     }
+    throw ApiException('Permintaan tidak dapat diselesaikan.');
   }
 
   /// Request POST multipart (unggahan berkas).
@@ -137,7 +176,9 @@ class ApiClient {
         }
       }
 
-      final streamed = await _client.send(request).timeout(timeout ?? ApiConstants.timeoutDuration);
+      final streamed = await _client
+          .send(request)
+          .timeout(timeout ?? ApiConstants.uploadTimeoutDuration);
       final response = await http.Response.fromStream(streamed);
       return _handleResponse(response, requiresAuth: requiresAuth);
     } on SocketException {
@@ -246,6 +287,8 @@ class ApiClient {
   }
 
   void dispose() {
-    _client.close();
+    if (!_usesSharedClient) {
+      _client.close();
+    }
   }
 }

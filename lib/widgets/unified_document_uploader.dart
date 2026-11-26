@@ -162,7 +162,7 @@ class UnifiedDocumentUploader extends StatelessWidget {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: _buildThumbContent(style),
+      child: _buildThumbContent(context, style),
     );
 
     if (!_hasPreview) return thumb;
@@ -178,11 +178,15 @@ class UnifiedDocumentUploader extends StatelessWidget {
     );
   }
 
-  Widget _buildThumbContent(_UploaderStyle style) {
+  Widget _buildThumbContent(BuildContext context, _UploaderStyle style) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final thumbCacheWidth = (44 * dpr).round().clamp(44, 256);
+
     if (previewBytes != null) {
       return Image.memory(
         previewBytes!,
         fit: BoxFit.cover,
+        cacheWidth: thumbCacheWidth,
         errorBuilder: (_, _, _) => Icon(icon, size: 20, color: style.iconColor),
       );
     }
@@ -190,6 +194,7 @@ class UnifiedDocumentUploader extends StatelessWidget {
       return Image.network(
         previewImageUrl!,
         fit: BoxFit.cover,
+        cacheWidth: thumbCacheWidth,
         loadingBuilder: (_, child, progress) {
           if (progress == null) return child;
           return const Center(

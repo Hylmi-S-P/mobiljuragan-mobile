@@ -260,6 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: GambarKendaraan(
                   sumber: vehicle.heroImageUrl ?? vehicle.imageUrl,
                   fit: BoxFit.contain,
+                  lebarLogis: 320,
+                  tinggiLogis: 130,
                   cadangan: const Center(
                     child: Icon(
                       Icons.directions_car,
