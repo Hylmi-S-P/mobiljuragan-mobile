@@ -1,9 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../core/validators/password_policy.dart';
 import '../../data/remote/auth_api_service.dart' show NiatOtp;
 import '../../theme/app_colors.dart';
+import '../../widgets/legal_terms_sheet.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
 import '../../theme/app_typography.dart';
@@ -44,10 +46,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _passwordTouched = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  late final TapGestureRecognizer _termsTapRecognizer;
 
   @override
   void initState() {
     super.initState();
+    _termsTapRecognizer = TapGestureRecognizer()
+      ..onTap = () => LegalTermsSheet.showAkunDanPrivasi(context);
     _passwordController.addListener(_refreshPasswordState);
     _passwordConfirmController.addListener(_refreshPasswordState);
   }
@@ -58,6 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _termsTapRecognizer.dispose();
     _passwordController.removeListener(_refreshPasswordState);
     _passwordConfirmController.removeListener(_refreshPasswordState);
     _nameController.dispose();
@@ -763,14 +769,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Saya menyatakan data di atas benar dan menyetujui Syarat Layanan serta pengiriman OTP via WhatsApp.',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeCaption,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                  fontFamily: 'Inter',
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: AppTypography.sizeCaption,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                    fontFamily: 'Inter',
+                  ),
+                  children: [
+                    const TextSpan(
+                      text: 'Saya menyatakan data di atas benar dan menyetujui ',
+                    ),
+                    TextSpan(
+                      text: 'Syarat Layanan & Privasi Akun',
+                      recognizer: _termsTapRecognizer,
+                      style: const TextStyle(
+                        color: AppColors.primaryNavy,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                        decorationColor: AppColors.primaryNavy,
+                      ),
+                    ),
+                    const TextSpan(
+                      text: '.',
+                    ),
+                  ],
                 ),
               ),
             ),

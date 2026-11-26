@@ -6,7 +6,7 @@ import '../models/user_model.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
-import '../widgets/standard_bottom_sheet.dart';
+import '../widgets/legal_terms_sheet.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
 import 'help_center_screen.dart';
@@ -348,11 +348,15 @@ class ProfileScreen extends StatelessWidget {
               const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
             ],
             _buildMenuItem(
-              icon: Icons.shield_outlined,
-              title: 'Syarat & Kebijakan Rental Kantor',
-              onTap: () {
-                _showTermsModal(context);
-              },
+              icon: Icons.description_outlined,
+              title: 'Syarat & Ketentuan Sewa',
+              onTap: () => LegalTermsSheet.showSewaUnit(context),
+            ),
+            const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
+            _buildMenuItem(
+              icon: Icons.privacy_tip_outlined,
+              title: 'Kebijakan Privasi & Akun',
+              onTap: () => LegalTermsSheet.showAkunDanPrivasi(context),
             ),
             const Divider(height: 1, indent: 52, color: AppColors.borderSubtle),
             _buildMenuItem(
@@ -503,63 +507,5 @@ class ProfileScreen extends StatelessWidget {
       digit = digit.substring(1);
     }
     return '+62 $digit';
-  }
-
-  void _showTermsModal(BuildContext context) {
-    StandardBottomSheet.show<void>(
-      context: context,
-      title: 'Ketentuan Sewa Unit Merauke',
-      icon: Icons.description_outlined,
-      child: Builder(
-        builder: (modalCtx) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '1. Pelanggan wajib menunjukkan dokumen fisik asli KTP dan SIM A saat serah terima armada di kantor MobilJuragan Merauke.\n\n'
-              '2. Penggunaan kendaraan meliputi area Kota Merauke dan sekitarnya sesuai kesepakatan rute.\n\n'
-              '3. Bahan bakar dikembalikan sesuai posisi awal serah terima armada.',
-              style: TextStyle(
-                fontSize: AppTypography.sizeBody,
-                height: 1.5,
-                color: AppColors.textSecondary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: AppColors.borderSubtle),
-            const SizedBox(height: 12),
-            const Text(
-              'MobilJuragan Mobile · Versi 1.0.1 (Merauke Edition)',
-              style: TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                color: AppColors.textSecondary,
-                fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: (44 * MediaQuery.textScalerOf(context).scale(1)).clamp(
-                44,
-                88,
-              ),
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(modalCtx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryNavy,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text('Saya Mengerti'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

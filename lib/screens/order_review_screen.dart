@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../core/network/api_client.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
@@ -10,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/app_section_card.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/legal_terms_sheet.dart';
 import '../widgets/standard_bottom_sheet.dart';
 import 'auth/login_screen.dart';
 import 'auth/register_screen.dart';
@@ -37,6 +39,21 @@ class OrderReviewScreen extends StatefulWidget {
 }
 
 class _OrderReviewScreenState extends State<OrderReviewScreen> {
+  late final TapGestureRecognizer _termsTapRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsTapRecognizer = TapGestureRecognizer()
+      ..onTap = () => LegalTermsSheet.showSewaUnit(context);
+  }
+
+  @override
+  void dispose() {
+    _termsTapRecognizer.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingController>();
@@ -375,8 +392,6 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
   }
 
   Widget _buildAgreementCheckbox(BookingController booking) {
-    const agreementText = 'Saya menyetujui syarat dan ketentuan rental MobilJuragan.';
-
     return Material(
       color: AppColors.cardWhite,
       borderRadius: BorderRadius.circular(AppRadius.control),
@@ -405,15 +420,30 @@ class _OrderReviewScreenState extends State<OrderReviewScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  agreementText,
-                  style: TextStyle(
-                    fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w400,
-                    height: 1.4,
-                    color: AppColors.textPrimary,
-                    fontFamily: 'Inter',
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeBody,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'Inter',
+                    ),
+                    children: [
+                      const TextSpan(text: 'Saya menyetujui '),
+                      TextSpan(
+                        text: 'syarat dan ketentuan rental MobilJuragan',
+                        recognizer: _termsTapRecognizer,
+                        style: const TextStyle(
+                          color: AppColors.primaryNavy,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.primaryNavy,
+                        ),
+                      ),
+                      const TextSpan(text: '.'),
+                    ],
                   ),
                 ),
               ),

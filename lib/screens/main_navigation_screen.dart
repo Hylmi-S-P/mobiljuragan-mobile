@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../theme/app_colors.dart';
@@ -42,39 +43,48 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      body: IndexedStack(
-        index: _currentTabIndex,
-        children: [
-          HomeScreen(
-            onNavigateToPesan: () {
-              setState(() {
-                _currentTabIndex = 1;
-              });
-              _periksaSesiDiLatar();
-            },
-          ),
-          const VehicleSelectionScreen(showBottomNav: true),
-          OrderHistoryScreen(
-            onNavigateToPesan: () {
-              setState(() {
-                _currentTabIndex = 1;
-              });
-              _periksaSesiDiLatar();
-            },
-          ),
-          const HelpCenterScreen(),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: AppColors.cardWhite,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentTabIndex,
-        onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-          _periksaSesiDiLatar();
-        },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBackground,
+        body: IndexedStack(
+          index: _currentTabIndex,
+          children: [
+            HomeScreen(
+              onNavigateToPesan: () {
+                setState(() {
+                  _currentTabIndex = 1;
+                });
+                _periksaSesiDiLatar();
+              },
+            ),
+            const VehicleSelectionScreen(showBottomNav: true),
+            OrderHistoryScreen(
+              onNavigateToPesan: () {
+                setState(() {
+                  _currentTabIndex = 1;
+                });
+                _periksaSesiDiLatar();
+              },
+            ),
+            const HelpCenterScreen(),
+          ],
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: _currentTabIndex,
+          onTap: (index) {
+            setState(() {
+              _currentTabIndex = index;
+            });
+            _periksaSesiDiLatar();
+          },
+        ),
       ),
     );
   }

@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/daftar_geser_horizontal.dart';
+import '../widgets/legal_terms_sheet.dart';
 import '../widgets/merauke_location_map_picker.dart';
 import 'date_time_screen.dart';
 import '../theme/app_typography.dart';
@@ -707,7 +708,7 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
     final isDriver = booking.withDriver;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
       decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(14),
@@ -719,67 +720,49 @@ class _RentalOptionsScreenState extends State<RentalOptionsScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                isDriver ? Icons.airline_seat_recline_normal : Icons.verified_user_outlined,
-                size: 18,
-                color: AppColors.primaryTeal,
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(
+                  isDriver
+                      ? Icons.airline_seat_recline_normal
+                      : Icons.verified_user_outlined,
+                  size: 18,
+                  color: AppColors.primaryTeal,
+                ),
               ),
               const SizedBox(width: 8),
-              // Expanded: judul ketentuan membungkus ke baris berikutnya saat
-              // ukuran teks sistem diperbesar, bukan meluber ke kanan.
               Expanded(
                 child: Text(
-                  isDriver ? 'Ketentuan Layanan Sopir Tetap' : 'Ketentuan Sewa Lepas Kunci',
+                  isDriver
+                      ? 'Sopir staf tetap 12 jam/hari, tanpa berkas SIM A penyewa.'
+                      : 'Lepas Kunci memerlukan e-KTP, SIM A aktif, & Surat Pernyataan.',
                   style: const TextStyle(
                     fontSize: AppTypography.sizeBody,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
                     fontFamily: 'Inter',
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          if (!isDriver) ...[
-            _buildPolicyRow('Unggah foto e-KTP dan SIM A aktif di halaman status pesanan, lalu tunjukkan berkas fisiknya saat serah terima unit.'),
-            _buildPolicyRow('Wajib mengunduh, menandatangani, dan mengunggah Surat Pernyataan Penyewa (bebas alkohol/narkoba & tanggung jawab unit) sebelum pengambilan kunci.'),
-            _buildPolicyRow('Bahan bakar dikembalikan sesuai posisi indikator awal serah terima.'),
-          ] else ...[
-            _buildPolicyRow('Pengemudi adalah staf tetap MobilJuragan yang terikat SOP perusahaan.'),
-            _buildPolicyRow('Jam kerja operasional harian sopir adalah 12 jam per hari.'),
-            _buildPolicyRow('Tanpa kewajiban menyetir sendiri dan tanpa syarat SIM A penyewa.'),
-            _buildPolicyRow('Koordinasi nomor WhatsApp sopir dilakukan langsung melalui Chat CS.'),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPolicyRow(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 4,
-            height: 4,
-            margin: const EdgeInsets.only(top: 6, right: 8),
-            decoration: const BoxDecoration(
-              color: AppColors.primaryTeal,
-              shape: BoxShape.circle,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: AppTypography.sizeCaption,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textSecondary,
-                height: 1.4,
-                fontFamily: 'Inter',
+          InkWell(
+            onTap: () => LegalTermsSheet.showSewaUnit(context),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 44),
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 26),
+              child: const Text(
+                'Lihat ketentuan',
+                style: TextStyle(
+                  fontSize: AppTypography.sizeBody,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryNavy,
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.primaryNavy,
+                  fontFamily: 'Inter',
+                ),
               ),
             ),
           ),
