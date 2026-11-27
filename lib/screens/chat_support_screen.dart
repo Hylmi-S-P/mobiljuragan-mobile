@@ -254,11 +254,23 @@ class _ChatSupportScreenState extends State<ChatSupportScreen>
     return ticket.copyWith(status: status);
   }
 
+  bool _isHandedOff(
+    SupportController controller, {
+    SupportTicketModel? liveTicket,
+  }) {
+    final activeTicket = _tiketAktif;
+    final resolvedTicket =
+        liveTicket ??
+        (activeTicket == null ? null : controller.findTicket(activeTicket.id));
+    return controller.isAiHandoffToAdminFor(conversationKey) ||
+        (resolvedTicket?.isHandledByHuman ??
+            activeTicket?.isHandledByHuman ??
+            false);
+  }
+
   void _handleSendMessage(SupportController controller) {
     if (_ticketFinal != null) return;
-    final isHandedOff =
-        controller.isAiHandoffToAdminFor(conversationKey) ||
-        (_tiketAktif?.isHandledByHuman ?? false);
+    final isHandedOff = _isHandedOff(controller);
     if (!isHandedOff && controller.isAiThinking(conversationKey)) return;
 
     final text = _messageController.text.trim();
@@ -314,8 +326,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen>
 
     // Ambil daftar pesan dan status handoff terisolasi untuk sesi saat ini
     final messages = support.getMessages(conversationKey);
-    final isHandedOff =
-        support.isAiHandoffToAdminFor(conversationKey) || (activeTicket?.isHandledByHuman ?? false);
+    final isHandedOff = _isHandedOff(support, liveTicket: liveTicket);
 
     // Rekomendasi pesan cepat sesuai konteks sesi
     final List<String> suggestions;
@@ -1062,9 +1073,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen>
   }
 
   Widget _buildComposerBar(SupportController controller) {
-    final isHandedOff =
-        controller.isAiHandoffToAdminFor(conversationKey) ||
-        (_tiketAktif?.isHandledByHuman ?? false);
+    final isHandedOff = _isHandedOff(controller);
 
     final finalTicket = _ticketFinal;
     if (finalTicket != null) {

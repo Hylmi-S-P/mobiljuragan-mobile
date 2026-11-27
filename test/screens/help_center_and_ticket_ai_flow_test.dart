@@ -19,8 +19,12 @@ class MockAiApiService extends AiApiService {
   String? lastPesan;
   String? lastTicketId;
   String replyText;
+  final bool Function(String pesan)? shouldHandover;
 
-  MockAiApiService({this.replyText = 'Halo! Saya asisten AI resmi MobilJuragan. Kendala Anda sedang kami proses.'});
+  MockAiApiService({
+    this.replyText = 'Halo! Saya asisten AI resmi MobilJuragan. Kendala Anda sedang kami proses.',
+    this.shouldHandover,
+  });
 
   @override
   Future<AiChatResult> kirimPesan({
@@ -30,7 +34,11 @@ class MockAiApiService extends AiApiService {
     kirimPesanCount++;
     lastPesan = pesan;
     lastTicketId = ticketId;
-    return AiChatResult(balasan: replyText, pakaiCadangan: false);
+    return AiChatResult(
+      balasan: replyText,
+      pakaiCadangan: false,
+      dialihkanKeAdmin: shouldHandover?.call(pesan) ?? false,
+    );
   }
 }
 
@@ -258,7 +266,7 @@ void main() {
     });
   });
 
-  group('SupportController - Tiket AI & Retensi Auto-Handoff Tests', () {
+  group('SupportController - Tiket AI & Pengalihan Eksplisit Admin Tests', () {
     test('createTicket menginisialisasi handledBy = AI dan memicu respon otomatis pertama', () async {
       final mockAi = MockAiApiService(replyText: 'Solusi awal untuk armada Innova: periksa tekanan ban.');
       final mockTicket = MockTicketApiService();
@@ -290,7 +298,7 @@ void main() {
       expect(messages.any((m) => m.isAI), isTrue);
     });
 
-    test('Eskalasi otomatis terpicu saat putaran percakapan mencapai ambang batas retensi', () async {
+    test('Chat berulang lebih dari 3 kali pada tiket tidak otomatis dialihkan ke admin manusia', () async {
       final mockAi = MockAiApiService();
       final mockTicket = MockTicketApiService();
       final mockFaq = MockFaqApiService();
@@ -310,29 +318,88 @@ void main() {
       final ticketKey = 'ticket_${ticket.id}';
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      // Putaran 1 sudah selesai pada inisialisasi tiket
-      expect(supportController.getTicketTurnCount(ticketKey), equals(1));
+      expect(mockAi.kirimPesanCount, equals(1));
+      expect(mockTicket.handoverCount, equals(0));
       expect(supportController.isAiHandoffToAdminFor(ticketKey), isFalse);
+      expect(supportController.findTicket(ticket.id)?.isHandledByHuman, isFalse);
 
-      // Kirim pesan ke-2
-      supportController.sendUserMessage(text: 'Sudah saya coba atur suhunya tetap panas', conversationKey: ticketKey);
-      /*
-       * Jeda kirim minimal 1,5 detik di controller adalah pengaman anti-spam dan
-       * memakai jam dinding, bukan jam palsu pengujian. Pesan berikutnya baru
-       * diterima setelah jeda itu benar-benar lewat.
-       */
+      const pesanPelanggan = [
+        'Sudah saya coba atur suhunya tetap panas',
+        'Kipas AC sudah di posisi maksimal tapi udara tetap hangat',
+        'Apakah ada tombol AC belakang yang harus dinyalakan?',
+        'Saya masih di jalan menuju Sota, perlu dicek apa lagi?',
+      ];
+
+      for (var i = 0; i < pesanPelanggan.length; i++) {
+        supportController.sendUserMessage(
+          text: pesanPelanggan[i],
+          conversationKey: ticketKey,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 1600));
+
+        expect(mockAi.kirimPesanCount, equals(i + 2));
+        expect(mockTicket.handoverCount, equals(0));
+        expect(supportController.isAiHandoffToAdminFor(ticketKey), isFalse);
+        expect(supportController.findTicket(ticket.id)?.isHandledByHuman, isFalse);
+      }
+    });
+
+    test('Pengalihan ke admin manusia hanya terjadi saat pelanggan meminta dan server mengonfirmasi handover', () async {
+      final mockAi = MockAiApiService(
+        shouldHandover: (pesan) => pesan.toLowerCase().contains('admin manusia'),
+      );
+      final mockTicket = MockTicketApiService();
+      final mockFaq = MockFaqApiService();
+
+      final supportController = SupportController(
+        aiApiService: mockAi,
+        ticketApiService: mockTicket,
+        faqApiService: mockFaq,
+      );
+
+      final ticket = await supportController.createTicket(
+        title: 'Kendala Pembayaran',
+        category: TicketCategory.pembayaran,
+        description: 'Saya ingin konfirmasi bukti transfer sewa',
+      );
+
+      final ticketKey = 'ticket_${ticket.id}';
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      supportController.sendUserMessage(
+        text: 'Apakah transfer BRI diproses hari ini?',
+        conversationKey: ticketKey,
+      );
       await Future<void>.delayed(const Duration(milliseconds: 1600));
-      expect(supportController.getTicketTurnCount(ticketKey), equals(2));
       expect(supportController.isAiHandoffToAdminFor(ticketKey), isFalse);
+      expect(mockTicket.handoverCount, equals(0));
 
-      // Kirim pesan ke-3 (mencapai batas retensi default = 3)
-      supportController.sendUserMessage(text: 'Masih belum dingin juga', conversationKey: ticketKey);
+      supportController.sendUserMessage(
+        text: 'Nominalnya sudah sesuai tagihan',
+        conversationKey: ticketKey,
+      );
       await Future<void>.delayed(const Duration(milliseconds: 1600));
-      expect(supportController.getTicketTurnCount(ticketKey), equals(3));
+      expect(supportController.isAiHandoffToAdminFor(ticketKey), isFalse);
+      expect(mockTicket.handoverCount, equals(0));
 
-      // Harus otomatis memicu handover ke staf
-      expect(mockTicket.handoverCount, greaterThanOrEqualTo(1));
+      supportController.sendUserMessage(
+        text: 'Tolong hubungkan saya dengan admin manusia',
+        conversationKey: ticketKey,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
+
       expect(supportController.isAiHandoffToAdminFor(ticketKey), isTrue);
+      expect(supportController.findTicket(ticket.id)?.isHandledByHuman, isTrue);
+      expect(mockTicket.handoverCount, equals(0));
+
+      final jumlahPanggilanAiSetelahHandover = mockAi.kirimPesanCount;
+      supportController.sendUserMessage(
+        text: 'Halo admin, saya tunggu verifikasinya ya',
+        conversationKey: ticketKey,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(mockAi.kirimPesanCount, equals(jumlahPanggilanAiSetelahHandover));
     });
   });
 
