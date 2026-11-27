@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
@@ -63,6 +64,7 @@ class ProfileScreen extends StatelessWidget {
               _buildLogoutButton(context, auth),
               const SizedBox(height: 20),
             ],
+            const _AppVersionFooter(),
           ],
         ),
       ),
@@ -507,5 +509,65 @@ class ProfileScreen extends StatelessWidget {
       digit = digit.substring(1);
     }
     return '+62 $digit';
+  }
+}
+
+class _AppVersionFooter extends StatefulWidget {
+  const _AppVersionFooter();
+
+  @override
+  State<_AppVersionFooter> createState() => _AppVersionFooterState();
+}
+
+class _AppVersionFooterState extends State<_AppVersionFooter> {
+  late final Future<PackageInfo?> _infoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _infoFuture = _loadPackageInfo();
+  }
+
+  Future<PackageInfo?> _loadPackageInfo() async {
+    try {
+      return await PackageInfo.fromPlatform();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo?>(
+      future: _infoFuture,
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        if (info == null || info.version.trim().isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final version = info.version.trim();
+        final buildNumber = info.buildNumber.trim();
+        final label = buildNumber.isNotEmpty
+            ? 'MobilJuragan \u00b7 v$version ($buildNumber)'
+            : 'MobilJuragan \u00b7 v$version';
+
+        return SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: AppTypography.sizeCaption,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMuted,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
