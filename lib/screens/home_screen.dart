@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,20 +20,124 @@ import '../widgets/gambar_kendaraan.dart';
 /// Halaman utama aplikasi pelanggan MobilJuragan
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onNavigateToPesan;
+  final bool isActive;
+  final Duration autoSlideInterval;
 
-  const HomeScreen({super.key, this.onNavigateToPesan});
+  const HomeScreen({
+    super.key,
+    this.onNavigateToPesan,
+    this.isActive = true,
+    this.autoSlideInterval = const Duration(seconds: 4),
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  final PageController _pageController = PageController();
+  Timer? _autoSlideTimer;
+  int _currentSlideIndex = 0;
+  int _totalSlides = 0;
+  bool _isForeground = true;
+  bool _isUserDragging = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isForeground = state == AppLifecycleState.resumed;
+    _aturTimerAutoSlide();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.autoSlideInterval != widget.autoSlideInterval) {
+      _aturTimerAutoSlide(
+        forceRestart: oldWidget.autoSlideInterval != widget.autoSlideInterval,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = null;
+    WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _aturTimerAutoSlide({bool forceRestart = false}) {
+    if (!widget.isActive ||
+        !_isForeground ||
+        _isUserDragging ||
+        _totalSlides <= 1) {
+      _autoSlideTimer?.cancel();
+      _autoSlideTimer = null;
+      return;
+    }
+
+    if (_autoSlideTimer != null && _autoSlideTimer!.isActive && !forceRestart) {
+      return;
+    }
+
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = Timer.periodic(widget.autoSlideInterval, (_) {
+      if (!mounted || !_pageController.hasClients || _totalSlides <= 1) return;
+      final nextPage = (_currentSlideIndex + 1) % _totalSlides;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  List<VehicleModel> _selectSlideshowVehicles(List<VehicleModel> vehicles) {
+    final available = vehicles.where((v) => v.isAvailable).toList();
+    final source = available.isNotEmpty
+        ? available
+        : List<VehicleModel>.from(vehicles);
+    return [
+      ...source.where((v) => v.isPopular),
+      ...source.where((v) => !v.isPopular),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final vehicleController = context.watch<VehicleController>();
-    final featuredVehicle = vehicleController.vehicles.isNotEmpty
-        ? vehicleController.vehicles.first
-        : null;
+    final slides = _selectSlideshowVehicles(vehicleController.vehicles);
+    final int safeIndex;
+
+    if (slides.isEmpty) {
+      _totalSlides = 0;
+      _aturTimerAutoSlide();
+      safeIndex = 0;
+    } else {
+      _totalSlides = slides.length;
+      safeIndex = _currentSlideIndex.clamp(0, slides.length - 1);
+      if (_currentSlideIndex >= slides.length) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_pageController.hasClients &&
+              (_pageController.page?.round() ?? 0) != safeIndex) {
+            _pageController.jumpToPage(safeIndex);
+          }
+          if (_currentSlideIndex != safeIndex) {
+            setState(() => _currentSlideIndex = safeIndex);
+          }
+        });
+      }
+      _aturTimerAutoSlide();
+    }
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -43,10 +149,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildTopHeader(),
               const SizedBox(height: 18),
-              if (featuredVehicle != null)
-                _buildFeaturedCard(featuredVehicle)
+              if (slides.isEmpty)
+                _buildKartuKosong()
               else
-                _buildKartuKosong(),
+                _buildVehicleSlideshow(slides, safeIndex),
               const SizedBox(height: 22),
               _buildReservationStatusSection(),
               const SizedBox(height: 16),
@@ -193,7 +299,129 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFeaturedCard(VehicleModel vehicle) {
+  Widget _buildVehicleSlideshow(List<VehicleModel> slides, int safeIndex) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.8);
+    final cardHeight = 176.0 + (96.0 * textScale);
+
+    if (slides.length == 1) {
+      return SizedBox(
+        height: cardHeight,
+        child: _buildFeaturedCard(slides.first, index: 0, total: 1),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: cardHeight,
+          child: Listener(
+            onPointerDown: (_) {
+              _isUserDragging = true;
+              _aturTimerAutoSlide();
+            },
+            onPointerUp: (_) {
+              _isUserDragging = false;
+              _aturTimerAutoSlide();
+            },
+            onPointerCancel: (_) {
+              _isUserDragging = false;
+              _aturTimerAutoSlide();
+            },
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: slides.length,
+              onPageChanged: (idx) {
+                setState(() => _currentSlideIndex = idx);
+              },
+              itemBuilder: (context, index) => _buildFeaturedCard(
+                slides[index],
+                index: index,
+                total: slides.length,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (slides.length <= 12)
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              children: List.generate(slides.length, (i) {
+                final isCurrent = i == safeIndex;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    _pageController.animateToPage(
+                      i,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: isCurrent ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? AppColors.primaryNavy
+                          : AppColors.borderSubtle,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          )
+        else
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Text(
+                '${safeIndex + 1} / ${slides.length}',
+                style: const TextStyle(
+                  fontSize: AppTypography.sizeTiny,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFeaturedCard(
+    VehicleModel vehicle, {
+    required int index,
+    required int total,
+  }) {
+    final String badgeLabel;
+    final Color badgeBg;
+    final Color badgeTextColor;
+
+    if (vehicle.isPopular) {
+      badgeLabel = 'TERPOPULER DI MOBILJURAGAN';
+      badgeBg = AppColors.accentSoft;
+      badgeTextColor = AppColors.accent;
+    } else if (vehicle.isAvailable) {
+      badgeLabel = 'ARMADA TERSEDIA';
+      badgeBg = AppColors.tealLight;
+      badgeTextColor = AppColors.primaryTeal;
+    } else {
+      badgeLabel = 'KATALOG ARMADA';
+      badgeBg = AppColors.surfaceLight;
+      badgeTextColor = AppColors.textSecondary;
+    }
+
     return InkWell(
       onTap: () {
         context.read<BookingController>().selectVehicle(vehicle);
@@ -214,25 +442,51 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.accentSoft,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'TERPOPULER DI MOBILJURAGAN',
-                style: TextStyle(
-                  fontSize: AppTypography.sizeTiny,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                  fontFamily: 'Inter',
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      badgeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: AppTypography.sizeTiny,
+                        fontWeight: FontWeight.w700,
+                        color: badgeTextColor,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                if (total > 1) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${index + 1}/$total',
+                    style: const TextStyle(
+                      fontSize: AppTypography.sizeTiny,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ],
+              ],
             ),
             const SizedBox(height: 12),
             Text(
               vehicle.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: AppTypography.sizeHeading,
                 fontWeight: FontWeight.w700,
@@ -242,7 +496,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              '${vehicle.bodyType} • ${vehicle.seatCapacity} • ${vehicle.transmission}',
+              '${vehicle.bodyType} \u2022 ${vehicle.seatCapacity} \u2022 ${vehicle.transmission}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: AppTypography.sizeCaption,
                 fontWeight: FontWeight.w400,
@@ -251,22 +507,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                height: 130,
-                width: double.infinity,
-                color: AppColors.surfaceLight,
-                child: GambarKendaraan(
-                  sumber: vehicle.heroImageUrl ?? vehicle.imageUrl,
-                  fit: BoxFit.contain,
-                  lebarLogis: 320,
-                  tinggiLogis: 130,
-                  cadangan: const Center(
-                    child: Icon(
-                      Icons.directions_car,
-                      color: AppColors.textSecondary,
-                      size: 48,
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: double.infinity,
+                  color: AppColors.surfaceLight,
+                  child: GambarKendaraan(
+                    sumber: vehicle.heroImageUrl ?? vehicle.imageUrl,
+                    fit: BoxFit.contain,
+                    lebarLogis: 320,
+                    tinggiLogis: 130,
+                    cadangan: const Center(
+                      child: Icon(
+                        Icons.directions_car,
+                        color: AppColors.textSecondary,
+                        size: 48,
+                      ),
                     ),
                   ),
                 ),

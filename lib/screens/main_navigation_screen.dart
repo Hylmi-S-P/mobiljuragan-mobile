@@ -55,7 +55,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           index: _currentTabIndex,
           children: [
             _tabSudahDibuka.contains(0)
-                ? HomeScreen(onNavigateToPesan: () => _pindahTab(1))
+                ? HomeScreen(
+                    onNavigateToPesan: () => _pindahTab(1),
+                    isActive: _currentTabIndex == 0,
+                  )
                 : const SizedBox.shrink(),
             _tabSudahDibuka.contains(1)
                 ? const VehicleSelectionScreen(showBottomNav: true)
