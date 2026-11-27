@@ -44,6 +44,7 @@ class AiApiService {
         return AiChatResult(
           balasan: (data['reply'] as String?)?.trim() ?? '',
           pakaiCadangan: data['fallback'] == true,
+          dialihkanKeAdmin: data['ticketHandedOver'] == true,
         );
       }
       final directReply = response['reply'];
@@ -51,6 +52,7 @@ class AiApiService {
         return AiChatResult(
           balasan: directReply.trim(),
           pakaiCadangan: response['fallback'] == true,
+          dialihkanKeAdmin: response['ticketHandedOver'] == true,
         );
       }
     }
@@ -70,7 +72,14 @@ class AiChatResult {
   /// berpura-pura bahwa jawaban itu datang dari model.
   final bool pakaiCadangan;
 
-  const AiChatResult({required this.balasan, this.pakaiCadangan = false});
+  /// Benar bila backend mengalihkan tiket ke staf manusia pada giliran ini.
+  final bool dialihkanKeAdmin;
+
+  const AiChatResult({
+    required this.balasan,
+    this.pakaiCadangan = false,
+    this.dialihkanKeAdmin = false,
+  });
 
   bool get kosong => balasan.isEmpty;
 }

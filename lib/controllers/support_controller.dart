@@ -77,7 +77,6 @@ class SupportController extends ChangeNotifier {
     _conversations.clear();
     _handoffStatus.clear();
     _tiketTertutup.clear();
-    _ticketTurnCounts.clear();
     _isAiThinking.clear();
     _lastSentAt.clear();
     _ticketError = null;
@@ -113,17 +112,22 @@ class SupportController extends ChangeNotifier {
   final Map<String, DateTime> _lastSentAt = {};
   static const Duration _minSendInterval = Duration(milliseconds: 1500);
 
-  /// Batas retensi putaran dialog dengan AI sebelum dievaluasi untuk eskalasi ke staf operasional
-  static const int maxAiTurnsBeforeHandoff = 3;
+  void _tandaiDialihkanKeAdmin(String conversationKey, {String? ticketId}) {
+    _handoffStatus[conversationKey] = true;
+    final resolvedTicketId = (ticketId != null && ticketId.isNotEmpty)
+        ? ticketId
+        : (conversationKey.startsWith('ticket_')
+              ? conversationKey.replaceFirst('ticket_', '')
+              : null);
+    if (resolvedTicketId == null || resolvedTicketId.isEmpty) return;
 
-  /// Peta penghitung putaran percakapan AI per sesi tiket
-  final Map<String, int> _ticketTurnCounts = {};
-
-  int getTicketTurnCount(String conversationKey) =>
-      _ticketTurnCounts[conversationKey] ?? 0;
-
-  bool isRetentionThresholdReached(String conversationKey) {
-    return (_ticketTurnCounts[conversationKey] ?? 0) >= maxAiTurnsBeforeHandoff;
+    final idx = _tickets.indexWhere((t) => t.id == resolvedTicketId);
+    if (idx != -1 && !_tickets[idx].isHandledByHuman) {
+      _tickets[idx] = _tickets[idx].copyWith(
+        handledBy: 'HUMAN',
+        handoverAt: _tickets[idx].handoverAt ?? DateTime.now(),
+      );
+    }
   }
 
   SupportController({
@@ -501,7 +505,6 @@ class SupportController extends ChangeNotifier {
 
     final ticketKey = 'ticket_${createdTicket.id}';
     _handoffStatus[ticketKey] = createdTicket.isHandledByHuman;
-    _ticketTurnCounts[ticketKey] = 0;
     final initialList = [
       ChatMessageModel(
         id: 'tck-usr-${createdTicket.id}',
@@ -538,7 +541,6 @@ class SupportController extends ChangeNotifier {
     final ticketKey = 'ticket_$ticketId';
     _conversations.remove(ticketKey);
     _handoffStatus.remove(ticketKey);
-    _ticketTurnCounts.remove(ticketKey);
     _isAiThinking.remove(ticketKey);
     notifyListeners();
   }
@@ -580,7 +582,9 @@ class SupportController extends ChangeNotifier {
           conversationKey: ticketKey,
         ),
       );
-      _ticketTurnCounts[ticketKey] = (_ticketTurnCounts[ticketKey] ?? 0) + 1;
+      if (hasil.dialihkanKeAdmin) {
+        _tandaiDialihkanKeAdmin(ticketKey, ticketId: ticket.id);
+      }
     } catch (_) {
       if (gen != _generation) return;
       final daftar = _conversations.putIfAbsent(ticketKey, () => []);
@@ -768,7 +772,7 @@ class SupportController extends ChangeNotifier {
       _conversations[conversationKey] = hasil;
 
       // Sinkronkan status apakah tiket dipegang staf atau bot AI
-      final handledBy = (detail['handledBy'] as String?)?.toUpperCase();
+      final handledBy = detail['handledBy']?.toString().toUpperCase();
       _handoffStatus[conversationKey] = handledBy == 'HUMAN';
 
       /* Status tiket ikut diperbarui dari server. Tanpa ini, tiket yang ditutup
@@ -777,8 +781,22 @@ class SupportController extends ChangeNotifier {
       final statusServer = SupportTicketModel.parseStatus(detail['status']?.toString());
       _statusServer[ticketId] = statusServer;
       final idx = _tickets.indexWhere((t) => t.id == ticketId);
-      if (idx != -1 && _tickets[idx].status != statusServer) {
-        _tickets[idx] = _tickets[idx].copyWith(status: statusServer);
+      if (idx != -1) {
+        final ticketSaatIni = _tickets[idx];
+        final statusBerubah = ticketSaatIni.status != statusServer;
+        final handledByBerubah =
+            handledBy != null &&
+            handledBy.isNotEmpty &&
+            ticketSaatIni.handledBy?.toUpperCase() != handledBy;
+        if (statusBerubah || handledByBerubah) {
+          _tickets[idx] = ticketSaatIni.copyWith(
+            status: statusBerubah ? statusServer : null,
+            handledBy: handledByBerubah ? handledBy : null,
+            handoverAt: handledByBerubah && handledBy == 'HUMAN'
+                ? (ticketSaatIni.handoverAt ?? DateTime.now())
+                : ticketSaatIni.handoverAt,
+          );
+        }
       }
 
       notifyListeners();
@@ -960,21 +978,26 @@ class SupportController extends ChangeNotifier {
           conversationKey: conversationKey,
         ),
       );
-      _ticketTurnCounts[conversationKey] =
-          (_ticketTurnCounts[conversationKey] ?? 0) + 1;
-      final turnCount = _ticketTurnCounts[conversationKey]!;
-
-      // Jika percakapan tiket mencapai batas retensi (misal 3 putaran),
-      // kunci handoff langsung agar tidak ada balasan AI susulan, lalu teruskan ke server.
-      if (conversationKey.startsWith('ticket_') &&
-          turnCount >= maxAiTurnsBeforeHandoff) {
-        _handoffStatus[conversationKey] = true;
-        unawaited(handoffToAdmin(conversationKey: conversationKey));
+      if (conversationKey.startsWith('ticket_') && hasil.dialihkanKeAdmin) {
+        _tandaiDialihkanKeAdmin(conversationKey, ticketId: ticketId);
       }
 
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
       if (gen != _generation) return;
+      if (e is ApiException && e.statusCode == 409) {
+        final rawError = e.details is Map ? e.details['error'] : null;
+        final errorCode = rawError is Map ? rawError['code']?.toString() : null;
+        if (errorCode == 'TICKET_HANDED_OVER') {
+          _tandaiDialihkanKeAdmin(conversationKey, ticketId: ticketId);
+          notifyListeners();
+          return;
+        }
+        if (errorCode == 'TICKET_CLOSED') {
+          tandaiTiketTertutup(conversationKey);
+          return;
+        }
+      }
       final daftar = _conversations[conversationKey];
       if (daftar != null) {
         daftar.add(
@@ -1030,7 +1053,7 @@ class SupportController extends ChangeNotifier {
         return false;
       }
 
-      _handoffStatus[conversationKey] = true;
+      _tandaiDialihkanKeAdmin(conversationKey, ticketId: ticketId);
       notifyListeners();
       return true;
     } catch (_) {
